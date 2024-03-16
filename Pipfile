@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+django = "*"
+django-debug-toolbar = "*"
+psycopg2 = "*"
+djangorestframework = "*"
+pillow = "*"
+django-cors-headers = "*"
+celery = "*"
+django-celery-results = "*"
+redis = "*"
+django-redis = "*"
+scikit-learn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
