@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.core.validatory import MinValueValidator, MaxValueValidator
+from django.contrib.postgres.fields import JSONField
 
 # Create your models here.
 
@@ -13,6 +14,7 @@ class Product(models.Model):
     sub_category = ForeignKey('SubCategory', on_delete=models.CASCADE, related_name='products')
     date_added = DateField(default=date.today)
     quantity = PositiveIntegerField()
+    tags = JSONField(default=dict)
     rating = PositiveIntegerField(validators=[MaxValueValidator(5)])
     number_of_ratings = PositiveIntegerField()
 
@@ -27,6 +29,24 @@ class Category(models.Model):
 class SubCategory(models.Model):
     name = CharField(max_length=30)
     category = ForeignKey('Category', on_delete=models.CASCADE, related_name='sub_categories')
+    tags = ManyToManyField('Tag', related_name='subcategories')
+
+
+class Tag(models.Model):
+    name = CharField(max_length=20)
+    description = CharField(max_length=100)
+
+class TokenToSubCategory():
+    token = CharField(max_length=30)
+    subcategories = JsonField(default=list)
+
+
+class SubCategorySearchWeight(model.Model):
+    sub_category = ForeignKey('SubCategory', related_name='weight')
+    search_weight = PositiveIntegerField(validtaors=[MinValueValidator(1), MaxValueValidator(5))
+    
+    def __repr__(self):
+        return '<{}> {}'.format(self.__class__.name, self.__dict__)
 
 class Review(models.Model):
     product = ForeignKey('Product', on_delete=models.DO_NOTHING, related_name='reviews')
@@ -37,21 +57,3 @@ class Review(models.Model):
     def __repr__(self):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
 
-class Metrics(models.Model):
-    product = ForeignKey('Product', on_delete=models.DO_NOTHING, related_name='product_metrics')
-    amount = PositiveIntegerField(default=1)
-    customer = ForeingKey('User', on_delete=models.DO_NOTHING, related_name='customer_metrics')
-    supplier = ForeingKey('User', on_delete=models.DO_NOTHING, related_name='supplier_metrics')
-    purchase_date = DateField(auto_now_add=True)
-    order = ForeignKey('Order', on_delete=models.CASCADE, related_name='order_metrics')
-    total_price = PositiveIntegerField()
-
-
-class Inventory(models.Model):
-    product = ForeignKey('Product', on_delete=models.CASCADE, related_name='inventory_changes')
-    date = DateField(auto_now_add=True)
-    adjustment = IntegerField(required=True)
-    type = CharField(Required=True)
-    quantity_before = PositiveIntegerField()
-    quantity_after = PositiveIntegerField()
-    reason = CharField(max_length=255)

@@ -1,5 +1,5 @@
 from celery import app as celery_app
-from djnango_redis import get_redis_connection
+from django_redis import get_redis_connection
 import ast
 from .utils import calculate_purchase_percentage
 from appstore.product import Metrics
@@ -34,7 +34,7 @@ def do_popularity_check(prod_obj):
  
     if popular: # This is supposed to serialize the product and store it in redis
         fields = ('name', 'image', 'description')
-        serialized_product = ProductSerializer(prod_obj, model=Product, fields=fields)
+        serialized_product = ProductSerializer(prod_obj, model='Product', fields=fields)
         if serialized_product.is_valid():
             if redis_client.rpush('popular', json.dumps(serialized_data.data)):
                 return f"{prod_obj.id} has been added to popular products cache"

@@ -15,6 +15,14 @@ django-celery-results = "*"
 redis = "*"
 django-redis = "*"
 scikit-learn = "*"
+numpy = "*"
+pandas = "*"
+opencv-python = "*"
+webcolors = "*"
+nltk = "*"
+thefuzz = "*"
+enchant = "*"
+django-payments = "*"
 
 [dev-packages]
 

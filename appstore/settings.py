@@ -49,7 +49,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_celery_results',
     'django_redis',
-    'celery'
+    'celery',
+    'contrib.postgres',
+    'payments'
 ]
 
 MIDDLEWARE = [
@@ -218,3 +220,12 @@ CACHES = {
         }
 }
 
+MAMONA_ACTIVE_BACKENDS = (
+        'dummy',
+)
+
+MAMONA_BACKENDS_SETTINGS = {
+        'dummy': {
+           # 'URL': 'http://localhost:8000/'
+        }
+}

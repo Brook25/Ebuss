@@ -1,11 +1,50 @@
-from PIL import ImageColor
-import cv2  # OpenCV for color space conversion
+"""
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder
-import colorsys
-import webcolors
+import csv
+import cv2
+import PIL
+
+tops_knn = KNeighborsClassifier(n_neighbors=10)
+with open('user_purchase_data.csv', 'r', encoding='utf-8') as csv_file:
+    reader = csv.DictReader(csv_file)
+    purchase_data = list(reader)
+
+features = purchase_data[0].keys()
+u_data_dict = {f:[] for f in features}
+
+for k in u_data_dict:
+    for u_data in purchase_data:
+        u_data_dict[k] += [u_data[k]]
+
+test_list = [{k: None for k in p} for p in purchase_data]
+i = 0
+for dct in test_list:
+    for k,v in u_data_dict.items():
+        dct[k] = v[i]
+    i += 1
+
+df = pd.DataFrame(u_data_dict)
+label_encoder = LabelEncoder()
+df['color_encoded'] = label_encoder.fit_transform(df['color'])
+df['brand_encoded'] = label_encoder.fit_transform(df['brand'])
+
+def convert_color_to_hsv(color_str):
+    bgr_color = [int(val) for val in color_str.split(',')]
+    
+    hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
+    return hsv_color
+
+df['color_hsv'] = df['color'].apply(convert_color_to_hsv)
+
+X = df[['price', 'color_encoded', 'brand_encoded', *df['color_hsv']]]
+y = df['color_encoded']
+knn.fit(X, y)
+print(purchase_data == test_list)
+"""
+
 
 # Sample data (replace with your actual data)
 data = {
@@ -76,7 +115,7 @@ knn = KNeighborsRegressor(n_neighbors=4)
 knn.fit(X, y)
 
 # Example: Predict color preference for a new user
-new_user_data = {'price': 100, 'brand': 'A', 'color': 'yellow'}  # Replace with actual data
+new_user_data = {'price': 100, 'brand': 'A', 'color': 'green'}  # Replace with actual data
 
 # Encode categorical data for the new user
 #new_user_data['color_encoded'] = label_encoder.transform([new_user_data['color']])[0]
@@ -106,5 +145,6 @@ print(predicted_hue, predicted_saturation, predicted_value)
 print("Predicted color preference for the new user:", predicted_hue, predicted_saturation, predicted_value)
 
 print("Predcited color name:", hsv_to_color_string(predicted_hue, predicted_saturation, predicted_value))
+
 
 

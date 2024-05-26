@@ -7,7 +7,7 @@
 
 class BaseSerializer(serializers.HyperLinkedModelSerializer):
 
-    def __init__(self, *args, extra_kwargs={}, **kwargs):
+    def __init__(self, *args, **kwargs):
         model = kwargs.pop('model', None)
         fields = kwargs.pop('fields', None)
         extra_kwargs = kwargs.pop('extra_kwargs')
