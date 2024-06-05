@@ -89,6 +89,57 @@ class EDeviceRecommender(BaseRecommender):
             raise Exception("prediction process couldn't complete succefully. Error: " + str(e))
 
 
+    class __ColorConverter:
+        
+        def __init__(self, color):
+            self.__color = color
+        def convert_color_to_hsv(color_str):
+            # Convert color string to BGR format (OpenCV uses BGR)
+            #rgb_color = ImageColor.getrgb(color_str.lower())
+            rgb_color = webcolors.name_to_rgb(color_str)
+            r = rgb_color.red / 255.0
+            g = rgb_color.green / 255.0
+            b = rgb_color.blue / 255.0
+            #bgr_color = rgb_color[::-1]
+
+            # Convert BGR to HSV
+            #hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
+            hsv_color = colorsys.rgb_to_hsv(r, g, b)
+            return hsv_color
+
+        #Needs a closer look
+        def hsv_to_(hue, saturation, value):
+
+            #color_rgb = ImageColor.hsv_to_rgb((hue, saturation, value))
+            #hsv_color = (round(hue * 255), round(saturation * 255), round(value * 255))
+            r, g, b = colorsys.hsv_to_rgb(hue, saturation, value)
+            color_tuple_rgb = (int(r * 255), int(g * 255), int(b * 255))
+            color_name = webcolors.rgb_to_name(color_tuple_rgb)
+            return color_name
+
+
+
+        # Apply color conversion to a new column
+        def add_hsv_to_df(self, obj):
+            df['color_hsv'] = df['color'].apply(convert_color_to_hsv)
+
+            print('==>', convert_color_to_hsv('red'))
+
+            for i in range(len(df)):
+                row = df.iloc[i]
+                hue, saturation, value = row['color_hsv']
+                df.loc[i, 'Hue'] = hue
+                df.loc[i, 'Saturation'] = saturation
+                df.loc[i, 'Value'] = value
+
+            print(df)
+
+            # Separate features (X) and target (y) for KNN
+            X = df[['Hue', 'Saturation', 'Value']]
+            y = df[['Hue', 'Saturation', 'Value']]  # Target variable (color preference)
+
+            
+
 class ClothRecommeder(BaseRecommender):
     
     __X = ['color', 'price', 'brand']

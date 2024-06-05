@@ -1,12 +1,15 @@
-"""
+
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import (KNeighborsClassifier, KNeighborsRegressor)
 from sklearn.preprocessing import LabelEncoder
 import csv
 import cv2
+import colorsys
 import PIL
-
+from PIL import ImageColor
+import webcolors
+"""
 tops_knn = KNeighborsClassifier(n_neighbors=10)
 with open('user_purchase_data.csv', 'r', encoding='utf-8') as csv_file:
     reader = csv.DictReader(csv_file)
@@ -83,7 +86,7 @@ def hsv_to_color_string(hue, saturation, value):
     #hsv_color = (round(hue * 255), round(saturation * 255), round(value * 255))
     r, g, b = colorsys.hsv_to_rgb(hue, saturation, value)
     color_tuple_rgb = (int(r * 255), int(g * 255), int(b * 255))
-    color_name = webcolors.rgb_to_name(color_tuple_rgb)
+    color_hexa = ImageColor.getrgbstring(color_tuple_rgb)
     return color_name
 
 
@@ -103,8 +106,8 @@ for i in range(len(df)):
 print(df)
 
 # Separate features (X) and target (y) for KNN
-X = df[['Hue', 'Saturation', 'Value']]
-y = df[['Hue', 'Saturation', 'Value']]  # Target variable (color preference)
+X = df[['price', 'brand_encoded']]
+y = df[['price', 'brand_encoded']]  # Target variable (color preference)
 
 # Split data into training and testing sets (optional, can be done later)
 # from sklearn.model_selection import train_test_split
@@ -134,17 +137,14 @@ for i in range(len(new_user_df)):
     new_user_df.loc[i, 'Value'] = value
 
 # Extract features (X) for the new user
-new_user_X = new_user_df[['Hue', 'Saturation', 'Value']]
+new_user_X = new_user_df[['price', 'brand_encoded']]
 
 # Predict color preference for the new user
 predicted_hsv = knn.predict(new_user_X)[0]
-predicted_hue, predicted_saturation, predicted_value = predicted_hsv[-3:]
+predicted_price, predicted_brand = predicted_hsv[-2:]
 #predicted_color = label_encoder.inverse_transform([predicted_color_index])[0]
-print(predicted_hue, predicted_saturation, predicted_value)
+print(predicted_price, predicted_brand)
 
-print("Predicted color preference for the new user:", predicted_hue, predicted_saturation, predicted_value)
+#print("Predicted color preference for the new user:", predicted_hue, predicted_saturation, predicted_value)
 
-print("Predcited color name:", hsv_to_color_string(predicted_hue, predicted_saturation, predicted_value))
-
-
-
+#print("Predcited color name:", hsv_to_color_string(predicted_hue, predicted_saturation, predicted_value))
