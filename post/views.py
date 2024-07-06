@@ -36,10 +36,11 @@ class Post(View):
     def get(self, request, *args, **kwargs):
 
         id, page = args
-        if not id or not isinstance(id, (int, str)):
-            raise(TypeError, "Positional arguement error: check the id value.")
-            if not page or not isinstance(page, int):
-                raise(TypeError, "Positional arguement error: check the page value.")
+        if (not id or not isinstance(id, (int, str))) or \
+                (not page or not isinstance(page, int)):
+                error = "Positional arguement error: check page or id."
+                return JsonResponse(data={'data': None,
+                    'message': error}, status=401)
 
         if 'post' in request.url:
             comments = Post.objects.filter(id=id).replies_to
@@ -66,9 +67,13 @@ class Post(View):
             try:
                 post_data = json.loads(request.body)
                 text = post_data.get('text', None)
-                date = post_data.date('date', None)
-                img = #
-                quote = #
+                date = datetime.now()
+                img = request.FILES['image_file']
+                tagged_product = post_data.get('product', None)
+                if not (text and  tagged_product):
+                    return JsonResponse(data={'data': None,
+                            'message': 'post should have a text message and a tagged product.'}, status=401)
+
             except JSONDecodeError as e:
                 return JsonResponse(data=)
         elif 'comment' in request.url and args[0] and type(args) is int:
