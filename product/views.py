@@ -29,8 +29,6 @@ class Product(View):
                     products = SubCategory.objects.filter(id=subcategory_id).products
                 if param2 == 'all':
                     subcategories = SubCategory.objects.all()
-                else:
-                    subcategory = SubCategory.objects.filter(id=subcategory_id)                                
 
             if param1 == 'category':
                 category_id = kwargs.get('category_id', None)
@@ -74,17 +72,15 @@ class Product(View):
 
     @staticmethod
     def validate(**kwargs):
-        subcategory_name = kwargs.get('subcategory_name', None)
+        subcategory_id = kwargs.get('subcategory_id', None)
         quantity = kwargs.get('quantity', None)
         price = kwargs.get('price', None)
-        if subcategory_name and quantity and price:
-            subcategory = SubCategory.objects.filter(name=subcategory_name)
+        if subcategory_id and quantity and price:
+            subcategory = SubCategory.objects.filter(pk=subcategory_id)
             product_name = kwargs.get('product_name', None)
             if product_name:
                 tags = kwargs.tags.values()
                 if subcategory and set(tags) <= set(subcategory.tags):
-                    kwargs['product_name'] = product_name
-                    kwargs['subcategory'] = subcategory.id
                     return True
         return False
         

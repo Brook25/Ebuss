@@ -125,8 +125,8 @@ class SearchEngine:
         # also incorporate weigthed search categories
         matches = []
         search_tokens = self.lemmatized_tokens
-        for product in subcategory_matches:
-            result = process.extract(seatch_tokens, [product.name], score_cutoff=100)
+        for product in subcategory_matches.products:
+            result = process.extract(search_tokens, [product.name], score_cutoff=100)
             if result:
                 product.score = result[1][1]
                 matches.append(product)
@@ -136,11 +136,9 @@ class SearchEngine:
                     tags = json.loads(product.tags).values
                     tag_matches = 0
                     for token in search_tokens:
-                        for tag in tags:
-                            result = process.extract(token, [tag], score_cutoff=80)
-                            if result:
-                                tag_matches += 1
-                                break
+                        if token in tags:
+                            tag_matches += 1
+                            break
                         if tag_matches / len(tags) > 0.8:
                             product.score = tag_matches / len(tags) * 100
                             matches.append(product)
