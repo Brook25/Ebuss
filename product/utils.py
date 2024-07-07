@@ -130,6 +130,8 @@ class SearchEngine:
             output=ArrayField(CharField)
             ).annotate(overlap_len=Func(F(overlap), function='CARDINALITY', output_field=IntegerField()).filter(
                 overlap_len__gte=0.8*len(self.lemmatized_tokens))
+            paginate = Paginator(matches, 20)
+            matched_products = paginate(page=1)
         return matches
 
 
