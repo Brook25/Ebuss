@@ -124,7 +124,6 @@ class SearchEngine:
         # 1stbatch = SubCategorySearchWeight.objects.filter(weight__lte=3).order_by('weight')
         subcategory_matches = await self.search_token_to_subcategory()
         # also incorporate weigthed search categories
-        matches = []
         matches = subcategory_matches.products.annotate(overlap=RawSQL(
             sql="ARRAY(select UNNEST(%s) INTERSECT select UNNEST tag_values)",
             params=self.lemmatized_tokens,
