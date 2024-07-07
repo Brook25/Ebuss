@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.validatory import MinValueValidator, MaxValueValidator
-from django.contrib.postgres.fields import JSONField
+from django.contrib.postgres.fields import (JSONField, ArrayField)
 
 # Create your models here.
 
@@ -15,7 +15,7 @@ class Product(models.Model):
     date_added = DateField(default=date.today)
     quantity = PositiveIntegerField()
     tags = JSONField(default=dict)
-    tag_values = JSONField(default=list)  # Don't forget to add the product name in there
+    tag_values = ArrayField(CharField(max_length=50))  # Don't forget to add the product name in there
     rating = PositiveIntegerField(validators=[MaxValueValidator(5)])
     number_of_ratings = PositiveIntegerField()
 

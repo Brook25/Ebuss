@@ -1,5 +1,6 @@
 from .product import (Product, SubCategory,
         TokenToSubcategory, SubCategorySearchWeight) 
+from django.db.models.expressions import RawSQL
 from collections import counter
 from datetime import datetime
 from enchant import SpellChecker
@@ -124,32 +125,13 @@ class SearchEngine:
         subcategory_matches = await self.search_token_to_subcategory()
         # also incorporate weigthed search categories
         matches = []
-        search_tokens = self.lemmatized_tokens
-        for product in subcategory_matches.products:
-            result = process.extract(search_tokens, [product.name], score_cutoff=100)
-            if result:
-                product.score = result[1][1]
-                matches.append(product)
-
-            else:
-                try:
-                    tags = json.loads(product.tags).values
-                    tag_matches = 0
-                    for token in search_tokens:
-                        if token in tags:
-                            tag_matches += 1
-                            break
-                        if tag_matches / len(tags) > 0.8:
-                            product.score = tag_matches / len(tags) * 100
-                            matches.append(product)
-                            break
-                except json.JsonDecodeError as e:
-                    return f"couldn\'t load json tag values: (Error: {e})"
-
-            if len(matches) >= 20:
-                return sorted(matches, key=lambda x: x.score)
-       return sorted(matches, key=lambda x: x.score) 
-
+        matches = subcategory_matches.products.annotate(overlap=RawSQL(
+            sql="ARRAY(select UNNEST(%s) INTERSECT select UNNEST tag_values)",
+            params=self.lemmatized_tokens,
+            output=ArrayField(CharField)
+            ).annotate(overlap_len=Func(F(overlap), function='CARDINALITY', output_field=IntegerField()).filter(
+                overlap_len__gte=0.8*len(self.lemmatized_tokens))
+        return matches
 
 
     async def specified_search(self):
