@@ -17,7 +17,7 @@ class Product(View):
         if type(param1) is str and type(param2) is str:
             if param1 == 'product':
                 if param2 != 'all':
-                    product = Product.objects.filter(id=param2)
+                    product = Product.objects.filter(pk=param2)
                 else if param2 == 'all':
                     page = kwargs.get('page', 0)
                     products = Product.objects.all()
@@ -26,7 +26,7 @@ class Product(View):
             if param1 == 'subcategory':
                 subcategory_id = kwargs.get('subcategory_id', None)
                 if param2 == 'product':
-                    products = SubCategory.objects.filter(id=subcategory_id).products
+                    products = SubCategory.objects.filter(pk=subcategory_id).products
                 if param2 == 'all':
                     subcategories = SubCategory.objects.all()
 
@@ -35,12 +35,12 @@ class Product(View):
                 if param2 == 'all':
                     categories = Category.objects.all()
                 if param2 == 'subcategory' and category_id:
-                    subcategories = Category.objects.filter(id=category_id).subcategories
+                    subcategories = Category.objects.filter(pk=category_id).subcategories
                 if param2 == 'product' and category_id:
-                    subcategories = Category.objects.filter(id=category_id).subcategories
+                    subcategories = Category.objects.filter(pk=category_id).subcategories
                     products = [*(subcategory.products) for subcategory in subcategories]
                 else:
-                    category = Category.objects.filter(id=args[1])
+                    category = Category.objects.filter(pk=args[1])
 
             if param1 == 'new':
                 # get popular or trending products from the category or subcat

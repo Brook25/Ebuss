@@ -134,7 +134,7 @@ class Subscriptions(View):
         
         subscribed_to = kwargs.get('subscribed_to', None)
         if subscribed_to and type(subscribed_to) is str:
-            subscribed_to = User.objects.filter(id=subscribed_to)
+            subscribed_to = User.objects.filter(pk=subscribed_to)
             request.user.subscriptions.append(subscribed_to)
             request.user.save()
             # serialize data

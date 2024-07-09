@@ -13,7 +13,7 @@ class News(View):
     def get(self, request, *args, **kwargs):
 
             page = kwargs.get('page', 0)
-            if type(page) is int and page:
+            if page:
                 paginate = Paginator()
                 posts_from_subs = request.user.subscriptions.posts.all()
                 posts_from_subs = posts_from_subs.filter(timestamp__lte=datetime.now())
@@ -43,7 +43,7 @@ class Post(View):
                     'message': error}, status=401)
 
         if 'post' in request.url:
-            comments = Post.objects.filter(id=id).replies_to
+            comments = Post.objects.filter(pk=id).replies_to
             view_name  = 'post'
         elif 'comment' in request.url:
             comments = Comment.objects.filter(id=id).replies_to
@@ -75,7 +75,11 @@ class Post(View):
                             'message': 'post should have a text message and a tagged product.'}, status=401)
 
             except JSONDecodeError as e:
-                return JsonResponse(data=)
+                return JsonResponse(data={'data': None,
+                    'message': 'data could not be parsed'}, status=501)
+            return JsonResponse(data={'data': comment.id, 'message':
+                'post succefully added'}, status=200)
+        
         elif 'comment' in request.url and args[0] and type(args) is int:
                 post_id = args[0]
                 try:
@@ -90,3 +94,5 @@ class Post(View):
                         return JsonResponse(data={'data': None, message: 'proper key words missing.'}, status=401)
                 except JsonDECODERROR as e:
                     return JsonRespone(data={'data': None, 'message': 'json decode error'}, status=501)
+                return JsonResponse(data={'data': comment.id, 'message':
+                    'comment succefully added'}, status=200)

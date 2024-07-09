@@ -96,7 +96,7 @@ class SearchEngine:
         self.__category  = kwargs.pop('category')
         self.__tags = kwargs
 
-    async def __search_token_to_subcategory(self):
+    async def __search_token_to_subcategory(self, popularity='high'):
         """
         This function matches search tokens with subcategories
         """
@@ -106,12 +106,14 @@ class SearchEngine:
         if self.lemmatized_tokens:
             related_subcategory_json = TokenToSubCategory.objects.filter(token__in=self.lemmatized_tokens)
             related_subcategories = [*[json.loads(subcats) for subcats in related_subcategory_json]]
+            if popularity == 'high':
+                related_subcategories = Subcategory.objects.filter(pk__in=related_subcategories, weight__search_weight__lte=3)
+            else:
+                related_subcategories = Subcategory.objects.filter(pk__in=related_subcategories, weight__search_weight__gt=3)
+
             count_related_subcats = Counter(related_subcategories) 
             count_related_subcats = sorted(count_related_subcats.items(), key=lambda x: x[1], reverse=True) 
-            most_related = []
-            for subcat, count in count_related_subcats:
-                if count >= 3/5(len(self.lemmatized_tokens)):
-                    most_related.append(subcat)
+            most_related = [subcat for subcat, count in count_related_subcats if count >= 3/5 * len(self.lemmatized_tokens)]
 
         return most_related
 
@@ -121,7 +123,6 @@ class SearchEngine:
         Function used if no search parameters
         are specified.
         """
-        # 1stbatch = SubCategorySearchWeight.objects.filter(weight__lte=3).order_by('weight')
         subcategory_matches = await self.search_token_to_subcategory()
         # also incorporate weigthed search categories
         matches = subcategory_matches.products.annotate(overlap=RawSQL(
@@ -132,7 +133,7 @@ class SearchEngine:
                 overlap_len__gte=0.8*len(self.lemmatized_tokens))
             paginate = Paginator(matches, 20)
             matched_products = paginate(page=1)
-        return matches
+        return matched_products
 
 
     async def specified_search(self):
