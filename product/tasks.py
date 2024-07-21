@@ -1,4 +1,4 @@
-from celery import app as celery_app
+from celery_async import app as celery_app
 from django_redis import get_redis_connection
 import ast
 from .utils import calculate_purchase_percentage

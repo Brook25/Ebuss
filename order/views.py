@@ -12,7 +12,7 @@ class OrderView(View):
     def get(self, *args, **kwargs):
 
         orders = Order.obects.filter(user=request.user).order_by('date')
-        serialized_orders = BaseSerializer(model='order', fields='__all__') 
+        serialized_orders = BaseSerializer(model='order', fields='__all__', many=True) 
  
         if serializers.is_valid():
             return JsonResponse(data=serialized_orders.data, safe=True, status=200)

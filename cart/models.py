@@ -1,11 +1,16 @@
 from django.db import models
+from shared.validators import check_vulgarity
+from django.db.models import (
+        CharField, DateTimeField, ForeignKey,
+        PositiveIntegerField, ManyToManyField
+        )
 
 
 class Cart(models.Model):
-    name = CharField(max_length=40, validators=[vulgarity_validator])
-    customer = ForeignKey('User', on_delete=models.CASCADE, related_name='carts')
+    name = CharField(max_length=40, validators=[check_vulgarity])
+    customer = ForeignKey('user.User', on_delete=models.CASCADE, related_name='carts')
     timestamp = DateTimeField(auto_now=True)
-    product = ManyToManyField('Product')
+    product = ManyToManyField('product.Product')
     quantity = PositiveIntegerField()
 
     def __repr__(self):

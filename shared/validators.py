@@ -1,10 +1,5 @@
-import re
+from better_profanity import profanity
 
-def vulgarity_validator(text):
-    vulgarities = ["fuck", "dick", "pussy", "nigger"]
-
-    for word in vulgarities:
-        pattern = rf'\b{re.escape(word)}\b'
-        if re.search(pattern, text, flags=re.IGNORECASE):
-            raise ValidationError(f"the text contains a prohibited word: {word}.")
-            break
+def check_vulgarity(word):
+    if profanity.contains_profane(word):
+        raise ValdiationError('your name contains a prohibited word.')

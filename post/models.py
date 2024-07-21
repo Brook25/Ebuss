@@ -1,19 +1,33 @@
 from django.db import models
-
+from django.db.models import (
+        CharField, DateTimeField, ForeignKey,
+        PositiveIntegerField, TextField,
+        ManyToManyField, ImageField
+        )
+from shared.validators import check_vulgarity
 # Create your models here.
 
-class Comment(models.Model):
-    user = ForeignKey('User', on_delete=models.DO_NOTHING)
-    text = TextField(validators=[vulgarity_validator])
+class Commentable(models.Model):
+    user = ForeignKey('user.User', on_delete=models.DO_NOTHING)
+    text = TextField(validators=[check_vulgarity])
     timestamp = DateTimeField(auto_now_add=True)
     likes = PositiveIntegerField()
     comments = PositiveIntegerField()
     views = PositiveIntegerField()
-    post = ManyToOneField('Comment', related_name='replies_to')
+    
+    class Meta:
+        abstract = True
 
     def __repr__(self):
         return '<{}> {}'.format(self.__class__name, self.__dict__)
 
-class Post(Comment):
-    user = ForeignKey('User', on_delete=models.CASCADE, related_name='posts')
+class Post(Commentable):
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='posts')
     image = ImageField(null=True, upload_to='Images/')
+
+class Comment(Commentable):
+    post = ForeignKey('Post', related_name='replies_to', on_delete=models.CASCADE)
+
+
+class Replies(Comment):
+    parent = ForeignKey('Comment', on_delete=models.CASCADE, related_name='replies_to')

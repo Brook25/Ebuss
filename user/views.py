@@ -138,7 +138,7 @@ class Subscriptions(View):
             request.user.subscriptions.append(subscribed_to)
             request.user.save()
             # serialize data
-            return JsonResponse()
+            return JsonResponse('subscription succefully added', status=200)
 
 
         

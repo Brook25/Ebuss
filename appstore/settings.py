@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'playground',
+    'django.contrib.postgres',
+    'cart',
     'user',
     'product',
     'order',
@@ -50,8 +51,6 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_redis',
     'celery',
-    'contrib.postgres',
-    'payments'
 ]
 
 MIDDLEWARE = [
@@ -72,7 +71,7 @@ INTERNAL_IPS = [
         ]
 
 
-AUTH_USER_MODEL = 'playground.User'
+AUTH_USER_MODEL = 'user.User'
 
 
 import mimetypes
@@ -211,11 +210,11 @@ CELERY_TASK_SERIALIZER = 'json'
 
 CACHES = {
         'default': {
-            'BACKEND': 'django_redis.cache.RedisCache'
+            'BACKEND': 'django_redis.cache.RedisCache',
             'LOCATION': 'redis://127.0.0.1:6379',
             'MAX_CONNECTIONS': 35,
             'OPTIONS': {
-                'CLIENT_CLASS': 'default_redis.client.DefaultClient',
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             }
         }
 }
