@@ -3,7 +3,7 @@ from datetime import date
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models import (
-        CharField, DateField, JSONField
+        CharField, DateField, JSONField,
         DateTimeField, ForeignKey,
         PositiveIntegerField, DecimalField, 
         ManyToManyField, TextField
