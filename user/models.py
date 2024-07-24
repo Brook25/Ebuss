@@ -27,14 +27,14 @@ NOTIFICATION_TYPES = (
         )
 
 class User(AbstractUser):
-    email = EmailField(unique=True)
-    country_code = CharField()
+    email = EmailField(unique=True, blank=False, null=False)
+    country_code = CharField(null=False)
     phone_no = CharField(max_length=10, validators=[
         RegexValidator(regex=r'^[0-9]{10}$',
         message='Field must contain only numbers.',
         code='invalid_phone_number'
         )
-    ])
+    ], null=False, blank=False)
     birth_date = DateField()
     last_modified = DateField(auto_now=True)
     subscriptions = ManyToManyField('User', symmetrical=False, related_name='subscribers')
@@ -47,25 +47,26 @@ class User(AbstractUser):
 
 
 class History(models.Model):
-    cart = ForeignKey('cart.Cart', null=True, related_name='history', on_delete=models.CASCADE)
-    product = ForeignKey('product.Product', null=True, related_name='history', on_delete=models.CASCADE)
-    billing_address = CharField(max_length=70)
-    payment_mmethod = CharField(max_length=20)
-    shippment_address = CharField(max_length=70)
+    cart = ForeignKey('cart.Cart', blank=False, null=True, related_name='history', on_delete=models.CASCADE)
+    product = ForeignKey('product.Product', related_name='history', on_delete=models.CASCADE)
+    billing_address = CharField(max_length=70, null=False, blank=False)
+    payment_mmethod = CharField(max_length=20, null=False, blank=False)
+    shippment_address = CharField(max_length=70, null=False, blank=False)
 
 class Wishlist(models.Model):
     created_by = ForeignKey('User', related_name='wishlist_for', on_delete=models.CASCADE)
-    created_at = DateTimeField(auto_now_add=True)
-    product = ManyToManyField('product.Product', related_name='wishlists_in')
+    created_at = DateTimeField(auto_now=True)
+    modified_at = DateTimeField(auto_now_add=True)
+    product = ManyToManyField('product.Product', related_name='wishlists_in', blank=False)
     priority = CharField(choices=PRIORITY_CHOICES, default='LOW')
 
 
 class Notification(models.Model):
     user = ForeignKey('User', on_delete=models.CASCADE, related_name='notifications')
     created_at = DateTimeField(auto_now_add=True)
-    note = TextField()
-    type = CharField(choices=NOTIFICATION_TYPES)
-    uri = URLField(max_length=200)
+    note = TextField(blank=False, null=False)
+    type = CharField(choices=NOTIFICATION_TYPES, null=False)
+    uri = URLField(max_length=200, null=False)
 
 class Metrics(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='product_metrics')
@@ -74,15 +75,15 @@ class Metrics(models.Model):
     supplier = ForeignKey('User', on_delete=models.CASCADE, related_name='supplier_metrics')
     purchase_date = DateField(auto_now_add=True)
     order = ForeignKey('order.Order', on_delete=models.CASCADE, related_name='order_metrics')
-    total_price = PositiveIntegerField()
+    total_price = PositiveIntegerField(null=False, blank=False)
 
 
 class Inventory(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='inventory_changes')
     date = DateField(auto_now_add=True)
-    adjustment = IntegerField(null=False)
+    adjustment = IntegerField(null=False, blank=False)
     type = CharField(null=True)
-    quantity_before = PositiveIntegerField()
-    quantity_after = PositiveIntegerField()
-    current_stoke = PositiveIntegerField()
-    reason = CharField(max_length=255)
+    quantity_before = PositiveIntegerField(null=False, blank=False)
+    quantity_after = PositiveIntegerField(null=False, blank=False)
+    current_stoke = PositiveIntegerField(null=False, blank=False)
+    reason = CharField(max_length=255, null=True)

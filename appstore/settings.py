@@ -119,7 +119,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'USER': 'brook',
         'PASSWORD': 'volcano27!',
-        'NAME': 'e_commerce',
+        'NAME': 'ebuss',
         'CONN_MAX_AGE': 500,
         'CONN_HEALTH_CHECKS': True,
         'OPTIONS': {
