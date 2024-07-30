@@ -2,8 +2,9 @@ from django.test import TestCase
 from datetime import datetime
 from .models import (User, WishList, Notification)
 from product.models import (Product, Category, SubCategory)
+from order.models import (BillingInfo, ShipmentInfo, Payment)
 from cart.models import Cart
-
+from uuid import uuid
 # Create your tests here.
 
 
@@ -42,33 +43,55 @@ class UserTest(TestCase):
 
     def setup(self):
         """sets up user objects for the entire test."""
+        self.test_user_1 = User.objects.create(**self.TEST_USER_1)
+        self.test_user_2 = User.objects.create(**self.TEST_USER_2)
         self.category_1 = Category.models.create(name='electronics')
         self.category_2 = Category.models.create(name='cloth')
         self.sub_category_1 = SubCategory.models.create(name='phone', category=self.category_1)
         self.sub_category_2 = SubCategory.models.create(name='women_cloths', category=self.category_2)
         test_product_1_features: {'brand': 'Aurora', 'screen': '14Mp'
                 'ram': '16GB', 'storage': '64GB'}
-        TEST_PRODUCT_1 = {
+        
+        test_product_1_data = {
             'name': 'aurora2024',
             'description': 'Brand new phone. 14Mp camera, screen size 9.7". 16GB RAM, 64GB storage, Android 13',
             'price': 600,
             'quantity': 4,
-            'tags': json.dumps(test_product_1_features)
+            'sub_category': self.sub_category_1,
+            'tags': json.dumps(test_product_1_features),
             'tag_values': [test_product_1_features.values + ['aurora2024']]
         }
 
-        TEST_PRODUCT_1 = {
+        test_product_2_data = {
             'name': 'circle_t_shirt',
             'description': 'Brand new phone. 14Mp camera, screen size 9.7". 16GB RAM, 64GB storage, Android 13',
             'price': 600,
             'quantity': 4,
+            'sub_category': self.sub_category_2
             'tags': json.dumps(test_product_1_features)
             'tag_values': [test_product_1_features.values + ['aurora2024']]
         }
-
+        self.test_product_1 = Product.objects.create(**test_product_1_data)
+        self.test_product_2 = Product.objects.create(**test_product_2_data) 
+        billing_info_data = {'contact_name': 'John',
+                    'city': 'Addis Ababa',
+                    'state': None,
+                    'email_address': 'johnnyboy24@gmail.com',
+                    'address': 'Mexico square',
+                    'phone_no': '0967101001',
+                    'payment_method': 'TeleBirr'
+                    }
+        shipment_info_data = {k: v for k, v in billing_info_data.items()}.update({'tracking_info': uuid.uuid4()})
+        payment_info_data = {'user': self.test_user_1,
+                        'amount': 2,
+                        'status': 'in_progress'
+                        }
+        self.test_billing_info = BillingInfo.objects.create(**billing_info_data)
+        self.test_shipment_info = ShipmentInfo.objects.create(**payment_info_data)
+        self.test_cart_1 = Cart.objects.create(name='mycart',
+                customer=self.test_user_1, product=self.test_product_1, quantity=5)
+        test_order = Order(user=self.test_order_2, cart=self.test_cart_1, billing=self.billing_info, shipment=self.shipment_info)
         
-        self.test_user_1 = User.objects.create(**self.TEST_USER_1)
-        self.test_user_2 = User.objects.create(**self.TEST_USER_2)
 
     def test_create_user_1(self):
         """This test tests user creation and field validation."""
@@ -86,8 +109,6 @@ class UserTest(TestCase):
         self.assert_equal(self.birth_date, creation_date)
    
    def test_wish_list(self):
-        self.TEST_PRODUCT_1['subcategory'] = self.sub_category_1
-        test_product_1 = Product.objects.create(**self.TEST_PRODUCT_1)
         self.TEST_PRODUCT_2['subcategory'] = self.sub_category_2
         test_product_2 = Product.objects.create(**self.TEST_PRODUCT_2)
         wish_list_1_data = {'created_by': self.test_user_1,
@@ -109,5 +130,26 @@ class UserTest(TestCase):
         assertEqual(test_not_1.uri, 'https://127.0.0.1/orders')
 
     def test_history_with_cart(self):
-        pass
+        
+        test_history = History.objects.create(cart=test_cart_1, billing_address=self.billing_address, shipment_info=self.shipment_info, payment_info=self.payment_info)
+        assertEqual(test_history.cart=test_cart_1)
+        assertEqual(test_history.billing_address.contact_name='John')
+        assertEqual(test_history.billing_address.city='Addis Ababa')
+        assertEqual(test_history.billing_address.address='Mexico Square')
+        assertEqual(test_history.billing_address.phone_no='0967101001')
+        assertEqual(test_history.billing_address.payment='TeleBirr')
 
+    def test_history_with_product(self):
+        
+        test_history = History.object.create(product=self.test_product_1, billing_address=self.billing_address, shipment_info=self.shipment_info, payment_info=self.payment_info)
+        assertEqual(test_history.cart=self.test_product_1)
+        assertEqual(test_history.billing_address.contact_name='John')
+        assertEqual(test_history.billing_address.city='Addis Ababa')
+        assertEqual(test_history.billing_address.address='Mexico Square')
+        assertEqual(test_history.billing_address.phone_no='0967101001')
+        assertEqual(test_history.billing_address.payment='TeleBirr')
+
+    def test_metrics(self):
+
+        test_matrics = Matrics.objects.create(product=self.test_product_1,
+                quantity=2, customer=self.test_user_2, supplier=self.test_user_1, order=self.test_order, total_price=self.test_product_1.price * 2)

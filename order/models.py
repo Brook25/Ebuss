@@ -1,6 +1,6 @@
 from django.db import models
 from datetime import datetime
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db.models import (
         CharField, DateField, EmailField,
         DateTimeField, ForeignKey, URLField,
@@ -9,11 +9,10 @@ from django.db.models import (
         )
 
 STATUS_TYPES = (
-        ('order_status', 'Order status'),
-        ('post_update', 'Post update'),
-        ('new_subscription', 'New subscrition'),
-        ('product_update', 'Product update'),
-        ('stock_related', 'stock related')
+        ('in_progress', 'In Progress'),
+        ('aborted', 'Aborted'),
+        ('completed', 'Completed'),
+        ('suspended', 'Suspended')
         )
 
 # Create your models here.
@@ -24,8 +23,8 @@ class Order(models.Model):
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'orders')
     cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING)
     date = DateTimeField(default=datetime.now)
-    billing_id = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'order')
-    shipment_id = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'order')
+    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'order')
+    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'order')
     order_status = CharField(max_length=30, default='pending')
     
     def __repr__(self):
@@ -38,7 +37,7 @@ class Shipment(models.Model):
     state = CharField(max_length=30, null=True)
     email_address = EmailField()
     address = CharField(max_length=70, null=False)
-    phone_no = CharField(max_length=70, null=False)
+    phone_no = CharField(max_length=70, null=False, validators=[RegexValidators()])
 
 
     class Meta:
