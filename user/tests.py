@@ -10,41 +10,26 @@ from uuid import uuid
 
 class UserTest(TestCase):
 
-    TEST_USER_1 = {
-        'user_name': 'james_01',
-        'email': 'james1@gmail.com',
-        'first_name': 'James',
-        'last_name': 'Del Toro',
-        'country_code': 230
-        'birth_date': '10-10-1995'
-    }
-
-    TEST_USER_2 = {
-        'user_name': 'tommy_01',
-        'email': 'tommy1@gmail.com',
-        'first_name': 'Thomas',
-        'last_name': 'Jefferson',
-        'country_code': 232
-        'birth_date': '18-10-1990'
-    }
-
-    test_product_1_features: {'brand': 'Aurora', 'screen': '14Mp'
-            'ram': '16GB', 'storage': '64GB'}
-    
-    TEST_PRODUCT_1 = {
-        'name': 'aurora2024',
-        'description': 'Brand new phone. 14Mp camera, screen size 9.7". 16GB RAM, 64GB storage, Android 13',
-        'price': 600,
-        'quantity': 4,
-        'tags': json.dumps(test_product_1_features)
-        'tag_values': [test_product_1_features.values + ['aurora2024']]
-    }
-
 
     def setup(self):
         """sets up user objects for the entire test."""
-        self.test_user_1 = User.objects.create(**self.TEST_USER_1)
-        self.test_user_2 = User.objects.create(**self.TEST_USER_2)
+        test_user_1_data = {
+                        'first_name': 'John',
+                        'last_name': 'Doe',
+                        'email': 'johndoe@gmail.com',
+                        'password': 'johnnyboy27!',
+                        'birth_date': '10-10-1995',
+                        }
+
+        test_user_2_data = {
+                        'first_name': 'John',
+                        'last_name': 'Doe',
+                        'email': 'johndoe@gmail.com',
+                        'password': 'johnnyboy27!',
+                        'birth_date': '10-10-1995',
+                }
+        self.test_user_1 = User.objects.create(**test_user_1_data)
+        self.test_user_2 = User.objects.create(**test_user_2_data)
         self.category_1 = Category.models.create(name='electronics')
         self.category_2 = Category.models.create(name='cloth')
         self.sub_category_1 = SubCategory.models.create(name='phone', category=self.category_1)
@@ -86,11 +71,11 @@ class UserTest(TestCase):
                         'amount': 2,
                         'status': 'in_progress'
                         }
-        self.test_billing_info = BillingInfo.objects.create(**billing_info_data)
-        self.test_shipment_info = ShipmentInfo.objects.create(**payment_info_data)
+        self.test_billing = BillingInfo.objects.create(**billing_info_data)
+        self.test_shipment = ShipmentInfo.objects.create(**payment_info_data)
         self.test_cart_1 = Cart.objects.create(name='mycart',
                 customer=self.test_user_1, product=self.test_product_1, quantity=5)
-        test_order = Order(user=self.test_order_2, cart=self.test_cart_1, billing=self.billing_info, shipment=self.shipment_info)
+        self.test_order = Order(user=self.test_user_2, cart=self.test_cart_1, billing=self.billing_info, shipment=self.shipment_info)
         
 
     def test_create_user_1(self):
@@ -153,3 +138,40 @@ class UserTest(TestCase):
 
         test_matrics = Matrics.objects.create(product=self.test_product_1,
                 quantity=2, customer=self.test_user_2, supplier=self.test_user_1, order=self.test_order, total_price=self.test_product_1.price * 2)
+        assertEqual(test_matrics.product.name=self.test_product_1.name)
+        assertEqual(test_matrics.quantity=2)
+        assertEqual(test_matrics.customer.name=self.test_user_2.name)
+        assertEqual(test_matrics.supplier.name=self.test_user_1.name)
+        assertEqual(test_matrics.order.customer=self.test_user_2.name)
+        assertEqual(test_matrics.total_price=self.test_product_1.price * 2)
+
+    def test_inventory(self):
+        test_inventory_data = { 'product': self.test_product_1,
+                        'adjustment': 5,
+                        'quantity_before': self.test_prodcut_1.quantity,
+                        'quantity_after': self.test_product_1.quantity + 5,
+                        'reason': 'shortage in stock'
+                        }
+        quantity_before = self.test_product.quantity
+        self.test_product_1.quantity += 5
+        self.test_product_1.save()
+
+        test_inventory_change = Inventroy.objects.create(**test_inventory_data)
+        self.assertEqual(test_inventory_change.product=self.test_product)
+        self.assertEqual(test_inventory_change.adjustment=5)
+        self.assertEqual(test_inventory_change.quantity_before=quantity_before)
+        self.assertEqual(test_inventory_change.quantity_after=self.test_product_1)
+        self.assertEqual(test_inventory_change.reason='shortage in stock')
+
+    def tearDown(self):
+        self.test_product_1.delete()
+        self.test_product_2.delete()
+        self.test_user_1.delete()
+        self.test_user_2.delete()
+        self.test_category_1.delete()
+        self.test_category_2.delete()
+        self.test_subcategory_2.delete()
+        self.test_cart_1.delete()
+        self.billing_info.delete()
+        self.shipment_info.delete()
+        self.test_order.delete()

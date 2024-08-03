@@ -82,8 +82,6 @@ class Inventory(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='inventory_changes')
     date = DateField(auto_now_add=True)
     adjustment = IntegerField(null=False, blank=False)
-    type = CharField(null=True)
     quantity_before = PositiveIntegerField(null=False, blank=False)
     quantity_after = PositiveIntegerField(null=False, blank=False)
-    current_stoke = PositiveIntegerField(null=False, blank=False)
     reason = CharField(max_length=255, null=True)
