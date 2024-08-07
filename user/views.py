@@ -12,12 +12,12 @@ import json
 class Notification(View):
 
     def get(self, request, *args, **kwargs):
-        ix = args[0]
+        index = args[0]
         curr_date = datetime.now()
         pag_until = curr_date - timedelta(days=30)
         paginate = Paginator(Notification.objects.filter(user=request.user).
                             filter(created_at <= pag_until), 10)
-        notifications = paginate(page=ix)
+        notifications = paginate(page=index)
         serializer = UserSerializer(notifications, model=Notification, many=True)
         if serializer.is_valid()
             return JsonResponse(serializer.data, safe=True)
@@ -26,10 +26,10 @@ class Notification(View):
 class History(View):
 
     def get(self,request, *args, **kwargs):
-        ix = args[0]
+        index = args[0]
         paginate = Paginator(History.objects.filter(user=request.user, 20))
-        history = paginate(page=ix)
-        serializer = UserSerializer(history, model=Notification, many=True)
+        history = paginate(page=index)
+        serializer = UserSerializer(history, model=History, many=True)
         if serializer.is_valid():
             return JsonResponse(serialzer.data, safe=True)
         return JsonResponse(serialzer.error, status=501)
@@ -39,7 +39,7 @@ class WishList(View):
 
     def get(self, request, *args, **kwargs):
         wish_list = request.user.wish_list.all()
-        serializer = UserSerializer(wish_list, model=Product, many=True)
+        serializer = UserSerializer(wish_list, model=WishList, many=True)
 
         if serializer.is_valid():
             return JsonResponse(serializer.data, safe=True, status=200)

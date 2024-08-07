@@ -20,16 +20,23 @@ STATUS_TYPES = (
 
 
 class Order(models.Model):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'orders')
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'cart_orders')
     cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING)
     date = DateTimeField(default=datetime.now)
-    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'order')
-    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'order')
+    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
+    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     order_status = CharField(max_length=30, default='pending')
     
     def __repr__(self):
         return '<Order> {}'.format(self.__dict__)
 
+class SingleProductOrder(models.Model):
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'single_orders')
+    product = ForeignKey('product.Product', on_delete=models.DO_NOTHING)
+    date = DateTimeField(default=datetime.now)
+    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'single_product_order')
+    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'single_product_order')
+    order_status = CharField(max_length=30, default='pending')
 
 class Shipment(models.Model):
     contact_name = CharField(max_length=70, null=False)
@@ -37,7 +44,9 @@ class Shipment(models.Model):
     state = CharField(max_length=30, null=True)
     email_address = EmailField()
     address = CharField(max_length=70, null=False)
-    phone_no = CharField(max_length=70, null=False, validators=[RegexValidators()])
+    phone_no = CharField(max_length=70, null=False, validators=[RegexValidator(regex=r'^[0-9]{10}$',
+        message='Field must contain only numbers.',
+        code='invalid_phone_number')])
 
 
     class Meta:

@@ -35,8 +35,8 @@ class Post(View):
 
     def get(self, request, *args, **kwargs):
 
-        id, page = args
-        if (not id or not isinstance(id, (int, str))) or \
+        pk, page = args
+        if (not pk or not isinstance(id, (int, str))) or \
                 (not page or not isinstance(page, int)):
                 error = "Positional arguement error: check page or id."
                 return JsonResponse(data={'data': None,
@@ -67,7 +67,6 @@ class Post(View):
             try:
                 post_data = json.loads(request.body)
                 text = post_data.get('text', None)
-                date = datetime.now()
                 img = request.FILES['image_file']
                 tagged_product = post_data.get('product', None)
                 if not (text and  tagged_product):
@@ -88,8 +87,7 @@ class Post(View):
                     date = comment_data.get('date', None)
                     comment = {'post': post, 'text': text, 'date': date, 'user': request.user}
                     if text and date and comment_by:
-                        comment = Comment.create(**comment)
-                        comment.save()
+                        comment = Comment.objects.create(**comment)
                     else:
                         return JsonResponse(data={'data': None, message: 'proper key words missing.'}, status=401)
                 except JsonDECODERROR as e:
