@@ -1,15 +1,34 @@
-from shared import BaseSerializer
+from rest_framework import serializers
 from serializers import SerializerMethodField
 
-
-class PostSeraializer(BaseSerializer):
-
+class PostSeraializer(serialziers.ModelSerialzer):
+    user = UserSerialzer()
     
-    def get_user(self, obj):
-        
-        return {'first_name': obj.first_name,
-                'last_name': obj.last_name,
-                'user_name': obj.user_name
-                }
+    class Meta:
+        model = Post
+        fields = '__all__'
 
-    user = SerializerMethodField(read_only=True)
+class CommentSerialzer(serializers.ModelSerializer):
+    user = UserSerrializer()
+    post = PostSerializer
+    
+    class Meta:
+        model = Comment
+        fields = '__all__'
+
+class ReplySerializer(serializers.ModelSerialzer):
+    user = serializers.SerializerMethodField()
+    parent = serializers.SerialzerMethodField()
+
+    class Meta:
+        model = Reply
+        fields = '__all__'
+
+    def get_user(self, obj):
+        return { 'user_id': obj.user.id }
+
+    def get_reply(self, obj):
+        if isinstance(obj.parent, Comment):
+            return { 'comment_id': obj.parent.id }
+        else if isinstance(obj.parent, Reply):
+            return { 'reply_id': obj.parent.id }

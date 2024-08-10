@@ -47,7 +47,6 @@ class User(AbstractUser):
 
 
 class History(models.Model):
-    cart = ForeignKey('cart.Cart', related_name='history', on_delete=models.CASCADE, default=None)
     product = ForeignKey('product.Product', related_name='history', on_delete=models.CASCADE, default=None)
     billing_address = CharField(max_length=70, null=False, blank=False)
     payment_mmethod = CharField(max_length=20, null=False, blank=False)

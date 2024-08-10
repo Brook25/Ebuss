@@ -18,25 +18,29 @@ STATUS_TYPES = (
 # Create your models here.
 
 
-
 class Order(models.Model):
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'cart_orders')
-    cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING)
     date = DateTimeField(default=datetime.now)
     billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     order_status = CharField(max_length=30, default='pending')
-    
+   
+   class Meta:
+       abstract = True
+
+
     def __repr__(self):
         return '<Order> {}'.format(self.__dict__)
 
+
+
+class CartOrder(models.Model):
+    cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING)
+    
+
 class SingleProductOrder(models.Model):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'single_orders')
     product = ForeignKey('product.Product', on_delete=models.DO_NOTHING)
-    date = DateTimeField(default=datetime.now)
-    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'single_product_order')
-    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'single_product_order')
-    order_status = CharField(max_length=30, default='pending')
+
 
 class Shipment(models.Model):
     contact_name = CharField(max_length=70, null=False)

@@ -23,8 +23,8 @@ class Product(models.Model):
     quantity = PositiveIntegerField(blank=False)
     tags = JSONField(default=dict, blank=True)
     tag_values = ArrayField(CharField(max_length=50))  # Don't forget to add the product name in there
-    #rating = PositiveIntegerField(validators=[MaxValueValidator(5)], default=0)
-    #number_of_ratings = PositiveIntegerField(default=0)
+    rating = PositiveIntegerField(validators=[MaxValueValidator(5)], default=0)
+    review = ManyToManyField('Review', related_name='reviewed_product')
 
     def __repr__(self):
         return '<Product> {}'.format(self.__dict__)

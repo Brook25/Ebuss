@@ -14,9 +14,9 @@ class Notification(View):
     def get(self, request, *args, **kwargs):
         index = args[0]
         curr_date = datetime.now()
-        pag_until = curr_date - timedelta(days=30)
+        page_until = curr_date - timedelta(days=30)
         paginate = Paginator(Notification.objects.filter(user=request.user).
-                            filter(created_at <= pag_until), 10)
+                            filter(created_at <= page_until), 10)
         notifications = paginate(page=index)
         serializer = UserSerializer(notifications, model=Notification, many=True)
         if serializer.is_valid()
