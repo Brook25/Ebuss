@@ -1,11 +1,24 @@
-
+from rest_framework import serializers
 
 # override the get_links method in sub classes
 #+ and return None since
 #+ some models don't need url links
 #+ check serializers file for product model
 
-class BaseSerializer(serializers.HyperLinkedModelSerializer):
+
+
+class BaseSerializer(serializers.ModelSerializer):
+
+    def validated(self):
+        # code to check validity
+        self.errors = []
+        return True
+
+
+
+
+
+'''class BaseSerializer(serializers.HyperlinkedModelSerializer):
 
     def __init__(self, *args, **kwargs):
         model = kwargs.pop('model', None)
@@ -31,3 +44,4 @@ class BaseSerializer(serializers.HyperLinkedModelSerializer):
     class Meta:
         model = None
         fields = None
+'''

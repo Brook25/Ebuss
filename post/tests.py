@@ -29,14 +29,14 @@ class TestPost(TestCase):
         reply_to_comment_text = 'I liked it too.'
         reply_to_reply_text = 'Great insight.'
         
-        self.test_user_3 = User.object.create(**test_user_data_3)
+        self.test_user_3 = User.object.create(**test_user_3_data)
         
-        self.test_user_4 = User.object.create(**test_user_data_4)
+        self.test_user_4 = User.object.create(**test_user_4_data)
 
         self.test_post_1 = Post.objects.create(user=self.test_user_1,
-                text=text, likes=0,
+                text=post_text, likes=0,
                 comments=0, views=0,
-                images=None
+                image=None
         )
         
         self.test_comment_1 = Comment(user=self.test_user_2,

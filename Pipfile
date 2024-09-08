@@ -19,6 +19,7 @@ nltk = "*"
 enchant = "*"
 better-profanity = "*"
 pillow = "*"
+requests = "*"
 
 [dev-packages]
 

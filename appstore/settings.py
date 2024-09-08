@@ -27,8 +27,7 @@ SECRET_KEY = 'django-insecure-n(a#5o1!s(imy4$u%3sn3of=4rr_jeni!y*u4^%^40zzgnpil+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -57,8 +56,8 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -128,11 +127,18 @@ DATABASES = {
     }
 }
 
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
+CORS_ALLOW_CREDENTIALS = True
+
 #CORS_ALLOWED_ORIGINS = [
 
 #        'https://127.0.0.1:5000',
 #        'https://localhost:5000',
 #]
+
 
 CORS_ORIGIN_ALLOW_ALL = True
 

@@ -40,16 +40,6 @@ class TestProduct(TestCase):
                         }
         
         
-        self.category_3 = Category.objects.create(name='kitchen_appliances')
-        self.category_4 = Category.objects.create(name='cookware')
-        self.category_5 = Category.objects.create(name='furniture')
-
-        self.subcategory_3 = SubCategory.objects.create(name='small_appliances', category=self.category_3)
-        self.subcategory_4 = SubCategory.objects.create(name='large_appliances', category=self.category_3)
-        self.subcategory_5 = SubCategory.objects.create(name='pots_and_pans', category=self.category_4)
-        self.subcategory_6 = SubCategory.objects.create(name='living_area', category=self.category_5)
-        self.subcategory_7 = SubCategory.objects.create(name='dining_area', category=self.category_5)
-        
         test_product_3_features = {'brand': 'vitamix', 'power': '400 watts',
                 'blade': 'steel'}
         
@@ -71,9 +61,9 @@ class TestProduct(TestCase):
             'price': 400,
             'quantity': 10,
             'supplier': self.test_user_3,
-            'sub_category': self.subcategory_3,
+            'sub_category': self.sub_category_3,
             'tags': json.dumps(test_product_3_features),
-            'tag_values': [list(test_product_3_features.values()) + ['vitamix']]
+            'tag_values': [list(test_product_1_features.values()) + ['vitamix']]
         }
 
         test_product_4_data = {
@@ -82,9 +72,9 @@ class TestProduct(TestCase):
             'price': 3000,
             'quantity': 8,
             'supplier': self.test_user_4,
-            'sub_category': self.subcategory_4,
-            'tags': json.dumps(test_product_4_features)
-            'tag_values': [test_product_4_features.values + ['phillips refrigirator']]
+            'sub_category': self.sub_category_4,
+            'tags': json.dumps(test_product_1_features)
+            'tag_values': [test_product_1_features.values + ['phillips refrigirator']]
         }
 
         test_product_5_data = {
@@ -93,9 +83,9 @@ class TestProduct(TestCase):
             'price': 1500,
             'quantity': 20,
             'supplier': self.test_user_5
-            'sub_category': self.subcategory_5,
-            'tags': json.dumps(test_product_5_features)
-            'tag_values': [test_product_5_features.values + ['all-clad']]
+            'sub_category': self.sub_category_5,
+            'tags': json.dumps(test_product_1_features)
+            'tag_values': [test_product_1_features.values + ['all-clad']]
         }
 
         test_product_7_data = {
@@ -103,10 +93,10 @@ class TestProduct(TestCase):
             'description': 'dining area set, rectangular table, 193cmX90cm, 2cm thickness, expandable',
             'price': 700,
             'quantity': 10,
-            'sub_category': self.subcategory_7,
+            'sub_category': self.sub_category_7,
             'supplier': self.test_user_6,
             'tags': json.dumps(test_product_7_features)
-            'tag_values': [test_product_7_features.values + ['all-clad']]
+            'tag_values': [test_product_1_features.values + ['all-clad']]
         }
 
         test_product_6_data = {
@@ -115,9 +105,9 @@ class TestProduct(TestCase):
             'price': 5000,
             'quantity': 8,
             'supplier': self.test_user_6,
-            'sub_category': self.subcategory_6,
+            'sub_category': self.sub_category_6,
             'tags': json.dumps(test_product_6_features)
-            'tag_values': [list(test_product_6_features.values()) + ['all-clad']]
+            'tag_values': [list(test_product_1_features.values()) + ['all-clad']]
         }
         
         test_review_text = 'Such a great product. Do reccommend it.'
@@ -129,12 +119,21 @@ class TestProduct(TestCase):
         self.test_user_6 = User.objects.create(**test_user_6_data)
         self.test_review_1 = Review.objects.create(user=self.test_user_2, product=self.test_product_3,
                 review=test_review_text, rating=test_rating)        
+        self.category_3 = Category.models.create(name='kitchen_appliances')
+        self.category_4 = Category.models.create(name='cookware')
+        self.category_5 = Category.models.create(name='furniture')
+
+        self.subcategory_3 = SubCategory.models.create(name='small_appliances', product=self.category_3)
+        self.subcategory_4 = SubCategory.models.create(name='large_appliances', product=self.category_3)
+        self.subcategory_5 = SubCategory.models.create(name='pots_and_pans', product=self.category_4)
+        self.subcategory_6 = SubCategory.models.create(name='living_area', product=self.category_5)
+        self.subcategory_7 = SubCategory.models.create(name='dining_area', product=self.category_5)
         
-        self.test_product_3 = Product.objects.create(**test_product_3)
-        self.test_product_4 = Product.objects.create(**test_product_4)
-        self.test_product_5 = Product.objects.create(**test_product_5)
-        self.test_product_6 = Product.objects.create(**test_product_6)
-        self.test_product_7 = Product.objects.create(**test_product_7)
+        self.test_product_3 = Product.models.create(**test_product_3)
+        self.test_product_4 = Product.models.create(**test_product_4)
+        self.test_product_5 = Product.models.create(**test_product_5)
+        self.test_product_6 = Product.models.create(**test_product_6)
+        self.test_product_7 = Product.models.create(**test_product_7)
         
 
 

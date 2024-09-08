@@ -1,36 +1,27 @@
 from rest_framework import serializers
-from .models import (Notification, History)
-from cart.serialziers import CartSerializer
+from shared.serializers import BaseSerializer
+from .models import (User, Notification,
+        Metrics, Inventory, Wishlist)
 
-class UserSerializer(serializers.ModelSerialzier):
+
+class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'user_name']
+        fields = ['id', 'first_name', 'last_name', 'username']
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-
+    created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
     class Meta:
         model = Notification
-        fields = ['note', 'type', 'uri']
+        fields = ['id', 'uri', 'created_at', 'note', 'type']
 
-class HistorySerializer(serialziers.ModelSerializer):
-    product = serialzers.SerialzierMethodField()
-
-    class Meta:
-        model = History
-        fields = ['product', 'billing_address', 'payment_method', 'shippment_address']
-
-    def get_product(self, obj):
-        return { 'product_name': obj.product.name,
-                 'supplier': obj.product.supplier
-               }
 
 class MetricsSerializer(serializers.ModelSerializer):
-    product = serializers.MethodSerializerField()
-    customer = serializers.MethodSerializerField()
-    order = serializers.MethodSerializerField()
+    product = serializers.SerializerMethodField()
+    customer = serializers.SerializerMethodField()
+    order = serializers.SerializerMethodField()
 
     class Meta:
         model = Metrics
@@ -48,8 +39,8 @@ class MetricsSerializer(serializers.ModelSerializer):
     def get_order(self, obj):
         return { 'order_id': obj.order.id }
 
-class InventorySerialzer(serialzers.ModelSerialzer):
-    product = serializers.MethodSerializerField()
+class InventorySerialzer(serializers.ModelSerializer):
+    product = serializers.SerializerMethodField()
     
     class Meta:
         model = Inventory
@@ -60,12 +51,10 @@ class InventorySerialzer(serialzers.ModelSerialzer):
                  'product_id': obj.product.id
                }
 
-class WishListSerializer(serializers.ModelSerializer):
-    product = serializers.SerializerMethodField()
+class WishListSerializer(BaseSerializer):
+    from product.serializers import ProductSerializer
+    product = ProductSerializer(many=True)
 
     class Meta:
-        model = WishList
-        fields = ['modified_at', 'product', 'priority']
-
-    def get_product(self, obj):
-        return obj.products.only('name', 'id')
+        model = Wishlist
+        fields = ['created_by', 'modified_at', 'product', 'priority']

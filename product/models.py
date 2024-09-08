@@ -58,8 +58,8 @@ class SubCategorySearchWeight(models.Model):
         return '<{}> {}'.format(self.__class__.name, self.__dict__)
 
 class Review(models.Model):
-    user = ForeignKey('user.User', on_delete=models.DO_NOTHING, related_name='reviews_made')
-    product = ForeignKey('Product', on_delete=models.DO_NOTHING, related_name='reviews')
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='reviews_made')
+    product = ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
     review = TextField(validators=[check_vulgarity, MinLengthValidator(1)], null=True)
     rating = PositiveIntegerField(null=True)
     timestamp = DateTimeField(auto_now_add=True)

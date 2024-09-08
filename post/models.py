@@ -29,5 +29,5 @@ class Comment(Commentable):
     post = ForeignKey('Post', related_name='replies_to', on_delete=models.CASCADE)
 
 
-class Replies(Comment):
+class Reply(Comment):
     parent = ForeignKey('Comment', on_delete=models.CASCADE, related_name='replies_to')

@@ -7,7 +7,7 @@ from shared.validators import check_vulgarity
 from django.db.models import (
         CharField, DateField, EmailField,
         DateTimeField, ForeignKey, URLField,
-        PositiveIntegerField, DecimalField, 
+        PositiveIntegerField, DecimalField, OneToOneField,
         ManyToManyField, TextField, IntegerField
         )
 # Create your models here.
@@ -46,14 +46,9 @@ class User(AbstractUser):
         return '<User> firstname: {}, lastname: {}, username: {}, email: {}'.format(self.first_name, self.last_name, self.username, self.email)
 
 
-class History(models.Model):
-    product = ForeignKey('product.Product', related_name='history', on_delete=models.CASCADE, default=None)
-    billing_address = CharField(max_length=70, null=False, blank=False)
-    payment_mmethod = CharField(max_length=20, null=False, blank=False)
-    shippment_address = CharField(max_length=70, null=False, blank=False)
 
 class Wishlist(models.Model):
-    created_by = ForeignKey('User', related_name='wishlist_for', on_delete=models.CASCADE)
+    created_by = OneToOneField('User', related_name='wishlist_for', on_delete=models.CASCADE)
     created_at = DateTimeField(auto_now=True)
     modified_at = DateTimeField(auto_now_add=True)
     product = ManyToManyField('product.Product', related_name='wishlists_in', blank=False)
@@ -73,7 +68,6 @@ class Metrics(models.Model):
     customer = ForeignKey('User', on_delete=models.CASCADE, related_name='customer_metrics')
     supplier = ForeignKey('User', on_delete=models.CASCADE, related_name='supplier_metrics')
     purchase_date = DateField(auto_now_add=True)
-    order = ForeignKey('order.Order', on_delete=models.CASCADE, related_name='order_metrics')
     total_price = PositiveIntegerField(null=False, blank=False)
 
 

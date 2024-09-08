@@ -1,17 +1,9 @@
 from rest_framework import serializers
 from .models import (Product, Category, SubCategory,
         Tag, Review)
+from user.serializers import UserSerializer
 
-class ProductSerializer(serializers.ModelSerializer):
-    supplier = UserSerializer()
-    sub_category = SubCategorySerialzer()
-    review = ReviewSerializer(many=True)
-
-    class Meta:
-        model = Product
-        fields = '__all__'
-
-class CategorySerialzer(serialzers.ModelSerializer):
+class CategorySerialzer(serializers.ModelSerializer):
      
     class Meta:
         model = Category
@@ -26,8 +18,16 @@ class SubCategorySerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     user = UserSerializer(many=True)
-    product = ProductSerializer(many=True)
 
     class Meta:
         model = Review
         fields = '__all__'
+
+class ProductSerializer(serializers.ModelSerializer):
+    supplier = UserSerializer()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'supplier']
+
+

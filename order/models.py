@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, RegexValidator
 from django.db.models import (
         CharField, DateField, EmailField,
         DateTimeField, ForeignKey, URLField,
-        PositiveIntegerField, DecimalField, OneToOneField, 
+        PositiveIntegerField, DecimalField, 
         ManyToManyField, TextField, IntegerField
         )
 
@@ -19,13 +19,10 @@ STATUS_TYPES = (
 
 
 class Order(models.Model):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'cart_orders')
     date = DateTimeField(default=datetime.now)
-    billing = OneToOneField('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
-    shipment = OneToOneField('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     order_status = CharField(max_length=30, default='pending')
    
-   class Meta:
+    class Meta:
        abstract = True
 
 
@@ -34,12 +31,23 @@ class Order(models.Model):
 
 
 
-class CartOrder(models.Model):
-    cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING)
-    
+class CartOrder(Order):
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'cart_orders')
+    cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING, related_name='cartorders_in')
+    billing = ForeignKey('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
+    shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
 
-class SingleProductOrder(models.Model):
-    product = ForeignKey('product.Product', on_delete=models.DO_NOTHING)
+    class Meta:
+        abstract = False
+
+class SingleProductOrder(Order):
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'singleproduct_orders')
+    product = ForeignKey('product.Product', on_delete=models.DO_NOTHING, related_name='productorders_in')
+    billing = ForeignKey('BillingInfo', on_delete=models.CASCADE, related_name = 'singleproduct_orders_in')
+    shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'singleproduct_orders_in')
+    
+    class Meta:
+        abstract = False
 
 
 class Shipment(models.Model):

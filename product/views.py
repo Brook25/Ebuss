@@ -13,6 +13,17 @@ class Product(View):
 
     def get(self, request, *args, **kwargs):
         # add pagination
+        
+        if path == 'my':
+            # get user
+            user = request.user
+            user_products = user.products.all()
+            user_products = ProductSerializer(user_products, many=True)
+            return JsonResponse(data={
+                'products': user_products
+                }, 
+                status=200, safe=False)
+        
         param1, param2 = args
         if type(param1) is str and type(param2) is str:
             if param1 == 'product':
@@ -61,6 +72,14 @@ class Product(View):
 
 
     def post(self, request, *args, **kwargs):
+        
+        if path == 'my':
+            user = request.user
+            product_data = json.loads(request.body) or {}
+            products = product_data.get('products', [])
+            if products:
+                Product.objects.bulk_create()
+
 
         product_details = json.loads(request.body)
         if args[1] == 'add' and validate(**product_details):

@@ -4,7 +4,7 @@ from .models import (User, WishList, Notification)
 from product.models import (Product, Category, SubCategory)
 from order.models import (BillingInfo, ShipmentInfo, Payment)
 from cart.models import Cart
-from uuid import uuid
+import uuid
 # Create your tests here.
 
 
@@ -30,31 +30,35 @@ class UserTest(TestCase):
                 }
         self.test_user_1 = User.objects.create(**test_user_1_data)
         self.test_user_2 = User.objects.create(**test_user_2_data)
-        self.category_1 = Category.models.create(name='electronics')
-        self.category_2 = Category.models.create(name='cloth')
+        self.category_1 = Category.objects.create(name='electronics')
+        self.category_2 = Category.objects.create(name='cloth')
         self.sub_category_1 = SubCategory.models.create(name='phone', category=self.category_1)
         self.sub_category_2 = SubCategory.models.create(name='women_cloths', category=self.category_2)
-        test_product_1_features: {'brand': 'Aurora', 'screen': '14Mp'
-                'ram': '16GB', 'storage': '64GB'}
+        test_product_1_features = { 'brand': 'Aurora', 'screen': '14Mp',
+                'ram': '64GB', 'os': 'android13', 'storage': '64GB' }
+        test_product_2_features = {'brand': 'H&M', 'fiber': 'cotton',
+            'style': 'casual', 'neck': 'round'}
         
         test_product_1_data = {
             'name': 'aurora2024',
+            'supplier': test_user_1,
             'description': 'Brand new phone. 14Mp camera, screen size 9.7". 16GB RAM, 64GB storage, Android 13',
             'price': 600,
             'quantity': 4,
             'sub_category': self.sub_category_1,
             'tags': json.dumps(test_product_1_features),
-            'tag_values': [test_product_1_features.values + ['aurora2024']]
+            'tag_values': [list(test_product_1_features.values) + ['aurora2024']]
         }
 
         test_product_2_data = {
-            'name': 'circle_t_shirt',
-            'description': 'Brand new phone. 14Mp camera, screen size 9.7". 16GB RAM, 64GB storage, Android 13',
-            'price': 600,
-            'quantity': 4,
+            'name': 'round_neck_t-shirt',
+            'supplier': test_user_1,
+            'description': 'H&M circle T-shirt soft, cotton made casual',
+            'price': 200,
+            'quantity': 8,
             'sub_category': self.sub_category_2
-            'tags': json.dumps(test_product_1_features)
-            'tag_values': [test_product_1_features.values + ['aurora2024']]
+            'tags': json.dumps(test_product_2_features)
+            'tag_values': [list(test_product_2_features.values) + ['H&M circle_t-shirt']]
         }
         self.test_product_1 = Product.objects.create(**test_product_1_data)
         self.test_product_2 = Product.objects.create(**test_product_2_data) 
@@ -74,8 +78,10 @@ class UserTest(TestCase):
         self.test_billing = BillingInfo.objects.create(**billing_info_data)
         self.test_shipment = ShipmentInfo.objects.create(**payment_info_data)
         self.test_cart_1 = Cart.objects.create(name='mycart',
-                customer=self.test_user_1, product=self.test_product_1, quantity=5)
-        self.test_order = Order(user=self.test_user_2, cart=self.test_cart_1, billing=self.billing_info, shipment=self.shipment_info)
+                customer=self.test_user_1, quantity=5)
+        self.test_cart_1.product.set([test_product_1])
+        self.test_cartorder = Order(user=self.test_user_2, cart=self.test_cart_1, billing=self.test_billing, shipment=self.test_shipment)
+        test_singleproduct_order = SingleProductOrder(user=test_user_2, product=test_product_1, billing=test_billing, shipment=test_shipment)
         
 
     def test_create_user_1(self):
@@ -96,9 +102,9 @@ class UserTest(TestCase):
    def test_wish_list(self):
         self.TEST_PRODUCT_2['subcategory'] = self.sub_category_2
         test_product_2 = Product.objects.create(**self.TEST_PRODUCT_2)
-        wish_list_1_data = {'created_by': self.test_user_1,
-                'product': self.test_product_1}
-        test_wishlist_1 = WishList.objects.create(**wish_list_1_data)
+        wish_list_1_data = { 'created_by': self.test_user_1 }
+        test_wishlist_1 = Wishlist.objects.create(**wish_list_1_data)
+        test_wishlist_1.product.add([test_product_2])
         assertEqual(test_wishlist_1.created_by, self.test_user_1)
         assertEqual(test_wishlist_1.product, self.test_product_1)
         assertEqual(test_wishlist_1.priority, 'LOW')

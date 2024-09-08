@@ -130,11 +130,11 @@ class TestProduct(TestCase):
         self.test_review_1 = Review.objects.create(user=self.test_user_2, product=self.test_product_3,
                 review=test_review_text, rating=test_rating)        
         
-        self.test_product_3 = Product.objects.create(**test_product_3)
-        self.test_product_4 = Product.objects.create(**test_product_4)
-        self.test_product_5 = Product.objects.create(**test_product_5)
-        self.test_product_6 = Product.objects.create(**test_product_6)
-        self.test_product_7 = Product.objects.create(**test_product_7)
+        self.test_product_3 = Product.objects.create(**test_product_3_data)
+        self.test_product_4 = Product.objects.create(**test_product_4_data)
+        self.test_product_5 = Product.objects.create(**test_product_5_data)
+        self.test_product_6 = Product.objects.create(**test_product_6_data)
+        self.test_product_7 = Product.objects.create(**test_product_7_data)
         
 
 
