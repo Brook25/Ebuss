@@ -45,9 +45,9 @@ class Tag(models.Model):
     name = CharField(max_length=20, null=False, blank=False)
     description = CharField(max_length=100)
 
-class TokenToSubCategory():
+class TokenToSubCategory(models.Model):
     token = CharField(max_length=30, null=False, blank=False)
-    subcategories = ArrayField(CharField(max_length=50))
+    subcategories = ArrayField(CharField(max_length=50), default=list)
 
 
 class SubCategorySearchWeight(models.Model):

@@ -4,41 +4,60 @@ from .models import (Post, Comment, Reply)
 
 class PostSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-    has_next = serializers.SerializerMethodField()
-    
-    def __init__(self, *args, **kwargs):
-        self.has_next = kwargs.pop('has_next') or True
-        super().__init__(args, kwargs)
 
     class Meta:
         model = Post
         fields = '__all__'
 
-    def get_has_next(self, _):
-        return self.has_next
+    def create(self, validated_data):
+        return User.objects.create(**validated_data)
 
+    def update(self, instance, validated_data):
+        for attr, val in validated_data.items():
+            if hasattr(instance, attr):
+                setattr(instance, attr, val)
+        instance.save()
+        return instance
+    
 
 class CommentSerialzer(serializers.ModelSerializer):
     user = UserSerializer()
-    post = PostSerializer
     
     class Meta:
         model = Comment
-        fields = '__all__'
+        fields = ['text', 'timestamp', 'views', 'likes', 'comments', 'user']
+
+    def create(self, validated_data):
+        return User.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        for attr, val in validated_data.items():
+            if hasattr(instance, attr):
+                setattr(instance, attr, val)
+        instance.save()
+        return instance
+
 
 class ReplySerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-    parent = serializers.SerializerMethodField()
+    user = UserSerializer()
 
     class Meta:
         model = Reply
         fields = '__all__'
 
-    def get_user(self, obj):
-        return { 'user_id': obj.user.id }
 
     def get_reply(self, obj):
         if isinstance(obj.parent, Comment):
             return { 'comment_id': obj.parent.id }
         elif isinstance(obj.parent, Reply):
             return { 'reply_id': obj.parent.id }
+    
+    def create(self, validated_data):
+        return User.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        for attr, val in validated_data.items():
+            if hasattr(instance, attr):
+                setattr(instance, attr, val)
+        instance.save()
+        return instance

@@ -23,5 +23,10 @@ urlpatterns = [
     path('__debug__/', include(debug_toolbar.urls)),
     path('user/', include('user.urls')),
     path('news/', include('post.news_urls')),
-    path('post/', include('post.urls'))
+    path('timeline/', include('post.timeline_url')),
+    path('post/', include('post.urls')),
+    path('product/', include('product.urls')),
+    path('subcategory/', include('product.subcat_urls')),
+    path('category/', include('product.cat_urls')),
+    path('dashboard/', include('supplier.urls'))
 ]

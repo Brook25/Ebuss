@@ -1,4 +1,6 @@
-from django.views import View
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
@@ -8,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from order.models import (CartOrder, SingleProductOrder)
 from product.models import Product
 from user.models import Wishlist
+from shared.utils import paginate_queryset
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)
@@ -19,81 +22,48 @@ from utils import SetupObjects
 
 
 
-class NotificationView(View):
+class NotificationView(APIView):
 
     def get(self, request, index, *args, **kwargs):
        
         curr_date = datetime.now()
         page_until = curr_date - timedelta(days=30)
-        paginate = Paginator(Notification.objects.filter(user__username='emilyjim1', created_at__gte=page_until).all(), 10)
-        paginated = paginate.page(index)
-        notifications = list(paginated.object_list.values())
-        Notification.objects.all().delete()
-        User.objects.all().delete()
-        serializer = NotificationSerializer(data=notifications, many=True)
-        print(Notification.objects.all(), User.objects.all())
-        if serializer.is_valid():
-            print(serializer.data)
-            return JsonResponse(serializer.data, safe=False)
-        return JsonResponse(serializer.errors, status=501, safe=False)
+        notifications = paginate_queryset(Notification.objects.filter(user__username='emilyjim1', created_at__gte=page_until).all(), request, 10, NotificationSerializer)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
-class HistoryView(View):
+class HistoryView(APIView):
 
-    def get(self,request, index, *args, **kwargs):
+    def get(self, request, index, *args, **kwargs):
         
 
-        if type(index) is not int:
-            return JsonResponse({
-                'error': 'index should be integer type.'},
-                safe=False,
-                status=401
-                )
+        products = Product.objects.only('id', 'name')
+        cartOrders = CartOrder.objects.filter(user=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
+        cartOrders = paginate_queryset(cartorders, request, 20, CartOrderSerializer)
         
-        cartorders = CartOrder.objects.filter(user__username='emilyjim1').order_by('-date')
-        cartorder_paginator = Paginator(cartorders, 20)
-        paginate_cartorder = cartorder_paginator.page(index)
-        paginated_cartorder = list(paginate_cartorder.object_list)
-        singleproductorders = SingleProductOrder.objects.filter(user__username='emilyjim1').order_by('-date')
-        singleproductorder_paginator = Paginator(singleproductorders, 20)
-        paginate_singleproductorder = singleproductorder_paginator.page(index)
-        paginated_singleproductorder = list(paginate_singleproductorder.object_list)
-        serialized_carthistory = CartOrderSerializer(paginated_cartorder, many=True)
-        serialized_singleproducthistory = SingleProductOrderSerializer(paginated_singleproductorder, many=True)
+        singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-date').select_related('product').only('id', 'name')
+        serialized_singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
         
-        singleproduct_history = serialized_singleproducthistory.data
-        cartorder_history = serialized_carthistory.data 
-        if serialized_carthistory.validated() and serialized_singleproducthistory.validated():
-            return JsonResponse({ 'singleProductOrders': singleproduct_history,
-                                'Cartorders': cartorder_history },
-                                safe=False,
-                                status=200)
-        elif serialized_carthistory.errors:
-            return JsonResponse({ 'error_type': 'cart_history_error', 'error': serialized_carthistory.errors }, status=501, safe=False)
-        else:
-            return JsonResponse({ 'error_type': 'singlehistory_error', 'error': serialized_singleproducthistory.errors }, status=501, safe=False)
+        return Response({ 'singleProductOrders': singleProductOrders,
+                                'Cartorders': cartOrders },
+                                status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class WishListView(View):
+class WishListView(APIView):
     
     def get(self, request, *args, **kwargs):
-        
-        wish_list = Wishlist.objects.filter(created_by__username='emilyjim1').all()
-        serializer = WishListSerializer(wish_list, many=True)
-
-        #if serializer.is_valid():
-        return JsonResponse(serializer.data, safe=False, status=200)
-        return JsonResponse({ 'error': 'couldn\'t load wishlist'}, safe=False, status=501)
+        try:
+            wishlist = Wishlist.objects.get(user=User.objects.filter(username='emilyjoe1'))
+            serialized_data = WishListSerializer(wishlist)
+            return Response(serialized_data.data, status=status.HTTP_200_OK)
+        except Wishlist.DoesNotExist:
+            return Response({ 'error': 'couldn\'t load wishlist'}, status=404)
 
     
     def post(self, request, *args, **kwargs):
-        
-        #setup = SetupObjects()
-        #setup.delete_all_objects()
-        #setup.create_test_objects()
-        print(Product.objects.all().values('id', 'name'))
         
         try:
             wishlist_data = json.loads(request.body).get('wishlist', {})
@@ -101,27 +71,27 @@ class WishListView(View):
             if product_id:
                 product = Product.objects.filter(pk=product_id).first()
                 user = User.objects.filter(username='emilyjim1').first()
-                wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=user)
-                wishlist_obj.product.add(product)
+                wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=user).prefetch_related('product')
+                if product not in wishlist_obj.product.all():
+                    wishlist_obj.product.add(product)
                 
-                print(Wishlist.objects.all().values())
-                return JsonResponse(data={
-                    'data': None, 'message':
+                return Response({
+                    'message':
                     'wishlist succefully updated'
                     },
-                    status=200, safe=False)
+                    status=status.HTTP_200_OK)
             else:
-                return JsonResponse(data={
-                    'data': None, 'message':
+                return Response({
+                    'message':
                     'wishlist not succefully updated, product not found'
                     },
-                    status=501, safe=False)
+                    status=501)
         
         except json.JSONDecodeError as e:
-                return JsonResponse(data={
-                    'data': None, 'message': 'wishlist not succefully updated'
+                return Response({
+                    'message': 'wishlist not succefully updated'
                     },
-                    status=501, safe=False)
+                    status=501)
 
 
     def delete(self, request, *args, **kwargs):
@@ -130,52 +100,51 @@ class WishListView(View):
         user = User.objects.filter(username='emilyjim1').first()
         if not product_id:
             user.wishlist_for.delete()
-            return JsonResponse(data={
+            return Response({
                 'message':
                     'wishlist succefully deleted.'
                 }, 
-                status=200, safe=False)
+                status=status.HTTP_200_OK)
         else:
             product = Product.objects.filter(pk=product_id).first()
             user.wishlist_for.product.remove(product)
             
 
-            print(product.id, type(product.id))
-            return JsonResponse(data={
+            return Response({
                 'product_id': product.id,
                 'message':
                     'product succefully removed from wishlist.'
-                }, 
-                status=200, safe=False)
+                },
+                status=status.HTTP_200_OK)
 
-        return JsonResponse(data={
+        return Response({
             'message':
                 'Action not succefully completed.'
-            }, 
-            status=501, safe=False)
+            },
+            status=501)
 
         
 
-class Recommendations(View):
+class Recommendations(APIView):
 
     def get(self, request, *args, **kwargs):
         pass
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class Recent(View):
+class Recent(APIView):
 
     def get(self, request, *args, **kwargs):
         username = 'emilyjim1'
         recently_viewed = cache.get(username + ':recently_viewed')
         recently_viewed = json.dumps(recently_viewed)
-        return JsonResponse(data={ 'data': recently_viewed }, status=200, safe=False)
+        return Response({ 'data': recently_viewed }, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         username = 'emilyjim1'
         try:
             newly_viewed = json.loads(request.body)
-            if newly_viewed and type(newly_viewed) is list:
+            if newly_viewed and isinstance(newly_viewed, list):
                 recently_viewed = json.loads(cache.get(username + ':recently_viewed'))
                 if 0 < len(newly_viewed) < 25:
                     range_to_stay = recently_viewed[:25 - len(newly_viewed)]
@@ -185,39 +154,46 @@ class Recent(View):
                             'data': updated_recently_viewed[0],
                             'message': 'recently viewied successfuly updated'
                             }
-                    return JsonResponse(data=data, status=200, safe=False)
+                    return Response(data, status=200, safe=False)
+                
+                elif len(newly_viewed) == 25:
+                    cache.set(username + ':recently_viewed', json.dumps(newly_viewed))
+                    data = {
+                            'data': newly_viewed[0],
+                            'message': 'recently viewied successfuly updated'
+                            }
+                    return Response(data, status=200, safe=False)
+
                 else:
-                    return JsonResponse(data={
-                        'data': None,
-                        'message': 'Error: wrong number of recently viewed products.'}, safe=False, status=400)
+                    return Response({
+                        'message': 'Error: wrong number of recently viewed products.'},
+                        safe=False, status=400)
             else:
-                return JsonResponse(data={'data': None,
+                return Response(data={
                     'message': 'Error: Wrong data type.'
                     }, status=400)
                         
         except json.JSONDecodeError as e:
-            return JsonResponse(data={'data': None, 'message': str(e)}, status=400)
+            return Response({'message': str(e)}, status=400)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class Subscriptions(View):
+class Subscriptions(APIView):
 
     def get(self, request, index, *args, **kwargs):
         
         user = User.objects.filter(username='emilyjim1').first()
         subs = user.subscriptions.all()
-        paginator = Paginator(subs, 30)
-        paginated_subs = paginator.page(index)
-        subs = paginated_subs.object_list         
-        serialized_subs = UserSerializer(subs, many=True)
+        serialized_subs = paginate_queryset(subs, request, 30, UserSerializer)
  
-        return JsonResponse(data={'data': serialized_subs.data },
-                status=200,
-                safe=False)
+        if serialized_subs:
+            return Response({'data': serialized_subs },
+                status=status.HTTP_200_OK
+                )
         
-        return JsonResponse(data={'data': None,
+        return Response({
             'message': 'no subscriptions found'},
-            safe=False, status=501)
+             status=404)
 
 
     def post(self, request, *args, **kwargs):
@@ -225,16 +201,18 @@ class Subscriptions(View):
         user = User.objects.filter(username='emilyjim1').first()
         data = json.loads(request.body) or {}
         sub = data.get('subscription', None)
-        if sub and type(sub) is int:
+        if sub and isinstance(sub, int):
             subscribed_to = User.objects.filter(pk=sub).first()
+        if subscribed_to:
             user.subscriptions.add(subscribed_to)
-            return JsonResponse(data={'data': sub, 'message': 'subscription succsefully added'}, status=200, safe=False)
-        return JsonResponse(data={'data': None, 'message': 'subscription not succesfully added'}, status=200, safe=False)
+            return JsonResponse(data={'data': sub, 'message': 'subscription succsefully added'}, status=200)
+        else:
+            return JsonResponse(data={'message': 'subscription not succesfully added'}, status=404)
 
 
         
 
-class Settings(View):
+class Settings(APIView):
 
     def get(self, request, *args, **kwargs):
 
@@ -246,5 +224,5 @@ class Settings(View):
         return JsonResponse("error: Page not found", status=404)
 
 
-class Profile(View):
+class Profile(APIView):
     pass

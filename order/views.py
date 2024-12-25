@@ -2,21 +2,24 @@ from django.shortcuts import render
 from django.views import View
 import json
 from cart.models import Cart
-from .models import BillingInfo
-from .models import PaymentInfo
-from .serializers import BaseSerializer
+from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
+from serializers import OrderSerializer
+from utils import paginate_queryset
 # Create your views here.
 
 class OrderView(View):
 
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
+        
+        products = Product.objects.select_related('supplier').only('pk', 'name', 'supplier__username')
+        singleProdcuctOrders = SingleProductOrder.objects.filter(user=request.user).order_by('date').prefetch_related(Prefetch('product', queryset=products))
+        singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer)
 
-        orders = Order.obects.filter(user=request.user).order_by('date')
-        serialized_orders = BaseSerializer(model='order', fields='__all__', many=True) 
- 
-        if serializers.is_valid():
-            return JsonResponse(data=serialized_orders.data, safe=True, status=200)
-        return JsonResponse(data=serialized_orders.error, status=501)
+        cartOrders = CartOrder.objects.filter(user=request.user).prefetch_related('cart', 
+                Prefetch('product', queryset=products))
+        cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer)
+        
+        return Response({'message': }, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
 

@@ -6,9 +6,6 @@ from user.serializers import UserSerializer
 
 class SingleProductOrderSerializer(BaseSerializer):
     product = serializers.SerializerMethodField()
-    billing = serializers.SerializerMethodField()
-    shipment = serializers.SerializerMethodField()
-    user = serializers.SerializerMethodField()
 
     class Meta:
         fields = '__all__'
@@ -25,11 +22,6 @@ class SingleProductOrderSerializer(BaseSerializer):
         
         return None
     
-    def get_billing(self, obj):
-        return { 'billing_id': obj.billing.id }
-    
-    def get_shipment(self, obj):
-        return { 'shipment_id': obj.shipment.id}
 
 
 class CartOrderSerializer(SingleProductOrderSerializer):

@@ -3,12 +3,14 @@ from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
-from post.models import Post
+from post.models import (Post, Comment, Reply)
 from django.views import View
 from datetime import datetime
+from .signals import increment_no_comments
 from .serializers import PostSerializer
 from django.http import JsonResponse
 import json
+from utils import paginate_queryset
 # Create your views here.
 
 class News(View):
@@ -18,50 +20,48 @@ class News(View):
             if index:
                 user = User.objects.filter(username='emilyjim1').first()
                 subscriptions = user.subscriptions.all()
-                posts_from_subs = Post.objects.filter(user__in=subscriptions).order_by('-timestamp')
-                paginator = Paginator(posts_from_subs, 20)
-                paginated = paginator.get_page(index)
-                pages = paginated.object_list
+                all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=user)).order_by('-timestamp')
+                posts = paginate_queryset(posts_from_subs, request, PostSerializer, index=index)
 
-                serializer = PostSerializer(pages, has_next=paginated.has_next(), many=True)
+                return Response({'message': f'news page index {index} successfully retreived' }, status=200)
+            return Response({'message': 'no index provided'},
+                        status=400)
 
-       
-            #if serializer.is_valid():
-                return JsonResponse({'data': serializer.data }, status=200, safe=True)
-            return JsonResponse({'data': None, 'message': 'no index provided'},
-                        status=400, safe=False)
+
+class Timeline(View):
+
+    def get(self, request, index, *args, **kwargs):
+        user = User.objects.filter(username='emilyjim1').first()
+        my_posts = user.posts.all().order_by('-timestamp')
+        posts = paginate_queryset(posts_from_subs, request, PostSerializer, index=index)
+
+        return Response({'message': 'data successfully retreived' status=200)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PostView(View):
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, post, *args, **kwargs):
 
-        post_id = kwargs.get('id', None)
-        if (not id or not isinstance(id, (int, str))) or \
-                (not isinstance(page, int)):
-                error = "kw arguement error: check page or id."
-                return JsonResponse(data={'data': None,
-                    'message': error}, status=400)
+        id = self.request.GET.get('id', None)
+        page = self.request.GET.get('page', 0)
+        if not (id and page):
+            error = "kw arguement error: check page or id."
+            return JsonResponse(
+                {'message': error}, status=400)
 
-        if 'post' in request.url:
-            comments = Post.objects.filter(pk=id).replies_to
-            view_name  = 'post'
-        elif 'comment' in request.url:
-            comments = Comment.objects.filter(pk=id).replies_to
-            view_name = 'comment'
+        if post == 'p':
+            comments = Post.objects.filter(pk=id).first().replies_to.all()              
+        elif post == 'c':
+            comments = Comment.objects.filter(pk=id).first().replies_to.all()
+        else:
+            comments = Reply.object.filter(pk=id).first().replies_to.all()
+        
+        comments = paginate_queryset(comments, request, CommentSerializer)
 
-        paginator = Paginator(comments, 30)
-        paginated = paginator.get_page(page)
-        comments = paginated.object_list
-        has_next = paginated.has_next()
 
-        url = {'id': id, 'view_name': view_name, 'page': page + 1}
-        serialized_comments = PostSerializer(comments, fields=['id', 'comments', 'likes', 'views', 'text', 'user'], extra_kwargs={'url': url, 'next': has_next}, many=True)
-
-        if serialized_comments.is_valid():
-            return JsonResponse(data=serialized_comments.data, safe=True)
-        return JsonResponse(data=serialized_comments.error, status=501)
+        return Response({ 'message': 'data successfully retreived', 
+            }, status=200)
 
     def post(self, request, post, *args, **kwargs):
 
@@ -69,33 +69,45 @@ class PostView(View):
             try:
                 user = User.objects.filter(pk=1125).first()
                 data = json.loads(request.body) or {}
-                text = data.get('post_data', {}).get('text', None)
-                #img = request.FILES['image_file']
+                text = data.get('post_data', {}).get('text', '')
+                img = request.FILES['image_file'] or None
                 #tagged_product = post_data.get('product', None)
                 if not (text): # and  tagged_product):
-                    return JsonResponse(data={'data': None,
+                    return Response({
                             'message': 'post should have a text message and a tagged product.'}, status=400)
-                
-                post = Post.objects.create(user=user, text=text)
+                post = PostSerializer(data={'user': user, 'text': text, 'img': img})
+                if post.is_valid():
+                    post.create(data)
+                return JsonResponse(data={'data': post.id, 'message':
+                    'post succefully added'}, status=200)
             except json.JSONDecodeError as e:
                 return JsonResponse(data={'data': None,
                     'message': 'data could not be parsed'}, status=501)
-            return JsonResponse(data={'data': post.id, 'message':
-                'post succefully added'}, status=200)
         
         elif post == 'c':
-            post_id = kwargs.get('post_id', None)
+            data = json.loads(request.body) or {}
+            post_id = data.get('post_id', None)
+            comment_id = data.get('comment_id', None)
             user = User.objects.filter(username='emilyjim1').first()
-            post = Post.objects.filter(id=post_id).first()
-            try:
-                comment_data = json.loads(request.body)
-                text = comment_data.get('text', None)
-                comment = {'post': post, 'text': text, 'user': user}
-                if text:
-                    comment = Comment.objects.create(**comment)
-                else:
-                    return JsonResponse(data={'data': None, message: 'proper key words missing.'}, status=401)
-            except json.JsonDECODERROR as e:
-                return JsonRespone(data={'data': None, 'message': 'json decode error'}, status=501)
-            return JsonResponse(data={'data': comment.id, 'message':
-                    'comment succefully added'}, status=200)
+            text = data.get('text', '')
+            if post_id and text:
+                post = Post.objects.filter(pk=post_id).first()
+                reply_data = {'post': post, 'text': text, 'user': user}
+                reply = CommentSerializer(data=reply)
+            elif comment_id and text:
+                comment = Comment.objects.filter(pk=comment_id).first()
+                reply_data = {'comment': comment, 'text': text, 'user': user}
+                reply = ReplySerializer(data=reply_data)
+            else:
+                return Response({'message': 'proper key words missing.'}, status=401)
+            if reply.is_valid():
+                reply.create(reply_data)
+            return Response({'data': comment.id,
+                    'message': 'comment successfully added'},
+                        status=200)
+
+    def put(self, request, post, *args, **kwargs):
+        pass
+    
+    def delete(self, request, post, *args, **kwargs):
+        pass

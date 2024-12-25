@@ -1,12 +1,13 @@
+from django.db.models import (ForeignKey, DateField, PositiveIntegerField,
+                        IntegerField, CharField)
 from django.db import models
-from user import User
 # Create your models here.
 
 class Metrics(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='product_metrics')
     quantity = PositiveIntegerField(default=1)
-    customer = ForeignKey('User', on_delete=models.CASCADE, related_name='customer_metrics')
-    supplier = ForeignKey('User', on_delete=models.CASCADE, related_name='supplier_metrics')
+    customer = ForeignKey('user.User', on_delete=models.CASCADE, related_name='customer_metrics')
+    supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_metrics')
     purchase_date = DateField(auto_now_add=True)
     total_price = PositiveIntegerField(null=False, blank=False)
 

@@ -3,14 +3,14 @@ from .models import (Product, Category, SubCategory,
         Tag, Review)
 from user.serializers import UserSerializer
 
-class CategorySerialzer(serializers.ModelSerializer):
+class CategorySerializer(serializers.ModelSerializer):
      
     class Meta:
         model = Category
         fields = '__all__'
 
 class SubCategorySerializer(serializers.ModelSerializer):
-    category = CategorySerialzer()
+    category = CategorySerializer()
 
     class Meta:
         model = SubCategory
@@ -28,6 +28,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'supplier']
+        fields = ['id', 'name', 'supplier', 'description']
 
+class TagSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = Tag
+        fields = ['id', 'name']
