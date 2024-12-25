@@ -20,6 +20,7 @@ requests = "*"
 pyenchant = "*"
 django = "==5.0"
 nltk = "==3.8"
+djangorestframework-simplejwt = "*"
 
 [dev-packages]
 
