@@ -67,12 +67,12 @@ class Store(APIView):
         
         products = Product.objects.filter(supplier=request.user, F('quantity') > 0).order_by('-date_added')
         paginated_products = paginate_queryset(products, request, ProductSerializer, 60)
-        return Return(paginated_products, status=status.200_HTTP_OK)
+        return Response(paginated_products, status=status.200_HTTP_OK)
 
 class Inventory(APIView):
     
     def get(self, request, *args, **kwargs):
         
         inventory = Inventory.objects.filter(product__supplier=request.user).order_by('-date')
-        paginated_inventory = paginate_queryset(inventory, request, InventorySerializer, 60)
-        return Return(paginated_inventory, status=status.200_HTTP_OK
+        paginated_inventory = paginate_queryset(inventory, request, InventorySerializer, 100)
+        return Response(paginated_inventory, status=status.200_HTTP_OK)
