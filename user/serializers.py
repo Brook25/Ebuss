@@ -9,11 +9,11 @@ class UserSerializer(serializers.ModelSerializer):
         return User.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        for attr, val in validated_data.items():
-            if hasattr(instance, attr):
-                setattr(instance, attr, val)
-        instance.save()
+        instance.update(**validated_data)
         return instance
+
+    def bulk_create(self, validated_data):
+        product_objs = [Product(**product_data) for product_data in validated_data]
 
     class Meta:
         model = User

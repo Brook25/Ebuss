@@ -38,7 +38,6 @@ class HistoryView(APIView):
 
     def get(self, request, index, *args, **kwargs):
         
-
         products = Product.objects.only('id', 'name')
         cartOrders = CartOrder.objects.filter(user=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
         cartOrders = paginate_queryset(cartorders, request, 20, CartOrderSerializer)

@@ -22,31 +22,15 @@ import json
 class ProductView(APIView):
 
     @staticmethod
-    def validate(products):
-        subcat_ids = []
-        for prod in products:
-            subcat_id = prod.get('subcategory', None)
-            if not subcat:
-                return False
-            subcat_ids.append(subcat_id)
-        subcategory_objs = SubCategory.objects.filter(pk__in=subcat_ids).prefetch_related('tags')
-        product_data = []
-        for subcat in subcategory_objs:
-            product = filter(lambda product: product['subcategory'] == subcat.id, products)
-            product['subcategory'] = subcat
-            product_data.append(product)
+    def validate(products, user):
 
-        for product in product_data:
-            quantity = product.get('quantity', None)
-            price = product.get('price', None)
-            product_name = product.get('name', None)
-            if not (quantity and price and quantity):
-                return False
-            tags = list(product.get('tags').keys())
-            subcat_tags = [name for name, in subcategory.tags.all().values_list('name')]
+        for product in products:
+            
+            tags = set(product.get('tags').keys())
+            subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
             if not tags.issubset(subcat_tags):
                 return False
-        products = product_data
+
         return True
     
 
@@ -54,49 +38,53 @@ class ProductView(APIView):
         # add pagination
         
         if path == 'my':
-            # get user
-            #user = request.user
-            user = User.objects.filter(username='emilyjim1').first()
-            user_products = user.products.all().order_by('-date_added')
+    
+            user_products = request.user.products.all().order_by('-date_added')
             user_products = paginate_queryset(user_products, request, ProductSerializer)
-            return Response({
-                'products': 'data successfully retreived'
-                }, 
-                status=status.200)
+            return Response(user_products.data,
+                status=status.HTTP_200_OK)
         
         if path == 'view':
             product = Product.objects.filter(pk=index).first()
             # add an option to serializer description, other attrs will be added
             product = ProductSerializer(product)
 
-            return Response(data={
-                'product': product.data
-                }, status=200, safe=False)
+            return Response(product.data
+                , status=HTTP_200_OK)
         
         if path == 'all':
-            product = Product.objects.all()
+            products = Product.objects.all()
             # add an option to serializer description, other attrs will be added
-            product = ProductSerializer(product, many=True)
+            products = paginate_queryset(products, request, ProductSerializer, 100)
 
-            return JsonResponse(data={
-                'product': product.data
-                }, status=200, safe=False)
-            
+            return Response(products.data, status=status.HTTP_200_OK)
 
     def post(self, request, path, *args, **kwargs):
         
         if path == 'my':
-            user = User.objects.filter(username='emilyjim1').first()
             product_data = json.loads(request.body) or {}
             products = product_data.get('products', [])
-            if products and ProductView.validate(products):
-                prodcts = list(map(lambda prod: prod.update({'supplier': user}), products))
-                Product.objects.bulk_create([Product(**prod) for prod in products])
-                return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
+            if products and ProductView.validate(products, request.user):
+                
+                validate_product_data = ProdcutSerializer(products, many=True)
+                if validate_product_data.is_valid():
+                    created = validate_product_data.bulk_create(products) 
+                    return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 
+    def put(self, request, path, *args, **kwargs):
         
+        if path == 'my':
+            product_data = request.POST.get('product_data')
+            validate_data = ProductSerializer(data=product_data)
+
+            if validate_data.is_valid():
+                product_data.update(instance, product_data)
+                
+                return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
+
+            return Response({'message': 'product not updated'}, status=400)
 
 
 
