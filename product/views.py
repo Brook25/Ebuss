@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
+from .signals import (post_save, post_delete)
+from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
 from .utils import SearchEngine
 from .tasks import do_popularity_check
@@ -40,7 +42,7 @@ class ProductView(APIView):
         if path == 'my':
     
             user_products = request.user.products.all().order_by('-date_added')
-            user_products = paginate_queryset(user_products, request, ProductSerializer)
+            user_products = paginate_queryset(user_products, request, ProductSerializer, 40)
             return Response(user_products.data,
                 status=status.HTTP_200_OK)
         
@@ -50,7 +52,7 @@ class ProductView(APIView):
             product = ProductSerializer(product)
 
             return Response(product.data,
-                    status=HTTP_200_OK)
+                    status=status.HTTP_200_OK)
         
         if path == 'all':
             products = Product.objects.all()
@@ -66,7 +68,7 @@ class ProductView(APIView):
             products = product_data.get('products', [])
             if products and ProductView.validate(products, request.user):
 
-                validate_product_data = ProdcutSerializer(products, many=True)
+                validate_product_data = ProdcutSerializer(data=products, many=True)
                 if validate_product_data.is_valid():
                     created = validate_product_data.bulk_create(products) 
                     return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
@@ -82,10 +84,12 @@ class ProductView(APIView):
             if validate_data.is_valid():
                 product_data.update(instance, product_data)
                 
+
                 return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
             return Response({'message': 'product not updated'}, status=400)
 
+    def delete(self, request, index, *args, **kwargs):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -116,9 +120,9 @@ class CategoryView(View):
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
                     product__subcategory__category__id=category_id,
-                        date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).select_related('product')
+                        date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).filter(purchases__gte=500).select_related('product')
 
-                new_products = new_in_category_metrics.product.all()
+                new_products = [metric.product for metric in new_in_category_metrics]
                 products = paginate_queryset(new_products, request, ProductSerializer, 40)
                 
                 return Response(
@@ -164,9 +168,9 @@ class SubCategoryView(View):
             if subcat_id:
                 month_ago = datetime.today - timedelta(day=30)
                 
-                new_product_metrics = Metrics.objects.filter(product__subcategory__pk=subcat_id, product__date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).order_by('-purchases').select_related('product')
+                new_product_metrics = Metrics.objects.filter(product__subcategory__pk=subcat_id, product__date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).filter(purchases__gte=500).order_by('-purchases').select_related('product')
 
-                new_product_objs = [metric.product for metric in new_product_metrics]
+                new_product_objs = [new_product_metrics.product for metric in new_product_metrics]
                 products = paginate_queryset(new_products, request, ProductSerializer, 40)
 
                 return Response(
@@ -174,6 +178,7 @@ class SubCategoryView(View):
                         status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
+
         subcat_data = json.loads(request.body) or {}
         tags = subcat_data.pop('tags')
         validate_subcategory = SubCategorySerialzer(data=subcat_data)
@@ -196,6 +201,7 @@ class TagView(View):
     def get(self, request, type, *args, **kwargs):
 
         if type == 'all':
+            
             tags = Tag.objects.all()
             serialized_tags = TagSerializer(tags, many=True)
             return Response(serialized_tags.data,
@@ -271,7 +277,7 @@ class Popular(View):
             popular_products = Product.objects.filter(pk__in=popular_products).all()
             popular_products = ProductSerializer(popular_products, many=True)
             data = {'popular_products': popular_products.data}
-            return Response(data, status=HTTP_200_OK)
+            return Response(data, status=status.HTTP_200_OK)
 
         if path == 'subcategory':
             subcat_id = request.GET.get('subcat_id', None)
@@ -280,7 +286,7 @@ class Popular(View):
                 products_in_subcat = subcat.products.filter(pk__in=popular_products).all()
                 popular_products = ProductSerializer(products_in_subcat, many=True)
                 data = {'popular_products': popular_products.data}
-                return Response(data, status=HTTP_200_OK)
+                return Response(data, status=status.HTTP_200_OK)
         
         if path == 'category':
             cat_id = request.GET.get('cat_id', None)
@@ -288,5 +294,5 @@ class Popular(View):
                 popular_in_cat = Product.objects.filter(subcategory__category__pk=cat_id, pk__in=popular_products) 
                 popular_products = ProductSerializer(popular_in_cat, many=True)
                 data = {'popular_products': popular_products.data}
-                return Response(data, status=HTTP_200_OK)
+                return Response(data, status=status.HTTP_200_OK)
 
