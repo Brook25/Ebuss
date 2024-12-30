@@ -7,6 +7,7 @@ from django.core.paginator import Paginator
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
@@ -26,8 +27,12 @@ class ProductView(APIView):
     @staticmethod
     def validate(products, user):
 
+        subcategory_ids = set([product.get('subcat_id') for product in products])
+        subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
+        subcategories = {subcat.id: subcat for subcat in subcategories}
         for product in products:
-            
+            subcat_id = product.get('subcategory_id')
+            subcategory = subcategories.get(subcat_id)
             tags = set(product.get('tags').keys())
             subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
             if not tags.issubset(subcat_tags):
@@ -68,7 +73,7 @@ class ProductView(APIView):
             products = product_data.get('products', [])
             if products and ProductView.validate(products, request.user):
 
-                validate_product_data = ProdcutSerializer(data=products, many=True)
+                validate_product_data = ProductSerializer(data=products, many=True)
                 if validate_product_data.is_valid():
                     created = validate_product_data.bulk_create(products) 
                     return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
@@ -82,14 +87,25 @@ class ProductView(APIView):
             validate_data = ProductSerializer(data=product_data)
 
             if validate_data.is_valid():
-                product_data.update(instance, product_data)
+                product_data.update(validate_data.data)
                 
-
                 return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
             return Response({'message': 'product not updated'}, status=400)
 
+
     def delete(self, request, index, *args, **kwargs):
+        
+        product_data = json.loads(request.body)
+        product_id = product_data.get('product_id', None)
+
+        if product_id:
+            product = Product.objects.filter(pk=product_id).first()
+            
+            if product:
+                product.delete()
+                return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Product not deleted'}, status=400)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
