@@ -23,7 +23,7 @@ class News(View):
                 all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=user)).order_by('-timestamp')
                 posts = paginate_queryset(posts_from_subs, request, PostSerializer, index=index)
 
-                return Response({'message': f'news page index {index} successfully retreived' }, status=200)
+                return Response({'message': f'news page index {index} successfully retreived' }, status=HTTP_200_OK)
             return Response({'message': 'no index provided'},
                         status=400)
 
@@ -61,7 +61,7 @@ class PostView(View):
 
 
         return Response({ 'message': 'data successfully retreived', 
-            }, status=200)
+            }, status=HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 
@@ -78,8 +78,8 @@ class PostView(View):
                 post = PostSerializer(data={'user': user, 'text': text, 'img': img})
                 if post.is_valid():
                     post.create(data)
-                return JsonResponse(data={'data': post.id, 'message':
-                    'post succefully added'}, status=200)
+                return Response(data={'data': post.id, 'message':
+                    'post succefully added'}, status=HTTP_200_OK)
             except json.JSONDecodeError as e:
                 return JsonResponse(data={'data': None,
                     'message': 'data could not be parsed'}, status=501)
@@ -104,7 +104,7 @@ class PostView(View):
                 reply.create(reply_data)
             return Response({'data': comment.id,
                     'message': 'comment successfully added'},
-                        status=200)
+                        status=HTTP_200_OK)
 
     def put(self, request, post, *args, **kwargs):
         pass

@@ -9,7 +9,10 @@ class UserSerializer(serializers.ModelSerializer):
         return User.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        instance.update(**validated_data)
+        for attr, val in validated_data.items():
+            if hasattr(instance, attr):
+                setattr(instance, attr, val)
+        instance.save()
         return instance
 
     def bulk_create(self, validated_data):

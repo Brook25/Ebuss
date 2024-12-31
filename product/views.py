@@ -83,8 +83,9 @@ class ProductView(APIView):
     def put(self, request, path, *args, **kwargs):
         
         if path == 'my':
-            product_data = request.POST.get('product_data')
-            validate_data = ProductSerializer(data=product_data)
+            product_data = json.loads(request.body)
+            product = product_data.get('product')
+            validate_data = ProductSerializer(data=product)
 
             if validate_data.is_valid():
                 product_data.update(validate_data.data)
@@ -149,7 +150,7 @@ class CategoryView(View):
             cat_id = request.GET.get('category_id', None)
             if cat_id:
                 products = Product.objects.filter(subcategory__category__id=cat_id).order_by('-quantity')
-                
+ 
                 products = paginate_queryset(products, request, ProductSerializer, 40)
                 return Response({
                     'products': products.data
@@ -169,7 +170,7 @@ class SubCategoryView(View):
             serialized_subcat = SubCategorySerializer(subcat_data, many=True)
 
             return Response({'data': serialized_subcat.data,
-                'has_next': paginated_data.get('has_next', False)}, safe=False, status=200)
+                'has_next': paginated_data.get('has_next', False)}, status=HTTP_200_OK)
                 
         if type == 'product':
             subcat_id = request.GET.get('subcat_id', None)
@@ -217,7 +218,7 @@ class TagView(View):
     def get(self, request, type, *args, **kwargs):
 
         if type == 'all':
-            
+ 
             tags = Tag.objects.all()
             serialized_tags = TagSerializer(tags, many=True)
             return Response(serialized_tags.data,
@@ -231,6 +232,7 @@ class TagView(View):
             tags = Tag.objects.bulk_create([Tag(name=tag) for tag in tags])
             return Response({'message': 'data successfully added'}, status=status.HTTP_200_OK)
         return Response({'message': 'data not successfully added'}, status=status.HTTP_200_OK)
+
 
     def delete(self, request, *args, **kwargs):
 
@@ -311,4 +313,3 @@ class Popular(View):
                 popular_products = ProductSerializer(popular_in_cat, many=True)
                 data = {'popular_products': popular_products.data}
                 return Response(data, status=status.HTTP_200_OK)
-
