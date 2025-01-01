@@ -230,7 +230,7 @@ class SearchEngine:
         subcategory_name = kwargs.get('subcategory')
         tags = SubCategory.objects.filter(name=subcategory_name)[0].tags
         if set(self.__tags) <= set([tag.name for tag in tags]):
-            sub_category = SubCategory.objects.filter(name=subcategory_name)[0]
+            sub_category = SubCategory.objects.filter(name=subcategory_name).products.all()
             if product_name:
                 subcategory.products = [product for product in subcategory.products if process.extract(product_name, [product.name], score_cutoff=90)]
             matches = [product for product in subcategory.products if set(self.__tags.itmes()) <= set(json.loads(product.tags).items())]

@@ -18,12 +18,11 @@ class News(View):
     def get(self, request, index, *args, **kwargs):
 
             if index:
-                user = User.objects.filter(username='emilyjim1').first()
-                subscriptions = user.subscriptions.all()
+                subscriptions = request.user.subscriptions.all()
                 all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=user)).order_by('-timestamp')
-                posts = paginate_queryset(posts_from_subs, request, PostSerializer, index=index)
+                posts = paginate_queryset(posts_from_subs, request, PostSerializer)
 
-                return Response({'message': f'news page index {index} successfully retreived' }, status=HTTP_200_OK)
+                return Response(post, status=HTTP_200_OK)
             return Response({'message': 'no index provided'},
                         status=400)
 
@@ -31,11 +30,10 @@ class News(View):
 class Timeline(View):
 
     def get(self, request, index, *args, **kwargs):
-        user = User.objects.filter(username='emilyjim1').first()
-        my_posts = user.posts.all().order_by('-timestamp')
-        posts = paginate_queryset(posts_from_subs, request, PostSerializer, index=index)
+        my_posts = request.user.posts.all().order_by('-timestamp')
+        posts = paginate_queryset(posts_from_subs, request, PostSerializer)
 
-        return Response({'message': 'data successfully retreived' status=200)
+        return Response(posts, status=200)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -51,63 +49,82 @@ class PostView(View):
                 {'message': error}, status=400)
 
         if post == 'p':
-            comments = Post.objects.filter(pk=id).first().replies_to.all()              
+            comments = Post.objects.filter(pk=id).first().replies_to.all()
+            serializer = CommentSerializer
         elif post == 'c':
             comments = Comment.objects.filter(pk=id).first().replies_to.all()
+            serializer = ReplySerializer
         else:
             comments = Reply.object.filter(pk=id).first().replies_to.all()
+            serializer = ReplySerializer
         
-        comments = paginate_queryset(comments, request, CommentSerializer)
+        comments = paginate_queryset(comments, request, serializer)
 
 
-        return Response({ 'message': 'data successfully retreived', 
-            }, status=HTTP_200_OK)
+        return Response(comments, status=status.HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 
         if post == 'p':
             try:
-                user = User.objects.filter(pk=1125).first()
                 data = json.loads(request.body) or {}
                 text = data.get('post_data', {}).get('text', '')
-                img = request.FILES['image_file'] or None
+                img = request.FILES['image_file']
                 #tagged_product = post_data.get('product', None)
                 if not (text): # and  tagged_product):
                     return Response({
                             'message': 'post should have a text message and a tagged product.'}, status=400)
-                post = PostSerializer(data={'user': user, 'text': text, 'img': img})
+                post = PostSerializer(data={'user': request.user, 'text': text, 'img': img})
                 if post.is_valid():
-                    post.create(data)
+                    post.create()
                 return Response(data={'data': post.id, 'message':
-                    'post succefully added'}, status=HTTP_200_OK)
+                    'post succefully added'}, status=status.HTTP_200_OK)
             except json.JSONDecodeError as e:
                 return JsonResponse(data={'data': None,
-                    'message': 'data could not be parsed'}, status=501)
+                    'message': 'data could not be parsed'}, status=400)
         
         elif post == 'c':
             data = json.loads(request.body) or {}
             post_id = data.get('post_id', None)
             comment_id = data.get('comment_id', None)
-            user = User.objects.filter(username='emilyjim1').first()
             text = data.get('text', '')
             if post_id and text:
-                post = Post.objects.filter(pk=post_id).first()
-                reply_data = {'post': post, 'text': text, 'user': user}
-                reply = CommentSerializer(data=reply)
+                reply_data = {'post': post, 'text': text, 'user': request.user}
+                reply = CommentSerializer(data=reply_data)
             elif comment_id and text:
-                comment = Comment.objects.filter(pk=comment_id).first()
-                reply_data = {'comment': comment, 'text': text, 'user': user}
+                reply_data = {'comment': comment, 'text': text, 'user': request.user}
                 reply = ReplySerializer(data=reply_data)
             else:
                 return Response({'message': 'proper key words missing.'}, status=401)
             if reply.is_valid():
-                reply.create(reply_data)
+                reply.create()
             return Response({'data': comment.id,
                     'message': 'comment successfully added'},
                         status=HTTP_200_OK)
 
     def put(self, request, post, *args, **kwargs):
-        pass
+            data = json.loads(request.body) or {}
+            update_data = data.get('update_data', None)
+            if post == 'p' and update_data:
+                id = data.get('post_id', None)
+                post = PostSerializer(data=update_data, partial=True)
+                if post.is_valid():
+                    post.save(post_id)
+
+            elif post == 'c' and update_data:
+                id = data.get('comment_id', None)
+                post = CommentSerializer(data=update_data, partial=True)
+            elif post == 'r' and update_data:
+                id = data.get('reply_id', None)
+                post = ReplySerializer(data=update_data, partial=True)
+            else:
+                return Response({'message': 'proper key words missing.'}, status=401)
+            
+            if post.is_valid():
+                post.save(id)
+            
+            return Response({'message': 'comment successfully updated'}, status=status.HTTP_200_OK)
+        
     
     def delete(self, request, post, *args, **kwargs):
         pass

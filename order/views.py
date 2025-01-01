@@ -19,7 +19,8 @@ class OrderView(View):
                 Prefetch('product', queryset=products))
         cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer)
         
-        return Response({'message': }, status=status.HTTP_200_OK)
+        return Response({'cart_orders': cartOrders.data,
+                            'single_product_orders': singleProductOrders.data}, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
 
@@ -51,6 +52,8 @@ class OrderView(View):
             message = "Error: couldn't parse values recieved. " + str(e)
             return JsopResponse(data={data: None, message: message}, status=501)
 
+    def delete(request, *args, **kwargs):
+        pass
 
 class Pay(View):
 
