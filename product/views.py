@@ -11,7 +11,7 @@ from rest_framework import status
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
-from .signals import (post_save, post_delete)
+from .signals import (post_save, post_delete, post_update)
 from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
 from .utils import SearchEngine
@@ -84,12 +84,12 @@ class ProductView(APIView):
         
         if path == 'my':
             product_data = json.loads(request.body)
-            product = product_data.get('product')
-            validate_data = ProductSerializer(data=product)
+            update_data = product_data.get('update_data')
+            validate_data = ProductSerializer(data=update_data)
 
             if validate_data.is_valid():
-                product_data.update(validate_data.data)
-                
+
+                product_data.update(product_data)
                 return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
             return Response({'message': 'product not updated'}, status=400)
