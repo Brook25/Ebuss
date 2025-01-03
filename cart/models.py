@@ -10,8 +10,18 @@ class Cart(models.Model):
     name = CharField(max_length=40, validators=[check_vulgarity], null=False, blank=False)
     customer = ForeignKey('user.User', on_delete=models.CASCADE, related_name='carts')
     timestamp = DateTimeField(auto_now=True)
-    product = ManyToManyField('product.Product', related_name='carts_in')
-    quantity = PositiveIntegerField(default=1)
 
     def __repr__(self):
         return '<Cart> {}'.format(self.__dict__)
+
+
+class CartData(models.Model):
+    cart = ForeignKey('Cart', related_name='cart_data_for', on_delete=models.CASCADE)
+    product = ForeignKey('product.Product', related_name='product_data_for', on_delete=models.DO_NOTHING)
+    quantity = PositiveIntegerField(default=1)
+
+    def __repr__(self):
+        return '<CartData> {}'.format(self.__dict__)
+
+    class Meta:
+        unique_together = ('cart', 'product')

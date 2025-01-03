@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.views import View
+from django.db import transaction
 import json
 from cart.models import Cart
 from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
@@ -10,7 +11,7 @@ from utils import paginate_queryset
 class OrderView(View):
 
     def get(self, request, *args, **kwargs):
-        
+ 
         products = Product.objects.select_related('supplier').only('pk', 'name', 'supplier__username')
         singleProdcuctOrders = SingleProductOrder.objects.filter(user=request.user).order_by('date').prefetch_related(Prefetch('product', queryset=products))
         singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer)
@@ -50,10 +51,37 @@ class OrderView(View):
 
         except json.JsonDecoderError or ValueError or TypeError as e:
             message = "Error: couldn't parse values recieved. " + str(e)
-            return JsopResponse(data={data: None, message: message}, status=501)
+            return Response("Order successfully placed.", status=501)
 
-    def delete(request, *args, **kwargs):
-        pass
+
+    def delete(self, request, type, id, *args, **kwargs):
+        
+        if type == 'single':
+
+            with transaction.atomic():
+                single_order = SingleProductOrder.objects.filter(pk=id).select_related('product').first()
+                if single_order:
+                    quantity = single_order.quantity
+                    product.quantity += quantity
+                    product.save()
+                    single_order.delete()
+                else:
+                    return Response('Order not found', status=400)
+                
+        elif type == 'cart':
+
+            with transaction.atomic():
+                cart_order = CartData.objects.filter(cart__pk=id).prefetch_related('product', 'quantity')
+                if cart_order:
+                    for cart_data in cart_order:
+                        cart_data.product.quantity += cart_data.quantity
+                        cart_data.product.save()
+                    cart_order.delete()
+                else:
+                    return Response('Order not found', status=400)
+
+        return Response('Order successfuly deleted.', status=status.HTTP_200_OK)
+            
 
 class Pay(View):
 
