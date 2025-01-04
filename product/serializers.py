@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
+from user import User
 from .models import (Product, Category, SubCategory,
         Tag, Review)
 from user.serializers import UserSerializer
@@ -72,12 +73,13 @@ class ProductSerializer(serializers.ModelSerializer):
     def update(self, product_data):
         
         with transaction.atomic():
+            product_id = product_data.get('product_id')
             product = Product.objects.select_for_update.get(pk=product_id)
-            previous_quantity = product.quantity
-            new_quantity = validated_items.pop('quantity', previous_quantity)
+            old_quantity = product.quantity
+            new_quantity = product_data.pop('quantity', previous_quantity)
      
 
-            for k, v in validated_data.items():
+            for k, v in product_data.items():
                 setattr(product, k, v)
             product.save()
             
@@ -86,7 +88,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 product.quantity = new_quantity
                 reason = product_data.get('reason', None)
                 product.save()
-                post_save(Product, product, reason, previous_quantity)
+                post_save(Product, product, reason, old_quantity)
 
         return product
 

@@ -142,9 +142,9 @@ class PostView(View):
     def delete(self, request, post, index, *args, **kwargs):
         if not index.is_digit():
             return Response({'message': 'index should be integer'}, status=status.HTTP_400_BAD_REQUEST)
-        model = Post if post == 'p' else Comment if post == 'c'
-                                 else Reply if post == 'r' else None
+        model = Post if post == 'p' else Comment if post == 'c' \
+                        else Reply if post == 'r' else None
         if model:
-            post = get_object_or_400(model, pk=index)
+            post = get_object_or_404(model, pk=index)
             post.delete() 
             return Response({'message': '{} succefully deleted'.format(model.__name__)}, status=HTTP_400_OK)
