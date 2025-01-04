@@ -3,12 +3,14 @@ from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
-from post.models import (Post, Comment, Reply)
+from .models import (Post, Comment, Reply)
+from .serializers import (PostSerializer, CommentSerializer, ReplySerializer)
 from django.views import View
 from datetime import datetime
 from .signals import increment_no_comments
 from .serializers import PostSerializer
-from django.http import JsonResponse
+from rest_framework import Response
+from rest_framwork.status import status
 import json
 from utils import paginate_queryset
 # Create your views here.
@@ -20,9 +22,9 @@ class News(View):
             if index:
                 subscriptions = request.user.subscriptions.all()
                 all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=user)).order_by('-timestamp')
-                posts = paginate_queryset(posts_from_subs, request, PostSerializer)
+                posts = paginate_queryset(all_posts, request, PostSerializer)
 
-                return Response(post, status=HTTP_200_OK)
+                return Response(posts, status=status.HTTP_200_OK)
             return Response({'message': 'no index provided'},
                         status=400)
 
@@ -31,7 +33,7 @@ class Timeline(View):
 
     def get(self, request, index, *args, **kwargs):
         my_posts = request.user.posts.all().order_by('-timestamp')
-        posts = paginate_queryset(posts_from_subs, request, PostSerializer)
+        posts = paginate_queryset(my_posts, request, PostSerializer)
 
         return Response(posts, status=200)
 
@@ -43,19 +45,19 @@ class PostView(View):
 
         id = self.request.GET.get('id', None)
         page = self.request.GET.get('page', 0)
-        if not (id and page):
+        if not (id and page.isdigit()):
             error = "kw arguement error: check page or id."
-            return JsonResponse(
-                {'message': error}, status=400)
+            return Response(
+                {'message': error}, status=status.HTTP_400_BAD_REQUEST)
 
         if post == 'p':
-            comments = Post.objects.filter(pk=id).first().replies_to.all()
+            comments = Post.objects.get(pk=id).replies_to.all()
             serializer = CommentSerializer
         elif post == 'c':
-            comments = Comment.objects.filter(pk=id).first().replies_to.all()
+            comments = Comment.objects.get(pk=id).replies_to.all()
             serializer = ReplySerializer
-        else:
-            comments = Reply.object.filter(pk=id).first().replies_to.all()
+        elif post == 'r':
+            comments = Reply.object.get(pk=id).replies_to.all()
             serializer = ReplySerializer
         
         comments = paginate_queryset(comments, request, serializer)
@@ -80,8 +82,7 @@ class PostView(View):
                 return Response(data={'data': post.id, 'message':
                     'post succefully added'}, status=status.HTTP_200_OK)
             except json.JSONDecodeError as e:
-                return JsonResponse(data={'data': None,
-                    'message': 'data could not be parsed'}, status=400)
+                return Response({'message': 'data could not be parsed'}, status=status.HTTP_400_BAD_REQUEST)
         
         elif post == 'c':
             data = json.loads(request.body) or {}
@@ -100,7 +101,7 @@ class PostView(View):
                 reply.create()
             return Response({'data': comment.id,
                     'message': 'comment successfully added'},
-                        status=HTTP_200_OK)
+                        status=status.HTTP_200_OK)
 
     def put(self, request, post, *args, **kwargs):
             data = json.loads(request.body) or {}
