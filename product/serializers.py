@@ -8,18 +8,18 @@ from user.serializers import UserSerializer
 class CategorySerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
-        return User.objects.create(**validated_data)
+        return Category.objects.create(**validated_data)
 
-    def update(self, instance, validated_data):
-        for attr, val in validated_data.items():
-            if hasattr(instance, attr):
-                setattr(instance, attr, val)
+    def update(self, instance):
+        for attr, val in self.data.items():
+            setattr(instance, attr, val)
         instance.save()
         return instance
 
-    def bulk_create(self, validated_data):
-        product_objs = [Product(**product_data) for product_data in validated_data]
-
+    def bulk_create(self):
+        category_objs = Category.objects.bulk_create([Category(**category_data) for category_data in self.data])
+        return category_objs
+    
     class Meta:
         model = Category
         fields = '__all__'
@@ -28,17 +28,18 @@ class SubCategorySerializer(serializers.ModelSerializer):
     category = CategorySerializer()
 
     def create(self, validated_data):
-        return User.objects.create(**validated_data)
+        return SubCategory.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
-        for attr, val in validated_data.items():
-            if hasattr(instance, attr):
-                setattr(instance, attr, val)
+        for attr, val in self.data.items():
+            setattr(instance, attr, val)
         instance.save()
         return instance
 
-    def bulk_create(self, validated_data):
-        product_objs = [Product(**product_data) for product_data in validated_data]
+    def bulk_create(self):
+        subcat_objs = SubCategory.objects.bulk_create([SubCategory(**subcat_data) for subcat_data in self.data])
+        return subcat_objs
+        
     class Meta:
         model = SubCategory
         fields = '__all__'
@@ -51,8 +52,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         for attr, val in validated_data.items():
-            if hasattr(instance, attr):
-                setattr(instance, attr, val)
+            setattr(instance, attr, val)
         instance.save()
         return instance
 
