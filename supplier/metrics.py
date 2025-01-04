@@ -32,7 +32,7 @@ class ProductMetrics:
                 last_day_of_month = calender.month_range(year, month)[1]
                 week_start = [1, 8, 15, 22, last_day_of_month]
     
-        else if kwargs.get('date', None):
+        elif kwargs.get('date', None):
             date = kwargs.get('date')
             date = datetime.strptime(self.date, self.year_format)
             month = date.month
