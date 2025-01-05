@@ -3,22 +3,11 @@ from rest_framework import serializers
 from user import User
 from .models import (Product, Category, SubCategory,
         Tag, Review)
+from shared.serializers import BaseSerializer
 from user.serializers import UserSerializer
 
-class CategorySerializer(serializers.ModelSerializer):
-    
-    def create(self, validated_data):
-        return Category.objects.create(**validated_data)
 
-    def update(self, instance):
-        for attr, val in self.data.items():
-            setattr(instance, attr, val)
-        instance.save()
-        return instance
-
-    def bulk_create(self):
-        category_objs = Category.objects.bulk_create([Category(**category_data) for category_data in self.data])
-        return category_objs
+class CategorySerializer(BaseSerializer):
     
     class Meta:
         model = Category
@@ -27,18 +16,6 @@ class CategorySerializer(serializers.ModelSerializer):
 class SubCategorySerializer(serializers.ModelSerializer):
     category = CategorySerializer()
 
-    def create(self, validated_data):
-        return SubCategory.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        for attr, val in self.data.items():
-            setattr(instance, attr, val)
-        instance.save()
-        return instance
-
-    def bulk_create(self):
-        subcat_objs = SubCategory.objects.bulk_create([SubCategory(**subcat_data) for subcat_data in self.data])
-        return subcat_objs
         
     class Meta:
         model = SubCategory
@@ -47,17 +24,6 @@ class SubCategorySerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     user = UserSerializer(many=True)
 
-    def create(self, validated_data):
-        return User.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        for attr, val in validated_data.items():
-            setattr(instance, attr, val)
-        instance.save()
-        return instance
-
-    def bulk_create(self, validated_data):
-        product_objs = [Product(**product_data) for product_data in validated_data]
     class Meta:
         model = Review
         fields = '__all__'
@@ -103,20 +69,9 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'supplier', 'description']
 
+
 class TagSerializer(serializers.ModelSerializer):
 
-    def create(self, validated_data):
-        return User.objects.create(**validated_data)
-
-    def update(self, instance, validated_data):
-        for attr, val in validated_data.items():
-            if hasattr(instance, attr):
-                setattr(instance, attr, val)
-        instance.save()
-        return instance
-
-    def bulk_create(self, validated_data):
-        product_objs = [Product(**product_data) for product_data in validated_data]
     class Meta:
         model = Tag
         fields = ['id', 'name']

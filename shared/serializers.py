@@ -9,39 +9,16 @@ from rest_framework import serializers
 
 class BaseSerializer(serializers.ModelSerializer):
 
-    def validated(self):
-        # code to check validity
-        self.errors = []
-        return True
-
-
-
-
-
-'''class BaseSerializer(serializers.HyperlinkedModelSerializer):
-
-    def __init__(self, *args, **kwargs):
-        model = kwargs.pop('model', None)
-        fields = kwargs.pop('fields', None)
-        extra_kwargs = kwargs.pop('extra_kwargs')
-        super().__init__(*args, **kwargs)
-
-        if model and fields:
-            self.Meta.model = model
-            self.Meta.fields = fields
-            self.Meta.extra_kwargs = extra_kwargs
-
-    def to_representation(self, obj):
-
-        representation = super().to_representation(obj)
-        view_name = self.extra_kwargs.get('url', {}).get('view_name', None)
-
-        if view_name:
-            representation['url'] = reverse(view_name, kwargs={'id': obj.id})
-
-
-
-    class Meta:
-        model = None
-        fields = None
-'''
+    def create(self, **kwargs):
+        self.Meta.model.create(self.validated_data)
+    
+    def update(self, instance, **kwargs):
+        
+        for k, v in self.validated_data.items():
+            setattr(instance, k, v)
+        instance.save()
+    
+    def bulk_create(self, kwargs):
+        model = self.Meta.model
+        return model.bulk_create(model(**data) for data in self.validated_data)
+        

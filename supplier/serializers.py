@@ -1,7 +1,8 @@
+from .models import (Inventory, Metrics)
+from shared.serializers import BaseSerializer
+from rest_framework import serializers
 
-
-
-class MetricsSerializer(serializers.ModelSerializer):
+class MetricSerializer(BaseSerializer):
     product = serializers.SerializerMethodField()
     customer = serializers.SerializerMethodField()
     iorder = serializers.SerializerMethodField()
@@ -31,7 +32,7 @@ class AnnotatedMetricSerializer(MetricSerializer):
         fields = MetricSerializer.Meta.fields + ['month', 'count', 'total_purchases']
 
 
-class InventorySerialzer(serializers.ModelSerializer):
+class InventorySerialzer(BaseSerializer):
     product = serializers.SerializerMethodField()
     
     class Meta:

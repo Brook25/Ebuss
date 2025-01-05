@@ -1,39 +1,46 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, get_list_or_404
 from django.views import View
 from django.http import JsonResponse
+from django.core.cache import cache
+from product.models import Product
+from rest_framework.respose import Response
+from rest_framwork.views import APIView
+from rest_framework import status
 import json
-from models import Cart
-import uuid
-from serializers import BaseSerializer
+from .models import Cart
+from .serializers import CartSerializer
 from datetime import datetime
 # Create your views here.
 
-class CartView(View):
+class CartView(APIView):
 
     def get(self, request, *args, **kwargs):
 
-        cart_id = args[0]
-        if cart_id and isinstance(cart_id, (int, str)):
-            cart = Cart.objects.filter(id=cart_id)
-
-        serialized_cart = BaseSerializer(model='Cart', fields=['id', 'timestamp', 'products'])
-        if serialized_cart.is_valid():
-            return JsonResponse(data=serialized_cart.data, safe=True)
-        return JsonResponse(data=serialized_cart.error, status=501)
+        cart = get_object_or_404(user=request.user)
+        serialized_cart = CartSerializer(cart)
+        Response(serialized_cart.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
   
-        if request.body:
-            try:
-                cart_data = json.loads(request.body)
-                cart_name = cart_data['name']
-                if cart_name:
-                    carts = request.session.get('carts', {})
-                    carts[cart_data.pop('name')] = cart_data
-                    request.session.save()
-                    return JsonResponse(data={'message': 'cart succefully added'}, status=200)
+        cart_data = json.loads(request.body)
+        cart = cache.hget('cart', request.user__username)
+        if cart and isinstance(cart_data, list):
+            get_list_or_404(Product, pk__in=[product.get('id', None) for product in cart_data])
+            products_in_cache = json.loads(cache)
+            if products_in_cache and isinstance(products_in_cache, list):
+                products_in_cache += cart_data
+                cart_updated = cache.hset('cart', request.user__username, json.dumps(products_in_cache))
+                if not cart_updated:
+                    return Response({'message': 'cart not successfully updated'}, status=status.501)
+
+            request.session.save()
+            return JsonResponse(data={'message': 'cart succefully added'}, status=200)
                 else:
                     return JsonResponse(data={'message': 'cart name not provided'}, status=400)
             except json.JSONDecodeError:
                 return JsonResponse(data={'message': 'json body not valid', status=400})
         return JsonResponse(data={'message': {'No cart data recieved.'}}, status=400)
+
+
+    def delete(self, request, *args, **kwargs):
+        pass
