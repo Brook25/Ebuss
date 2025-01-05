@@ -28,6 +28,13 @@ class CartView(APIView):
             get_list_or_404(Product, pk__in=[product.get('id', None) for product in cart_data])
             products_in_cache = json.loads(cache)
             if products_in_cache and isinstance(products_in_cache, list):
+                if len(products_in_cache) == 10:
+                    active_cache = CartSerializer(data={'user': request.user, 'status': 'active'})
+                    if active_cache.is_valid():
+                        
+                    if not active_cache:
+
+                    products_added = 
                 products_in_cache += cart_data
                 cart_updated = cache.hset('cart', request.user__username, json.dumps(products_in_cache))
                 if not cart_updated:

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from cart.serializers import Cart
 from product.serializers import ProductSerializer
 
 class CartSerializer(serializers.ModelSerializer):
