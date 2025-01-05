@@ -1,9 +1,11 @@
 from django.dispatch import receiver
-from product.signals import post_update
-from serializers import InventorySerializer
+from product.signals import post_save
+from product.models import Product
+from .models import Inventory
+from .serializers import InventorySerializer
 
-@receiver(post_update, sender=Product)
-def post_product_save(sender, instance, reason, quantity_before, quantity_after **kwargs):
+@receiver(post_save, sender=Product)
+def post_product_save(sender, instance, reason, quantity_before, quantity_after, **kwargs):
    
     many_instances = kwargs.get('many', False)
     inventory_data = { 'quantity_before': quantity_before, 'quantity_after': quantity_after,
@@ -18,5 +20,5 @@ def post_product_save(sender, instance, reason, quantity_before, quantity_after 
     else:
         inventory_data['product'] = instance
         validate_inventory_data = InventorySerializer(data=inventory_data)
-        if validate_inventory.is_valid():
-            Inventory_data.objects.create(**inventory_data)
+        if validate_inventory_data.is_valid():
+            Inventory.objects.create(**inventory_data)

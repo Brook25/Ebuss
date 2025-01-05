@@ -1,6 +1,4 @@
-from django.shortcuts import get_object_or_404, get_list_or_404
-from django.views import View
-from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from product.models import Product
 from rest_framework.respose import Response
@@ -23,7 +21,7 @@ class CartView(APIView):
     def post(self, request, *args, **kwargs):
   
         cart_data = json.loads(request.body)
-        cart = cache.hget('cart', request.user__username)
+        cart = cache.hget('cart', request.user__username) or []
         if cart and isinstance(cart_data, list):
             product = get_object_or_404(Product, pk=cart_data.get('product_id', None)
             products_in_cache = json.loads(cache)
@@ -39,9 +37,9 @@ class CartView(APIView):
                             cart_data = CartData.objects.get(cart=active_cart).product.add(*products)
                         cache.hset('cache', request.user__username, json.dumps([]))
                         return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
-                cart.append(product.id)
-                added = cache.hset('cart', user__username, json.dumps(cart))
-                if added:
-                    return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)             
+            cart.append(product.id)
+            added = cache.hset('cart', user__username, json.dumps(cart))
+            if added:
+                return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)             
         return Response({'message': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)

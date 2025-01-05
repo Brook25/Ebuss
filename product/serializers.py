@@ -1,11 +1,11 @@
 from django.db import transaction
 from rest_framework import serializers
-from user import User
+from user.models import User
 from .models import (Product, Category, SubCategory,
         Tag, Review)
 from shared.serializers import BaseSerializer
 from user.serializers import UserSerializer
-
+from .signals import post_save
 
 class CategorySerializer(BaseSerializer):
     
@@ -42,7 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
             product_id = product_data.get('product_id')
             product = Product.objects.select_for_update.get(pk=product_id)
             old_quantity = product.quantity
-            new_quantity = product_data.pop('quantity', previous_quantity)
+            new_quantity = product_data.pop('quantity', old_quantity)
      
 
             for k, v in product_data.items():
