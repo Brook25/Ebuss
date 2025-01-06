@@ -170,7 +170,7 @@ class SubCategoryView(View):
             serialized_subcat = SubCategorySerializer(subcat_data, many=True)
 
             return Response({'data': serialized_subcat.data,
-                'has_next': paginated_data.get('has_next', False)}, status=HTTP_200_OK)
+                'has_next': paginated_data.get('has_next', False)}, status=status.HTTP_200_OK)
                 
         if type == 'product':
             subcat_id = request.GET.get('subcat_id', None)
@@ -185,9 +185,11 @@ class SubCategoryView(View):
             if subcat_id:
                 month_ago = datetime.today - timedelta(day=30)
                 
-                new_product_metrics = Metrics.objects.filter(product__subcategory__pk=subcat_id, product__date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).filter(purchases__gte=500).order_by('-purchases').select_related('product')
+                new_product_metrics = Metrics.objects.filter(product__subcategory__pk=subcat_id,
+                                        product__date_added__gte=month_ago).annotate(purchases=Sum('quantity'),
+                                            count=Count('product')).filter(purchases__gte=500).order_by('-purchases').select_related('product')
 
-                new_product_objs = [new_product_metrics.product for metric in new_product_metrics]
+                new_product_objs = [metric.product for metric in new_product_metrics]
                 products = paginate_queryset(new_product_objs, request, ProductSerializer, 40)
 
                 return Response(
@@ -202,7 +204,8 @@ class SubCategoryView(View):
 
         if validate_subcategory.is_valid():
             category_id = subcat_data.get('category_id')
-            new_subcat, created = SubCategory.objects.get_or_create(name=name, category_pk=category_id)
+            name = subcat_data.get('name')
+            new_subcat, _ = SubCategory.objects.get_or_create(name=name, category_pk=category_id)
             tags = Tag.objects.filter(pk__in=tags)
             new_subcat.tags.add(*tags)
             return Response({'message': 'new subcategory succefully added'},

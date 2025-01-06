@@ -1,5 +1,6 @@
 from django.views import View
 from django.db import (transaction, IntegrityError)
+from django.db.models import Prefetch
 import json
 from cart.models import (Cart, CartData)
 from product.models import Product
@@ -68,7 +69,7 @@ class OrderView(APIView):
         if type == 'single':
 
             with transaction.atomic():
-                single_order = SingleProductOrder.objects.filter(pk=id).select_related('product').first()
+                single_order = SingleProductOrder.objects.get(pk=id).select_related('product')
                 if single_order:
                     quantity = single_order.quantity
                     single_order.product.quantity += quantity

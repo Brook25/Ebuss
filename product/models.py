@@ -31,11 +31,11 @@ class Product(models.Model):
 
 
 class Category(models.Model):
-    name = CharField(max_length=30, null=False, blank=False)
+    name = CharField(max_length=30, null=False, blank=False, unique=True)
     date_added = DateTimeField(auto_now=True)
 
 class SubCategory(models.Model):
-    name = CharField(max_length=30, null=False, blank=False)
+    name = CharField(max_length=30, null=False, blank=False, unique=True)
     category = ForeignKey('Category', on_delete=models.CASCADE, related_name='sub_categories')
     tags = ManyToManyField('Tag', related_name='subcategories')
     date_added = DateTimeField(auto_now=True)
