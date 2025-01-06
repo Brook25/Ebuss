@@ -1,5 +1,5 @@
 from django.views import View
-from django.db import transaction
+from django.db import (transaction, IntegrityError)
 import json
 from cart.models import Cart
 from product.models import Product
@@ -32,7 +32,7 @@ class OrderView(APIView):
         try:
             order_data = json.loads(request.body)
             model = CartOrder if type == 'cart' else SingleProductOrder
-            parent_model = 'product' if type == 'single' else 'cart'
+            parent_field = 'product' if type == 'single' else 'cart'
             if order_data:
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
@@ -45,7 +45,7 @@ class OrderView(APIView):
                     if new_billing_info.is_valid() and new_shipment_info.is_valid():
                         new_billing_info = new_billing_info.create()
                         new_shipment_info = new_shipment_info.create()
-                        order = model(parent_model=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
+                        order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
                         order.save()
                         return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
                     
@@ -54,12 +54,12 @@ class OrderView(APIView):
             else:
                 return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        except json.JsonDecoderError or ValueError or TypeError as e:
+        except (json.JsonDecoderError, ValueError, TypeError) as e:
             message = "Error: couldn't parse values recieved. " + str(e)
             return Response("Order successfully placed.", status=501)
         
         except IntegrityError as e:
-                        return Response({'message': 'Unique constrains not provided for payment info.'}, status=501)
+            return Response({'message': 'Unique constrains not provided for payment info.'}, status=501)
 
 
     def delete(self, request, type, id, *args, **kwargs):
