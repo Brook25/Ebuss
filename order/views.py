@@ -47,6 +47,7 @@ class OrderView(APIView):
                         new_shipment_info = new_shipment_info.create()
                         order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
                         order.save()
+                        # clear cart data from cache and set cart to inactive
                         return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
                     
                 message = 'Error: order failed, Please check order details.'
