@@ -93,8 +93,7 @@ class PostView(View):
         return Response(data={'message':
             '{} successfully added'.format(model.__name__)}, status=status.HTTP_200_OK)
         
-            
-    
+
     def delete(self, request, post, index, *args, **kwargs):
         if not index.is_digit():
             return Response({'message': 'index should be integer'}, status=status.HTTP_400_BAD_REQUEST)
