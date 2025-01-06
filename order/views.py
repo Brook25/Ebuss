@@ -1,7 +1,7 @@
 from django.views import View
 from django.db import (transaction, IntegrityError)
 import json
-from cart.models import Cart
+from cart.models import (Cart, CartData)
 from product.models import Product
 from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
 from rest_framework.views import APIView
