@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
-from django.db import Q
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
@@ -10,7 +10,7 @@ from django.views import View
 from datetime import datetime
 from .signals import increment_no_comments
 from .serializers import PostSerializer
-from rest_framework import Response
+from rest_framework.response import Response
 from rest_framwork.status import status
 import json
 from utils import paginate_queryset
@@ -42,6 +42,12 @@ class Timeline(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class PostView(View):
 
+    POST_MODELS = {'p': {'model': Post, 'serializer': PostSerializer},
+                        'c':{'model': Comment, 'serializer': CommentSerializer},
+                            'r': {'model': Reply, 'serializer': ReplySerializer}
+                            }
+
+
     def get(self, request, post, *args, **kwargs):
 
         id = self.request.GET.get('id', None)
@@ -51,39 +57,30 @@ class PostView(View):
             return Response(
                 {'message': error}, status=status.HTTP_400_BAD_REQUEST)
 
-        if post == 'p':
-            comments = Post.objects.get(pk=id).replies_to.all()
-            serializer = CommentSerializer
-        elif post == 'c':
-            comments = Comment.objects.get(pk=id).replies_to.all()
-            serializer = ReplySerializer
-        elif post == 'r':
-            comments = Reply.object.get(pk=id).replies_to.all()
-            serializer = ReplySerializer
+        model = self.POST_MODELS.get(post, {}).get('model', None)
+        serializer = self.POST_MODELS.get(post, {}).get('serializer', None)
+        replies = model.objects.get(pk=id).replies_to.all()
         
-        comments = paginate_queryset(comments, request, serializer)
-
+        comments = paginate_queryset(replies, request, serializer)
 
         return Response(comments, status=status.HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 
-        if post == 'p':
-            try:
-                data = json.loads(request.body) or {}
-                text = data.get('post_data', {}).get('text', '')
-                img = request.FILES['image_file']
-                #tagged_product = post_data.get('product', None)
-                if not (text): # and  tagged_product):
-                    return Response({
-                            'message': 'post should have a text message and a tagged product.'}, status=status.HTTP_400_BAD_REQUEST)
-                post = PostSerializer(data={'user': request.user, 'text': text, 'img': img})
-                if post.is_valid():
-                    post.create()
-                return Response(data={'data': post.id, 'message':
-                    'post succefully added'}, status=status.HTTP_200_OK)
-            except json.JSONDecodeError as e:
-                return Response({'message': 'data could not be parsed'}, status=status.HTTP_400_BAD_REQUEST)
+        model = self.POST_MODELS.get(post, {}).get('model', Reply)
+        serializer = self.POST_MODELS.get(post, {}).get('serializer', ReplySerializer)
+        data = json.loads(request.body) or {}
+        text = data.get('post_data', {}).get('text', '')
+        img = request.FILES['image_file']
+        #tagged_product = post_data.get('product', None)
+        if not (text): # and  tagged_product):
+            return Response({
+                    'message': 'post should have a text message and a tagged product.'}, status=status.HTTP_400_BAD_REQUEST)
+        post = PostSerializer(data={'user': request.user, 'text': text, 'img': img})
+        if post.is_valid():
+            post.create()
+        return Response(data={'data': post.id, 'message':
+            'post succefully added'}, status=status.HTTP_200_OK)
         
         data = json.loads(request.body) or {}
         text = data.get('text', '')
