@@ -1,4 +1,5 @@
-from django.db.models import (Q, EXTRACTDATE, EXTRACTHOUR)
+from django.db.models import (Q, Sum, Count, Case, When)
+from django.db.models.functions import (ExtractDay, ExtractHour, ExtractMonth)
 from datetime import datetime
 from .models import (Metrics, Inventory)
 from .serializers import MetricSerializer
@@ -20,16 +21,16 @@ class ProductMetrics:
             self.__year = self.__date.year
         else:
             self.__date = datetime.strptime(date, self.__year_format)
-            sel.__month = self.__date.month
+            self.__month = self.__date.month
             self.__year = self.__date.year
 
 
-    @propery
-    def get_monthly_metric(**kwargs):
+    @property
+    def get_monthly_metric(self, **kwargs):
         if kwargs.get('weeks', None):
             weeks = kwargs.get('weeks')
             if weeks and type(weeks) is int:
-                last_day_of_month = calender.month_range(year, month)[1]
+                last_day_of_month = calendar.month_range(year, month)[1]
                 week_start = [1, 8, 15, 22, last_day_of_month]
     
         elif kwargs.get('date', None):
@@ -55,10 +56,10 @@ class ProductMetrics:
             ).annotate(week=Case(When(week_1, Then=1), When(week_2, Then=2),
                 When(week_3, Then=3), When(week_4, Then=4),
                 output_field=IntegerField())).annotate(count=Count('product'),
-                        weekly_purchase=Sum(amount)).order_by('week')
+                     weekly_purchases=Sum('amount')).order_by('week')
 
             
-        return weekly_purchases 
+        return weekly_purchase 
 
     def __metric_serializer(self, **kwargs):
         
@@ -67,7 +68,7 @@ class ProductMetrics:
             serialized_metric = MetricSerializer(queryset, many=True)
             return serialized_metric.data
         except (MissingFieldError, AttributeError, TypeError, ValueError) as e:
-            return {'error': str(e)}
+            return ({'error': str(e)})
 
     @property
     def get_yearly_metric(self, **kwargs):
@@ -92,7 +93,7 @@ class ProductMetrics:
             
 
         elif kwargs.get('quarterly', False):
-            start_month = get_quarter_start()
+            start_month = self.get_quarter_start()
             filter['months_in'] = list(range(start_month, start_month + 5))
 
         else:
@@ -106,9 +107,8 @@ class ProductMetrics:
             filter['products'] = kwargs.get('products', [])
         
 
-        data = Metrics.objects.filter(**filter)
-            .annotate(month=EXTRACTMONTH(purchase_date), product_count=Count('product'), total_purchase=Sum('amount')).select_related('product')
-            .order_by('purchase_date__month')
+        data = Metrics.objects.filter(**filter).annotate(month=ExtractMonth('purchase_date'), product_count=Count('product'), 
+                            total_purchase=Sum('amount')).select_related('product').order_by('purchase_date__month')
 
         return self.metric_serializer(data)
 
@@ -131,7 +131,7 @@ class ProductMetrics:
         elif 'products' in kwargs:
             filter['products'] = kwargs.get('products',[])
         data = Metrics.objects.filter(**filter) \
-            .annotate(count=Count('product'), date=EXTRACTDATE(purchase_date), total_purchase=Sum('amount')) \
+            .annotate(count=Count('product'), date=ExtractDay('purchase_date'), total_purchase=Sum('amount')) \
             .order_by('-date')
 
         return self.metric_serilizer(data)
@@ -148,7 +148,7 @@ class ProductMetrics:
             filter['subcategory'] = kwargs.get('subcategory', None)
         products = kwargs.get('products', None)
         data = Metrics.objects.filter(**filter, product__in=products) \
-            .annotate(hour=EXTRACTHOUR(purchase_date)) \
+            .annotate(hour=ExtractHour('purchase_date')) \
             .annotate(total_purchase=Sum('amount')) \
             .order_by('purchase_date__hour')
 
@@ -174,7 +174,7 @@ class ProductMetrics:
     @property
     def get_quarterly_metric(self, **kwargs):
         
-        quarter_start = get_quarter_start()
+        quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
         metric_data = Metrics.objects.filter(supplier=self.__merchant, month_query)
@@ -183,7 +183,7 @@ class ProductMetrics:
     @property
     def get_quarterly_revenue(self, **kwargs):
 
-        quarter_start = get_quarter_start()
+        quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quater_start + 2)
 
         quarterly_revenue = Metrics.objects.filter(supplier=self.__merchant, month_query).aggregate(total_rev=Sum('total_price'))['total_price']
@@ -192,7 +192,7 @@ class ProductMetrics:
 
 
 
-    def popularity_metric(self, product):
+    def popularity_metric(self, product, **kwargs):
         
         if months in kwargs:
             months = kwargs.get('months', [])
@@ -205,9 +205,9 @@ class ProductMetrics:
                     purchase_date__year=year) \
                     .values('purchase_date__month', 'amount') \
                     .annotate(product_total=Case(When(product=self.product,
-                        then=Sum(amount), default=0)),
+                        then=Sum('amount'), default=0)),
                         other_total=Case(When(~Q(product__id=self.product__id),
-                        then=Sum(amount), default=0)),
+                        then=Sum('amount'), default=0)),
                         product_count=Case(When(product=self.product,
                         then=Count(product), default=0)),
                         other_count=Case(When(~Q(product__id=self.product__id),

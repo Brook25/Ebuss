@@ -3,7 +3,7 @@ from django_redis import get_redis_connection
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse 
-from django.core.paginator import Paginator
+from django.db.models import (Sum, Count) 
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -132,12 +132,13 @@ class CategoryView(View):
             
         if type == 'new':
             
-            month_ago = datetime.today() - delta(day=30)
+            month_ago = datetime.today() - timedelta(day=30)
             category_id = request.GET.get('category_id')
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
                     product__subcategory__category__id=category_id,
-                        date_added__gte=month_ago).annotate(purchases=Sum('quantity'), count=Count('product')).filter(purchases__gte=500).select_related('product')
+                        date_added__gte=month_ago).annotate(purchases=Sum('quantity'),
+                                 count=Count('product')).filter(purchases__gte=200).order_by('purchases').select_related('product')
 
                 new_products = [metric.product for metric in new_in_category_metrics]
                 products = paginate_queryset(new_products, request, ProductSerializer, 40)

@@ -1,5 +1,4 @@
 from django.shortcuts import get_object_or_404
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -61,9 +60,9 @@ class PostView(View):
         serializer = self.POST_MODELS.get(post, {}).get('serializer', None)
         replies = model.objects.get(pk=id).replies_to.all()
         
-        comments = paginate_queryset(replies, request, serializer)
+        replies = paginate_queryset(replies, request, serializer)
 
-        return Response(comments, status=status.HTTP_200_OK)
+        return Response(replies, status=status.HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 
@@ -74,7 +73,8 @@ class PostView(View):
         obj_data = {'user': request.user, 'text': text}
         if not (text):
             return Response({
-                    'message': 'post should have a text message and a tagged product.'}, status=status.HTTP_400_BAD_REQUEST)
+                    'message': 'post should have a text message and a tagged product.'},
+                      status=status.HTTP_400_BAD_REQUEST)
         if post == 'p':
             img = request.FILES['image_file']
             tagged_product = data.get('product', None)
