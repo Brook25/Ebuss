@@ -69,7 +69,7 @@ class ProductView(APIView):
     def post(self, request, path, *args, **kwargs):
         
         if path == 'my':
-            product_data = json.loads(request.body) or {}
+            product_data = request.data
             products = product_data.get('products', [])
             if products and ProductView.validate_tags(products, request.user):
 
@@ -83,7 +83,7 @@ class ProductView(APIView):
     def put(self, request, path, *args, **kwargs):
         
         if path == 'my':
-            product_data = json.loads(request.body)
+            product_data = request.data
             update_data = product_data.get('update_data')
             validate_data = ProductSerializer(data=update_data, partial=True)
 
@@ -97,7 +97,7 @@ class ProductView(APIView):
 
     def delete(self, request, index, *args, **kwargs):
         
-        product_data = json.loads(request.body)
+        product_data = request.data
         product_id = product_data.get('product_id', None)
 
         if product_id:
@@ -199,7 +199,7 @@ class SubCategoryView(View):
 
     def post(self, request, *args, **kwargs):
 
-        subcat_data = json.loads(request.body) or {}
+        subcat_data = request.data
         tags = subcat_data.pop('tags')
         validate_subcategory = SubCategorySerializer(data=subcat_data)
 
@@ -230,7 +230,7 @@ class TagView(View):
 
     def post(self, request, *args, **kwargs):
 
-        tags = json.loads(request.body) or {}
+        tags = request.data
         tags = tags.get('tags', [])
         if tags:
             tags = Tag.objects.bulk_create([Tag(name=tag) for tag in tags])
@@ -240,7 +240,7 @@ class TagView(View):
 
     def delete(self, request, *args, **kwargs):
 
-        tag_data = json.loads(request.body) or {}
+        tag_data = request.data
         tag = tag_data.get('id')
         if tag_data and tag:
             Tag.objects.filter(pk=id).first().delete()

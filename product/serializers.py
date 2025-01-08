@@ -31,6 +31,14 @@ class ReviewSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     supplier = UserSerializer()
 
+    def __init__(self, *args, **kwargs):
+        
+        fields = ['id', 'name', 'supplier', 'description']
+        simple = kwargs.get('simple', False)
+        self.Meta.fields = fields[:-1] if simple else fields
+        super.__init__(*args, **kwargs)
+
+
     def create(self, validated_data):
         with transaction.atomic():
             product = Product.objects.create(**validated_data)
@@ -67,7 +75,6 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'supplier', 'description']
 
 
 class TagSerializer(serializers.ModelSerializer):

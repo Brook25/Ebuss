@@ -16,9 +16,7 @@ class SingleProductOrderSerializer(BaseSerializer):
     
     def get_product(self, obj):
         if hasattr(obj, 'product'):
-            return { 'product_id': obj.product.id, 'product_name': obj.product.name }
-        elif hasattr(obj, 'cart'):
-            return ProductSerializer(obj.cart.product, many=True).data
+            return ProductSerializer(data=obj.product, simple=True)
         
         return None
     

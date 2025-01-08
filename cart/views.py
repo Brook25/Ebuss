@@ -40,6 +40,17 @@ class CartView(APIView):
             products_in_cart.append(product.id)
             added = cache.hset('cart', request.user__username, json.dumps(cart))
             if added:
-                return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)             
+                return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)      
         return Response({'message': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, *args,**kwargs):
+        
+        product_id = request.GET.get('product_id', None)
+        if product_id and isinstance(product_id, int):
+            cart = request.user.carts.filter(status='active').first()
+            CartData.objects.filter(cart=cart, product__id=product_id).delete()
+            return Response({'message': 'product successfully removed from cart.'},
+                    status=status.HTTP_200_OK)
+        return Response({'message': 'product data not sufficient.'},
+                status=status.HTTP_400_BAD_REQUEST)

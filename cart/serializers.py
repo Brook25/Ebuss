@@ -10,4 +10,4 @@ class CartSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_products(self, obj):
-        return ProductSerializer(obj.products, many=True)
+        return ProductSerializer(obj.products, many=True, simple=True)

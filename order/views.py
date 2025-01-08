@@ -8,6 +8,7 @@ from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framwork.status import status
+from .signals import post_order
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           SerializeShipment)
 from utils import paginate_queryset
@@ -31,8 +32,8 @@ class OrderView(APIView):
     def post(self, request, type, *args, **kwargs):
 
         try:
-            order_data = json.loads(request.body)
-            model = CartOrder if type == 'cart' else SingleProductOrder
+            order_data = request.data
+            order_model = CartOrder if type == 'cart' else SingleProductOrder
             parent_field = 'product' if type == 'single' else 'cart'
             if order_data:
                 billing_info_data = order_data.get('billing_info', None)
@@ -44,11 +45,12 @@ class OrderView(APIView):
                     new_billing_info = SerializeShipment(data=billing_info_data)
                     new_shipment_info = SerializeShipment(data=shipment_info_data)
                     if new_billing_info.is_valid() and new_shipment_info.is_valid():
-                        new_billing_info = new_billing_info.create()
-                        new_shipment_info = new_shipment_info.create()
-                        order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
-                        order.save()
-                        # clear cart data from cache and set cart to inactive
+                        with transaction.atomic():
+                            new_billing_info = new_billing_info.create()
+                            new_shipment_info = new_shipment_info.create()
+                            order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
+                            order.save()
+                            post_save.send(Order, order, request.user)
                         return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
                     
                 message = 'Error: order failed, Please check order details.'

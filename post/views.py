@@ -68,7 +68,7 @@ class PostView(View):
 
         model = self.POST_MODELS.get(post, {}).get('model', Reply)
         serializer = self.POST_MODELS.get(post, {}).get('serializer', ReplySerializer)
-        data = json.loads(request.body) or {}
+        data = request.data
         text = data.get('text', '')
         obj_data = {'user': request.user, 'text': text}
         if not (text):
