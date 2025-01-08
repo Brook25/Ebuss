@@ -75,7 +75,7 @@ class WishListView(APIView):
             product_id = wishlist_data.get('product_id', None)
             if product_id:
                 product = Product.objects.filter(pk=product_id).first()
-                user = User.objects.filter(username='emilyjim1').first()
+                user = User.objects.filter(user=request.user).first()
                 wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=user).prefetch_related('product')
                 if product not in wishlist_obj.product.all():
                     wishlist_obj.product.add(product)
@@ -102,7 +102,7 @@ class WishListView(APIView):
     def delete(self, request, *args, **kwargs):
         data = json.data
         product_id = data.get('product_id', None)
-        user = User.objects.filter(username='emilyjim1').first()
+        user = User.objects.filter(user=request.user).first()
         if not product_id:
             user.wishlist_for.delete()
             return Response({
@@ -186,7 +186,7 @@ class Subscriptions(APIView):
 
     def get(self, request, index, *args, **kwargs):
         
-        user = User.objects.filter(username='emilyjim1').first()
+        user = User.objects.filter(user=request.user).first()
         subs = user.subscriptions.all()
         serialized_subs = paginate_queryset(subs, request, 30, UserSerializer)
  
@@ -202,7 +202,7 @@ class Subscriptions(APIView):
 
     def post(self, request, *args, **kwargs):
         
-        user = User.objects.filter(username='emilyjim1').first()
+        user = User.objects.filter(user=request.user).first()
         data = json.loads(request.body) or {}
         sub = data.get('subscription', None)
         if sub and isinstance(sub, int):
