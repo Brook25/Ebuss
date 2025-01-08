@@ -21,6 +21,12 @@ from utils import SetupObjects
 # Create your views here.
 
 
+class RegisterView(APIView):
+
+    def get(self, request, *args, **kwargs):
+        pass
+
+
 
 class NotificationView(APIView):
 
@@ -65,7 +71,7 @@ class WishListView(APIView):
     def post(self, request, *args, **kwargs):
         
         try:
-            wishlist_data = json.loads(request.body).get('wishlist', {})
+            wishlist_data = request.data.get('wishlist', {})
             product_id = wishlist_data.get('product_id', None)
             if product_id:
                 product = Product.objects.filter(pk=product_id).first()
@@ -94,14 +100,14 @@ class WishListView(APIView):
 
 
     def delete(self, request, *args, **kwargs):
-        data = json.loads(request.body) or {}
+        data = json.data
         product_id = data.get('product_id', None)
         user = User.objects.filter(username='emilyjim1').first()
         if not product_id:
             user.wishlist_for.delete()
             return Response({
                 'message':
-                    'wishlist succefully deleted.'
+                    'wishlist successfully deleted.'
                 }, 
                 status=status.HTTP_200_OK)
         else:
@@ -140,11 +146,10 @@ class Recent(APIView):
         return Response({ 'data': recently_viewed }, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
-        username = 'emilyjim1'
         try:
-            newly_viewed = json.loads(request.body)
+            newly_viewed = json.data
             if newly_viewed and isinstance(newly_viewed, list):
-                recently_viewed = json.loads(cache.get(username + ':recently_viewed'))
+                recently_viewed = json.loads(cache.get(request.user__username + ':recently_viewed'))
                 if 0 < len(newly_viewed) < 25:
                     range_to_stay = recently_viewed[:25 - len(newly_viewed)]
                     updated_recently_viewed = newly_viewed + range_to_stay
@@ -153,7 +158,7 @@ class Recent(APIView):
                             'data': updated_recently_viewed[0],
                             'message': 'recently viewied successfuly updated'
                             }
-                    return Response(data, status=200, safe=False)
+                    return Response(data, status=status.HTTP_200_OK)
                 
                 elif len(newly_viewed) == 25:
                     cache.set(username + ':recently_viewed', json.dumps(newly_viewed))
@@ -161,12 +166,12 @@ class Recent(APIView):
                             'data': newly_viewed[0],
                             'message': 'recently viewied successfuly updated'
                             }
-                    return Response(data, status=200, safe=False)
+                    return Response(data, status=status.HTTP_200_OK)
 
                 else:
                     return Response({
                         'message': 'Error: wrong number of recently viewed products.'},
-                        safe=False, status=400)
+                        status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response(data={
                     'message': 'Error: Wrong data type.'
@@ -192,7 +197,7 @@ class Subscriptions(APIView):
         
         return Response({
             'message': 'no subscriptions found'},
-             status=404)
+             status=status.404)
 
 
     def post(self, request, *args, **kwargs):
@@ -204,9 +209,9 @@ class Subscriptions(APIView):
             subscribed_to = User.objects.filter(pk=sub).first()
         if subscribed_to:
             user.subscriptions.add(subscribed_to)
-            return JsonResponse(data={'data': sub, 'message': 'subscription succsefully added'}, status=200)
+            return Response({'message': 'subscription succsefully added'}, status=HTTP_200_OK)
         else:
-            return JsonResponse(data={'message': 'subscription not succesfully added'}, status=404)
+            return JsonResponse(data={'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
         
@@ -218,9 +223,9 @@ class Settings(APIView):
         settings = request.cookies.get('settings', None)
 
         if settings:
-            settings = json.loads(settings)
-            return JsonResponse(settings, safe=True)
-        return JsonResponse("error: Page not found", status=404)
+            settings = json.data
+            return Response(settings, status=status.HTTP_200_OK)
+        return JsonResponse("error: Page not found", status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
 class Profile(APIView):

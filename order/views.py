@@ -62,8 +62,8 @@ class OrderView(APIView):
             message = "Error: couldn't parse values recieved. " + str(e)
             return Response("Order successfully placed.", status=501)
         
-        except IntegrityError as e:
-            return Response({'message': 'Unique constrains not provided for payment info.'}, status=501)
+        except (IntegrityError, Order.DoesNotExist) as e:
+            return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
     def delete(self, request, type, id, *args, **kwargs):
