@@ -217,7 +217,10 @@ class ProductMetrics:
                     product__subcategory=product.subcategory,
                     purchase_date__month__in=months,
                     purchase_date__year=self.year) \
-                    .annotate(product_total=).values('product', 'product_total', 'other_total')
+                    .annotate(product_total=Sum(Case(When(product=self.product),
+                        then=F('amount'), default=0, output_field=IntegerField)),
+                        other_total=Sum(Case(When(~Q(product=self.product)),
+                            then=F('amount'), default=0, output_field=IntegerField()))).values('product','product_total', 'other_total')
             # may be include CTRs        
 
 
