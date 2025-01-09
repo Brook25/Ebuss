@@ -1,4 +1,4 @@
-from django.db.models import (Q, Sum, Count, Case, When)
+from django.db.models import (Q, Sum, Count, Case, When, IntegerField)
 from django.db.models.functions import (ExtractDay, ExtractHour, ExtractMonth)
 from datetime import datetime
 from .models import (Metrics, Inventory)
@@ -11,18 +11,13 @@ class ProductMetrics:
         '''
         add group by options. daily and then by product and etc
         '''
-        # if user not prime supplier raise
-        self._merchant = merchant
-        self._date_format = '%Y-%m-%d'
-        if not date:
-            self.__date = datetime.today()
-            self.__day = self.__date.day
-            self.__month = self.__date.month
-            self.__year = self.__date.year
-        else:
-            self.__date = datetime.strptime(date, self.__year_format)
-            self.__month = self.__date.month
-            self.__year = self.__date.year
+        self.merchant = merchant
+        self.date_format = '%Y-%m-%d'
+        self.date = date
+        self.day = self.date.day
+        self.month = self.date.month
+        self.year = self.date.year
+       
 
     @property
     def date(self):
@@ -46,8 +41,6 @@ class ProductMetrics:
         if not value.is_supplier:
             raise ValueError("Merchant is not a supplier.")
         self._merchant = value
-
-
 
     @property
     def get_monthly_metric(self, **kwargs):
@@ -96,8 +89,8 @@ class ProductMetrics:
             return None
 
         if not kwargs:
-            data = Metrics.objects.filter(supplier=self.supplier, purchase_date__year=year)
-            .annotate(month=purchase_date__month, total_purchase=Sum('amount'))
+            data = Metrics.objects.filter(supplier=self.supplier, purchase_date__year=self.year) \
+            .annotate(month=ExtractMonth('purchase_date'), total_purchase=Sum('amount')) \
             .order_by('purchase_date__month').values('purchase_date', 'month', 'total_purchase')
             return data
         
@@ -166,8 +159,9 @@ class ProductMetrics:
             filter['category'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
             filter['subcategory'] = kwargs.get('subcategory', None)
-        products = kwargs.get('products', None)
-        data = Metrics.objects.filter(**filter, product__in=products) \
+        elif 'products' in kwargs:
+            filter['products_in'] = kwargs.get('products', [])
+        data = Metrics.objects.filter(**filter) \
             .annotate(hour=ExtractHour('purchase_date')) \
             .annotate(total_purchase=Sum('amount')) \
             .order_by('purchase_date__hour')
