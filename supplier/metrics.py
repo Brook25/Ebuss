@@ -12,8 +12,8 @@ class ProductMetrics:
         add group by options. daily and then by product and etc
         '''
         # if user not prime supplier raise
-        self.__merchant = merchant
-        self.__year_format = '%Y-%m-%d'
+        self._merchant = merchant
+        self._date_format = '%Y-%m-%d'
         if not date:
             self.__date = datetime.today()
             self.__day = self.__date.day
@@ -24,20 +24,43 @@ class ProductMetrics:
             self.__month = self.__date.month
             self.__year = self.__date.year
 
+    @property
+    def date(self):
+        return self.date
+    
+    @date.setter
+    def date(self, value):
+        if value is None:
+            self._date = datetime.today()
+        try:
+            self._date = datetime.strptime(self.date, self.date_format)
+        except Exception as e:
+            raise ValueError('Error: wrong format or data type.' + str(e))
+
+    @property
+    def merchant(self):
+        return self.merchant
+    
+    @merchant.setter
+    def merchant(self, value):
+        if not value.is_supplier:
+            raise ValueError("Merchant is not a supplier.")
+        self._merchant = value
+
+
 
     @property
     def get_monthly_metric(self, **kwargs):
-        if kwargs.get('weeks', None):
-            weeks = kwargs.get('weeks')
-            if weeks and type(weeks) is int:
-                last_day_of_month = calendar.month_range(year, month)[1]
+        user_month = kwargs.get('month', None)
+        month = user_month if user_month else self.__month
+        if month and type(month) is int:
+                last_day_of_month = calendar.month_range(self.year, month)[1]
                 week_start = [1, 8, 15, 22, last_day_of_month]
-    
-        elif kwargs.get('date', None):
-            date = kwargs.get('date')
-            date = datetime.strptime(self.date, self.year_format)
-            month = date.month
-        filter = {}
+        filter = { 'supplier': self.merchant,
+            'purchase_date__year': self.year,
+            'purchase_date__month': month
+            }
+        
         if 'category' in kwargs:
             filter['category'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
@@ -49,10 +72,7 @@ class ProductMetrics:
         week_2 = Q(purchase_date__date__gte=week_start[1]) & Q(purchase_date__date__lt=week_start[2])
         week_3 = Q(purchase_date__date__gte=week_start[2]) & Q(purchase_date__date__lt=week_start[3])
         week_4 = Q(purchase_date__date__gte=week_start[3]) & Q(purchase_date__date__lte=week_start[4])
-        weekly_purchase = Metrics.objects.filter(**filter,
-            supplier=self.__merchant,
-            purchase_date__year=year,
-            purchase_date__month=month,
+        weekly_purchase = Metrics.objects.filter(**filter
             ).annotate(week=Case(When(week_1, Then=1), When(week_2, Then=2),
                 When(week_3, Then=3), When(week_4, Then=4),
                 output_field=IntegerField())).annotate(count=Count('product'),
