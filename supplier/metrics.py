@@ -152,7 +152,7 @@ class ProductMetrics:
 
     @property
     def hourly_metric(self, **kwargs):
-        if not self.__date:
+        if not self.date:
             return None
         filter = {}
         if 'category' in kwargs:
@@ -191,16 +191,16 @@ class ProductMetrics:
         quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
-        metric_data = Metrics.objects.filter(supplier=self.__merchant, month_query)
+        metric_data = Metrics.objects.filter(supplier=self.merchant).filter(month_query)
 
 
     @property
     def get_quarterly_revenue(self, **kwargs):
 
         quarter_start = ProductMetrics.get_quarter_start()
-        month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quater_start + 2)
+        month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
-        quarterly_revenue = Metrics.objects.filter(supplier=self.__merchant, month_query).aggregate(total_rev=Sum('total_price'))['total_price']
+        quarterly_revenue = Metrics.objects.filter(supplier=self.__merchant).filter(month_query).aggregate(total_rev=Sum('total_price'))['total_price']
 
         return quarterly_revenue
 
@@ -212,12 +212,11 @@ class ProductMetrics:
             months = kwargs.get('months', [])
         if self.product and (self.month or months) and self.year:
             if not months:
-                months.append(month)
+                months.append(self.month)
             subcat_purchases = Metrics.objects.filter(
                     product__subcategory=subcategory,
                     purchase_date__month__in=months,
-                    purchase_date__year=year) \
-                    .values('purchase_date__month', 'amount') \
+                    purchase_date__year=self.year) \
                     .annotate(product_total=Case(When(product=self.product,
                         then=Sum('amount'), default=0)),
                         other_total=Case(When(~Q(product__id=self.product__id),
