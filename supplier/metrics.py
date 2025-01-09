@@ -17,7 +17,7 @@ class ProductMetrics:
         self.day = self.date.day
         self.month = self.date.month
         self.year = self.date.year
-       
+        self.metric_query = Metrics.objects.filter(supplier=self.merchant)
 
     @property
     def date(self):
@@ -65,7 +65,7 @@ class ProductMetrics:
         week_2 = Q(purchase_date__date__gte=week_start[1]) & Q(purchase_date__date__lt=week_start[2])
         week_3 = Q(purchase_date__date__gte=week_start[2]) & Q(purchase_date__date__lt=week_start[3])
         week_4 = Q(purchase_date__date__gte=week_start[3]) & Q(purchase_date__date__lte=week_start[4])
-        weekly_purchase = Metrics.objects.filter(**filter
+        weekly_purchase = self.metric_query.filter(**filter
             ).annotate(week=Case(When(week_1, Then=1), When(week_2, Then=2),
                 When(week_3, Then=3), When(week_4, Then=4),
                 output_field=IntegerField())).annotate(count=Count('product'),
@@ -89,7 +89,7 @@ class ProductMetrics:
             return None
 
         if not kwargs:
-            data = Metrics.objects.filter(supplier=self.supplier, purchase_date__year=self.year) \
+            data = self.metric_query.filter(supplier=self.supplier, purchase_date__year=self.year) \
             .annotate(month=ExtractMonth('purchase_date'), total_purchase=Sum('amount')) \
             .order_by('purchase_date__month').values('purchase_date', 'month', 'total_purchase')
             return data
@@ -120,7 +120,7 @@ class ProductMetrics:
             filter['products'] = kwargs.get('products', [])
         
 
-        data = Metrics.objects.filter(**filter).annotate(month=ExtractMonth('purchase_date'), product_count=Count('product'), 
+        data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date'), product_count=Count('product'), 
                             total_purchase=Sum('amount')).select_related('product').order_by('purchase_date__month')
 
         return self.metric_serializer(data)
@@ -143,7 +143,7 @@ class ProductMetrics:
             filter['subcategory'] = kwargs.get('subcategory', None)
         elif 'products' in kwargs:
             filter['products'] = kwargs.get('products',[])
-        data = Metrics.objects.filter(**filter) \
+        data = self.metric_query.filter(**filter) \
             .annotate(count=Count('product'), date=ExtractDay('purchase_date'), total_purchase=Sum('amount')) \
             .order_by('-date')
 
@@ -161,7 +161,7 @@ class ProductMetrics:
             filter['subcategory'] = kwargs.get('subcategory', None)
         elif 'products' in kwargs:
             filter['products_in'] = kwargs.get('products', [])
-        data = Metrics.objects.filter(**filter) \
+        data = self.metric_query.filter(**filter) \
             .annotate(hour=ExtractHour('purchase_date')) \
             .annotate(total_purchase=Sum('amount')) \
             .order_by('purchase_date__hour')
@@ -191,7 +191,7 @@ class ProductMetrics:
         quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
-        metric_data = Metrics.objects.filter(supplier=self.merchant).filter(month_query)
+        return self.metric_query.filter(supplier=self.merchant).filter(month_query)
 
 
     @property
@@ -200,7 +200,7 @@ class ProductMetrics:
         quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
-        quarterly_revenue = Metrics.objects.filter(supplier=self.__merchant).filter(month_query).aggregate(total_rev=Sum('total_price'))['total_price']
+        quarterly_revenue = self.metric_query.filter(supplier=self.merchant).filter(month_query).aggregate(total_rev=Sum('total_price'))['total_price']
 
         return quarterly_revenue
 
@@ -213,22 +213,15 @@ class ProductMetrics:
         if self.product and (self.month or months) and self.year:
             if not months:
                 months.append(self.month)
-            subcat_purchases = Metrics.objects.filter(
-                    product__subcategory=subcategory,
+            subcat_purchases = self.metric_query.filter(
+                    product__subcategory=product.subcategory,
                     purchase_date__month__in=months,
                     purchase_date__year=self.year) \
-                    .annotate(product_total=Case(When(product=self.product,
-                        then=Sum('amount'), default=0)),
-                        other_total=Case(When(~Q(product__id=self.product__id),
-                        then=Sum('amount'), default=0)),
-                        product_count=Case(When(product=self.product,
-                        then=Count(product), default=0)),
-                        other_count=Case(When(~Q(product__id=self.product__id),
-                        then=Count(product), default=0)))
+                    .annotate(product_total=).values('product', 'product_total', 'other_total')
             # may be include CTRs        
 
 
-            return (product_total, subcat_total)
+            return subcat_purchases
 
 
 class CustomerMetrics:
@@ -239,7 +232,9 @@ class CustomerMetrics:
 
     def get_top_customers(self, number, month_range):
         customer_data = Metrics.objects.annotate(
-                count=Count(customer), total_purchases=Sum(total_price)).select_related('customer').order_by('-total_purchases').values('total_purchases', 'customer__first_name', 'customer__last_name', 'customer__username', 'customer__country', 'customer__email')
+                count=Count('customer'), total_purchases=Sum('total_price')).select_related('customer').order_by('-total_purchases').values('total_purchases', 'customer__first_name',
+                 'customer__last_name', 'customer__username',
+                  'customer__country', 'customer__email')
 
         return customer_data
 
