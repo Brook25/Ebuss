@@ -23,8 +23,14 @@ from utils import SetupObjects
 
 class RegisterView(APIView):
 
-    def get(self, request, *args, **kwargs):
-        pass
+    def post(self, request, *args, **kwargs):
+        new_user_data = request.data
+        user = UserSerializer(data=new_user_data)
+
+        if user.is_valid():
+            user.create()
+            return Response('User successfully created.', status=status.HTTP_200_OK)
+        return Response(user.error, status=status.HTTP_400_BAD_REQUEST)
 
 
 

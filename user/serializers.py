@@ -1,15 +1,19 @@
 from rest_framework import serializers
 from shared.serializers import BaseSerializer
 from .models import (User, Notification, Wishlist)
-
+from jwt import 
 
 class UserSerializer(BaseSerializer):
 
     class Meta:
         model = User
         fields = ['id', 'first_name', 'last_name', 'username']
+            
+    def validate_password(self):
+        pass
 
-
+    def generate_auth_tokens(self):
+        
 
 class NotificationSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
