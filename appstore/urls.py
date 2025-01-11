@@ -28,5 +28,6 @@ urlpatterns = [
     path('product/', include('product.urls')),
     path('subcategory/', include('product.subcat_urls')),
     path('category/', include('product.cat_urls')),
-    path('dashboard/', include('supplier.urls'))
+    path('dashboard/', include('supplier.urls')),
+    path('api/', include('user.auth_urls'))
 ]

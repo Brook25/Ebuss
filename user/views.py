@@ -29,9 +29,17 @@ class RegisterView(APIView):
 
         if user.is_valid():
             user.create()
-            return Response('User successfully created.', status=status.HTTP_200_OK)
+            jwt_tokens = user.get_auth_tokens()
+            return Response({'jwt': jwt_tokens,
+                'status':'success'},
+                status=status.HTTP_200_OK)
         return Response(user.error, status=status.HTTP_400_BAD_REQUEST)
 
+
+def LogIn(APIView):
+
+    def post(self, request, *args, **kwargs):
+        pass
 
 
 class NotificationView(APIView):

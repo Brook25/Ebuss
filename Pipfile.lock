@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6ccf6d7c2ce76e8a979f1d5018dbcb1a8966f86623b448b3eead58510d556491"
+            "sha256": "c71d363e3817f4c5134a6646fec00513c6812b31fc54c2ee2a50fa3de9eb400c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -313,6 +313,7 @@
                 "sha256:7d29e14dfbc19cb6a95a4bd669edbde11f5d4c6a71fdaa42c2d40b6846e807f7"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.10'",
             "version": "==5.0"
         },
         "django-celery-results": {
@@ -353,15 +354,17 @@
                 "sha256:36fe88cd2d6c6bec23dca9804bab2ba5517a8bb9d8f47ebc68981b56840107ad"
             ],
             "index": "pypi",
+            "markers": "python_version >= '3.8'",
             "version": "==3.15.2"
         },
         "djangorestframework-simplejwt": {
             "hashes": [
-                "sha256:381bc966aa46913905629d472cd72ad45faa265509764e20ffd440164c88d220",
-                "sha256:6c4bd37537440bc439564ebf7d6085e74c5411485197073f508ebdfa34bc9fae"
+                "sha256:7aec953db9ed4163430c16d086eecb0f028f814ce6bba62b06c25919261e9077",
+                "sha256:cccecce1a0e1a4a240fae80da73e5fc23055bababb8b67de88fa47cd36822320"
             ],
             "index": "pypi",
-            "version": "==5.3.1"
+            "markers": "python_version >= '3.9'",
+            "version": "==5.4.0"
         },
         "frozenlist": {
             "hashes": [
@@ -1006,6 +1009,7 @@
                 "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953",
                 "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb"
             ],
+            "index": "pypi",
             "markers": "python_version >= '3.9'",
             "version": "==2.10.1"
         },
@@ -1252,7 +1256,7 @@
                 "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d",
                 "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"
             ],
-            "markers": "python_version < '3.11'",
+            "markers": "python_version >= '3.8'",
             "version": "==4.12.2"
         },
         "tzdata": {

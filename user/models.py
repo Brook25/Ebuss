@@ -26,6 +26,12 @@ NOTIFICATION_TYPES = (
         ('stock_related', 'stock related')
         )
 
+ROLES = (
+        ('customer', 'Customer'),
+        ('supplier', 'Supplier'),
+        ('admin', 'Admin')
+        )
+
 class User(AbstractUser):
     email = EmailField(unique=True, blank=False, null=False)
     country_code = CharField(null=False)
@@ -39,6 +45,7 @@ class User(AbstractUser):
     last_modified = DateField(auto_now=True)
     subscriptions = ManyToManyField('User', symmetrical=False, related_name='subscribers')
     recommendations = ManyToManyField('product.Product', related_name='recommended_to') 
+    role = CharField(choices=ROLES, null=False)
 
     REQUIRED_FIELDS = ['first_name', 'last_name', 'birth_date', 'phone_no']
 

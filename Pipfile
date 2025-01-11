@@ -20,9 +20,10 @@ requests = "*"
 pyenchant = "*"
 django = "==5.0"
 nltk = "==3.8"
-djangorestframework-simplejwt = "*"
 geopy = "*"
 geoip2 = "*"
+djangorestframework-simplejwt = "*"
+pyjwt = "*"
 
 [dev-packages]
 
