@@ -39,14 +39,13 @@ class RegisterView(APIView):
                 status=status.HTTP_200_OK)
         return Response({'status': 'failed',
                                 'error': user.error},
-                                status=status.HTTP_400_BAD_REQUEST
-                        )
+                                status=status.HTTP_400_BAD_REQUEST)
 
 
 def LogIn(APIView):
 
     def get(self, request, *args, **kwargs):
-        pass        
+        pass
         
 
 
