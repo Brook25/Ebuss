@@ -14,6 +14,7 @@ from shared.utils import paginate_queryset
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)
+from utils import (generate_access_token, generate_refresh_token)
 from order.serializers import (CartOrderSerializer, SingleProductOrderSerializer)
 from datetime import datetime, timedelta
 import json
@@ -29,17 +30,24 @@ class RegisterView(APIView):
 
         if user.is_valid():
             user.create()
-            jwt_tokens = user.get_auth_tokens()
+            jwt_tokens = {
+                            'access_token': generate_access_tokens(),
+                            'refresh_token': generate_refresh_token()
+                        }
             return Response({'jwt': jwt_tokens,
                 'status':'success'},
                 status=status.HTTP_200_OK)
-        return Response(user.error, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': 'failed',
+                                'error': user.error},
+                                status=status.HTTP_400_BAD_REQUEST
+                        )
 
 
 def LogIn(APIView):
 
-    def post(self, request, *args, **kwargs):
-        pass
+    def get(self, request, *args, **kwargs):
+        pass        
+        
 
 
 class NotificationView(APIView):
