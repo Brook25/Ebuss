@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 from django.conf.auth import authenticate
 from django.core.paginator import Paginator
 from django.core.cache import cache
@@ -19,6 +20,7 @@ from utils import (generate_access_token, generate_refresh_token)
 from order.serializers import (CartOrderSerializer, SingleProductOrderSerializer)
 from datetime import datetime, timedelta
 import json
+import jwt
 from utils import SetupObjects
 # Create your views here.
 
@@ -64,6 +66,50 @@ def LogIn(APIView):
                 }
         
         return Response(jwt_token, status=status.HTTP_200_OK)
+
+
+class GetToken(APIView):
+
+    def post(self, request, *args, **kwargs):
+        
+        refresh_token = request.data.get('refresh_token', None)
+
+        if not refresh_token:
+            return Response({'error': 'refresh token not provided'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithm='HS256')
+        except: jwt.ExpiredSignatureError:
+            return Response({'error': 'Refresh Token expired. Please login with credentials again.'}, status=status.HTTP_401_UNAUTHORIZED)
+        except jwt.InvalidToken:
+            return Response({'error': 'Refresh Token is invalid.'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        user = User.objects.filter(pk=payload.get('user_id')).first()
+
+        if not user:
+            return Response({'error': 'user doesn\'t exist.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        algorithm = settings.SIMPLE_JWT.get('ALGORITHM')
+
+        access_token_payload = {
+                'user_id': user.id,
+                'username': user.username,
+                'exp': datetime.now() + settings.SIMPLE_JWT.get('ACCESS_TOKEN_LIFETIME',
+                'iat': datetime.now(),
+                'role': user.role)
+            }
+
+        access_token = jwt.encode(access_token_payload, settings.SECRET_KEY, algorithm)
+        
+        refresh_token_payload = {
+                'user_id': user.id,
+                'exp': datetime.now() + settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME')
+                }
+
+        refresh_token = jwt.encode(refersh_token_payload, settings.SECRET_KEY, algorithm)
+
+        return Response({'access_token': access_token, 
+                            'refresh_token': refresh_token}, status=status.HTTP_200_OK)
 
 
 class NotificationView(APIView):
