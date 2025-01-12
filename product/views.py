@@ -137,8 +137,8 @@ class CategoryView(View):
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
                     product__subcategory__category__id=category_id,
-                        date_added__gte=month_ago).annotate(purchases=Sum('quantity'),
-                                 count=Count('product')).filter(purchases__gte=200).order_by('purchases').select_related('product')
+                        date_added__gte=month_ago).annotate(count=Count('product'), purchases=Sum('qunatity'),
+                                ).filter(purchases__gte=200).order_by('purchases').select_related('product')
 
                 new_products = [metric.product for metric in new_in_category_metrics]
                 products = paginate_queryset(new_products, request, ProductSerializer, 40)
@@ -187,8 +187,9 @@ class SubCategoryView(View):
                 month_ago = datetime.today - timedelta(day=30)
                 
                 new_product_metrics = Metrics.objects.filter(product__subcategory__pk=subcat_id,
-                                        product__date_added__gte=month_ago).annotate(purchases=Sum('quantity'),
-                                            count=Count('product')).filter(purchases__gte=500).order_by('-purchases').select_related('product')
+                                        product__date_added__gte=month_ago).annotate(count=Count('product'),
+                                                purchases=Sum('quantity'),
+                                            ).filter(purchases__gte=500).order_by('-purchases').select_related('product')
 
                 new_product_objs = [metric.product for metric in new_product_metrics]
                 products = paginate_queryset(new_product_objs, request, ProductSerializer, 40)
