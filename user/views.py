@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
+from django.conf.auth import authenticate
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.utils.decorators import method_decorator
@@ -44,9 +45,25 @@ class RegisterView(APIView):
 
 def LogIn(APIView):
 
-    def get(self, request, *args, **kwargs):
-        pass
+    def post(self, request, *args, **kwargs):
         
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        if not user:
+            return Response({'error': 'Invalid username or password'},
+                    status=HTTP_401_UNAUTHORIZED)
+        
+        access_token = get_access_token(user)
+        refresh_token = get_refresh_token(user)
+
+        jwt_token = {
+                'access_token': access_token,
+                'refresh_token': refresh_token
+                }
+        
+        return Response(jwt_token, status=status.HTTP_200_OK)
 
 
 class NotificationView(APIView):
