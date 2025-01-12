@@ -118,9 +118,9 @@ class NotificationView(APIView):
        
         curr_date = datetime.now()
         page_until = curr_date - timedelta(days=30)
-        notifications = paginate_queryset(Notification.objects.filter(user__username='emilyjim1', created_at__gte=page_until).all(), request, 10, NotificationSerializer)
+        notifications = paginate_queryset(Notification.objects.filter(user=request.user, created_at__gte=page_until).all(), request, 20, NotificationSerializer)
         
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(notifications.data, status=status.HTTP_200_OK)
 
 
 
@@ -132,7 +132,7 @@ class HistoryView(APIView):
         cartOrders = CartOrder.objects.filter(user=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
         cartOrders = paginate_queryset(cartorders, request, 20, CartOrderSerializer)
         
-        singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-date').select_related('product').only('id', 'name')
+        singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-date').select_related('product')
         serialized_singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
         
         return Response({ 'singleProductOrders': singleProductOrders,
@@ -145,7 +145,7 @@ class WishListView(APIView):
     
     def get(self, request, *args, **kwargs):
         try:
-            wishlist = Wishlist.objects.get(user=User.objects.filter(username='emilyjoe1'))
+            wishlist = Wishlist.objects.get(user=request.user))
             serialized_data = WishListSerializer(wishlist)
             return Response(serialized_data.data, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:
@@ -159,7 +159,6 @@ class WishListView(APIView):
             product_id = wishlist_data.get('product_id', None)
             if product_id:
                 product = Product.objects.filter(pk=product_id).first()
-                user = User.objects.filter(user=request.user).first()
                 wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=user).prefetch_related('product')
                 if product not in wishlist_obj.product.all():
                     wishlist_obj.product.add(product)
@@ -186,7 +185,6 @@ class WishListView(APIView):
     def delete(self, request, *args, **kwargs):
         data = json.data
         product_id = data.get('product_id', None)
-        user = User.objects.filter(user=request.user).first()
         if not product_id:
             user.wishlist_for.delete()
             return Response({
@@ -224,7 +222,7 @@ class Recommendations(APIView):
 class Recent(APIView):
 
     def get(self, request, *args, **kwargs):
-        username = 'emilyjim1'
+        username = request.user.username
         recently_viewed = cache.get(username + ':recently_viewed')
         recently_viewed = json.dumps(recently_viewed)
         return Response({ 'data': recently_viewed }, status=status.HTTP_200_OK)
@@ -239,7 +237,6 @@ class Recent(APIView):
                     updated_recently_viewed = newly_viewed + range_to_stay
                     cache.set(username + ':recently_viewed', json.dumps(updated_recently_viewed))
                     data = {
-                            'data': updated_recently_viewed[0],
                             'message': 'recently viewied successfuly updated'
                             }
                     return Response(data, status=status.HTTP_200_OK)
@@ -247,7 +244,6 @@ class Recent(APIView):
                 elif len(newly_viewed) == 25:
                     cache.set(username + ':recently_viewed', json.dumps(newly_viewed))
                     data = {
-                            'data': newly_viewed[0],
                             'message': 'recently viewied successfuly updated'
                             }
                     return Response(data, status=status.HTTP_200_OK)
@@ -262,7 +258,7 @@ class Recent(APIView):
                     }, status=400)
                         
         except json.JSONDecodeError as e:
-            return Response({'message': str(e)}, status=400)
+            return Response({'message': str(e)}, status=HTTP_400_NAD_REQUEST)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -281,18 +277,17 @@ class Subscriptions(APIView):
         
         return Response({
             'message': 'no subscriptions found'},
-             status=status.404)
+             status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
     def post(self, request, *args, **kwargs):
         
-        user = User.objects.filter(user=request.user).first()
         data = json.loads(request.body) or {}
         sub = data.get('subscription', None)
         if sub and isinstance(sub, int):
             subscribed_to = User.objects.filter(pk=sub).first()
         if subscribed_to:
-            user.subscriptions.add(subscribed_to)
+            request.user.subscriptions.add(subscribed_to)
             return Response({'message': 'subscription succsefully added'}, status=HTTP_200_OK)
         else:
             return JsonResponse(data={'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
