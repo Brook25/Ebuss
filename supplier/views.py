@@ -9,11 +9,14 @@ from .metrics import ProductMetrics
 from order import (SingleProductOrder, CartOrder)
 from order.serializers import (SingleProductOrderSerializer, CartOrderSerializer)
 from user.serializers import UserSerializer
+from permisions.supplier_permissions import IsSupplier
 from product.serializers import ProductSerializer
 from .serializers import InventorySerializer
 # Create your views here.
 
 class DashBoardHome(APIView):
+    
+    permission_classes = [IsSupplier]
 
     def get(self, request, *args, **kwargs):
         date = request.GET.get('date', '')
@@ -43,6 +46,8 @@ class DashBoardHome(APIView):
         return Response(data, status.200_HTTP_OK)
 
 class DashBoardDate(APIView):
+    
+    permission_classes = [IsSupplier]
 
     def get(self, request, period, *args, **kwargs):
         
@@ -65,7 +70,10 @@ class DashBoardDate(APIView):
         return Response(metric_data, status=status.200_HTTP_OK)
         
 
+
 class Store(APIView):
+    
+    permission_classes = [IsSupplier]
     
     def get(self, request, *args, **kwargs):
         
@@ -73,7 +81,11 @@ class Store(APIView):
         paginated_products = paginate_queryset(products, request, ProductSerializer, 60)
         return Response(paginated_products, status=status.200_HTTP_OK)
 
+
+
 class Inventory(APIView):
+    
+    permission_classes = [IsSupplier]
     
     def get(self, request, *args, **kwargs):
         
