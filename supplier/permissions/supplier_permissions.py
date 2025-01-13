@@ -7,5 +7,5 @@ class IsSupplier(BasePermission):
         
         if request.user.is_authenticated and request.user.role == 'supplier':
             return True
-        
+ 
         return False
