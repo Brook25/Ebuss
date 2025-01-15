@@ -57,7 +57,7 @@ def do_popularity_check():
             }
 
     
-    subcats_tobe_checked = Metrics.objects.filter(product__pk__in=subcat_check_order)
+    subcats_tobe_checked = Metrics.objects.filter(product__subcategor__ypk__in=subcat_check_order)
     popularity_check = PopularityCheck(subcats_tobe_checked, **popularity_thresholds)
     popular = popularity_check.find_popular()
  

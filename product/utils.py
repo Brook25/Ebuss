@@ -49,8 +49,8 @@ class PopularityCheck:
             self.__purchase_aggregates = subcat_products.annotate(
                 three_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_3, then=F('quantity')), default=0)),
                     fourteen_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_14, then=F('quantity')), default=0)),
-                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_21, then=F('quantity')), default=0),
-                            total_purchases=Sum(quantity),
+                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_21, then=F('quantity')), default=0)),
+                            total_purchases=Sum('quantity'),
                                 product_count=Count(product))
         )
 
@@ -103,7 +103,7 @@ class PopularityCheck:
         return popular
 
     def find_popular(self):
-        
+ 
         popular = []
         for subcat in self.subcats:
             popular += self.calculate_purchase_percentage + \
@@ -111,6 +111,7 @@ class PopularityCheck:
                     self.calculate_wishlist + \
                         self.calculate_purchase_percentage
         return popular
+
 
 
 class SearchEngine:
