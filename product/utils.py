@@ -4,7 +4,7 @@ from functools import reduce
 from supplier.models import Metrics
 from .serializers import ProductSerializer
 from django.core.paginator import Paginator
-from django.db.models import (CharField, IntegerField, Q, Func, F)
+from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
 from collections import Counter
@@ -30,29 +30,36 @@ class PopularityCheck:
 
     def __init__(self, metrics_data, subcats, *args, **kwargs):
 
-
+        popular_list = kwargs.get('popular_list', [])
+        subcategory_ids = kwargs.get('subcategory_ids')
+        if not subcategory_ids:
+            raise ValueError("subcategory ids not specified.")
         days_ago_40 = datetime.today - datetime.delta(day=40)
+        subcat_filter = Q(product__subcategory__in=subcategory_ids)
         product_filter = Q(purchase_date=days_ago_40)
         quantity_filter = Q(product__quantity__gte=1500)
         exclude_populars = ~Q(pk__in=popular_list)
         day_tf_21 = datetime.today - datetime.delta(days=self.__class__.NEAREST_DAY)
         day_tf_3 = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
-        dy_tf_14 = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)
+        day_tf_14 = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)
         
         self.subcats = subcats
-        self.__all_products = metrics_data.filter(product_filter & quantity_filter & exclude_populars)
-        
-        def __get_preleminary_aggregates(self, subcat):
+        self.__all_products = metrics_data.filter(subcat_filter & product_filter &
+                                                   quantity_filter & exclude_populars)
+
+
+        def __get_preleminary_aggregates(self):
             
-            subcat_products = self.__all_products.filter(product__subcategory=subcat)
-            
-            self.__purchase_aggregates = subcat_products.annotate(
-                three_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_3, then=F('quantity')), default=0)),
-                    fourteen_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_14, then=F('quantity')), default=0)),
-                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_21, then=F('quantity')), default=0)),
-                            total_purchases=Sum('quantity'),
-                                product_count=Count(product))
-        )
+          
+            self.__purchase_aggregates = self.__all_products.annotate(total_purchases=Sum('quantity'),
+                                product_count=Count('product'),
+                three_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_3,
+                                                 then=F('quantity')), default=0)),
+                    fourteen_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_14,
+                                                        then=F('quantity')), default=0)),
+                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_21,
+                                                             then=F('quantity')), default=0))
+                           )
 
     def __calculate_purchase_percentage(self):
 
@@ -64,27 +71,28 @@ class PopularityCheck:
     
     def __calculate_purchase_rate(self):
 
-        three_d_popular = Q(three_d_purchases__gte=thresholds.get('3_day', 0))
-        fourteen_d_popular = Q(fourteen_d_purchases__gte=thresholds.get('14_day', 0))
-        twentyone_d_popular = Q(twentyone_d_purchases__gte=thresholds.get('21_day', 0))
-
-        popular = self.__purchase_aggregates.filter(three_d_popular | fourteen_d_popular | twentyone_d_popular)
+        three_day_popular = Q(three_d_purchase__gte=Value(self.three_d_thresholds.get(F('product__subcateogry__id'))))
+        fourteen_day_popular = Q(fourteen_d_purchase__gte=Value(self.fourteen_d_threshold.get(F('product__subcategory__id'))))
+        twentyone_day_popular = Q(twentyone_d_purchase__gte=Value(self.twentyone_d_threshold.get(F('product__subcategory__id'))))
+        is_popular = Q(three_day_popular | fourteen_day_popular | twentyone_day_popular)
+            
+        popular = self.__purchase_aggregates.filter(is_popular)
 
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
         return popular
 
-    def __calculate_wishlist(self):
+    def __calculate_wishlist(self, **kwargs):
 
         wishlist_threshold = kwargs.get('wishlist_threshold', 0)
         exclude = ~Q(product__in=kwargs.get('popular',[]))
         popular = self.__purchase_aggregates.filter(exclude).annotate(
-            wishlist_total=Count(product__wishlist_in)).filter(wishlist_total__gte=wishlist_threshold)
+            wishlist_total=Count('product__wishlist_in')).filter(wishlist_total__gte=wishlist_threshold)
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
         return popular
     
-    def __calculate_conversion_rate(self):
+    def __calculate_conversion_rate(self, **kwargs):
 
         threshold = kwargs.get('conversion_threshold', 0)
         popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs') >= threshold)
@@ -92,7 +100,7 @@ class PopularityCheck:
 
         return popular
 
-    def __calculate_reviews(self):
+    def __calculate_reviews(self, **kwargs):
 
         purchase_threshold = kwargs.get('purchase_thresholds', 100)
         rating_threshold = kwargs.get('rating_threshold', 4)
@@ -104,13 +112,10 @@ class PopularityCheck:
 
     def find_popular(self):
  
-        popular = []
-        for subcat in self.subcats:
-            popular += self.calculate_purchase_percentage + \
+        return self.calculate_purchase_percentage + \
                 self.calculate_purchase_rate + \
                     self.calculate_wishlist + \
                         self.calculate_purchase_percentage
-        return popular
 
 
 
