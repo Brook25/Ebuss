@@ -34,10 +34,13 @@ class PopularityCheck:
         subcategory_ids = kwargs.get('subcategory_ids')
         if not subcategory_ids:
             raise ValueError("subcategory ids not specified.")
+        
         days_ago_40 = datetime.today - datetime.delta(day=40)
         subcat_filter = Q(product__subcategory__in=subcategory_ids)
+        
         product_filter = Q(purchase_date=days_ago_40)
         quantity_filter = Q(product__quantity__gte=1500)
+        
         exclude_populars = ~Q(pk__in=popular_list)
         day_tf_21 = datetime.today - datetime.delta(days=self.__class__.NEAREST_DAY)
         day_tf_3 = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
@@ -51,8 +54,9 @@ class PopularityCheck:
         def __get_preleminary_aggregates(self):
             
           
-            self.__purchase_aggregates = self.__all_products.annotate(total_purchases=Sum('quantity'),
+            self.__purchase_aggregates = self.__all_products.annotate(
                                 product_count=Count('product'),
+                                total_purchases=Sum('quantity'),
                 three_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_3,
                                                  then=F('quantity')), default=0)),
                     fourteen_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_14,
