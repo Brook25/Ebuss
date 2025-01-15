@@ -61,7 +61,7 @@ class PopularityCheck:
                                                              then=F('quantity')), default=0))
                            )
 
-    def __calculate_purchase_percentage(self):
+    def __calculate_purchase_percentage(self, ratio):
 
         all_product_agg = self.__all_products.aggregate(sum=Sum('quantity'))['sum']
         popular = self.__purchase_aggregates.filter(F('popular_by_total_purchase') / all_product_agg >= ratio)
@@ -84,8 +84,7 @@ class PopularityCheck:
     def __calculate_wishlist(self, **kwargs):
 
         wishlist_threshold = kwargs.get('wishlist_threshold', 0)
-        exclude = ~Q(product__in=kwargs.get('popular',[]))
-        popular = self.__purchase_aggregates.filter(exclude).annotate(
+        popular = self.__purchase_aggregates.annotate(
             wishlist_total=Count('product__wishlist_in')).filter(wishlist_total__gte=wishlist_threshold)
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
