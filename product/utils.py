@@ -35,33 +35,33 @@ class PopularityCheck:
         if not subcategory_ids:
             raise ValueError("subcategory ids not specified.")
         
-        days_ago_40 = datetime.today - datetime.delta(day=40)
+        days_ago_60 = datetime.today - datetime.delta(day=60)
         subcat_filter = Q(product__subcategory__in=subcategory_ids)
         
-        product_filter = Q(purchase_date=days_ago_40)
+        product_filter = Q(purchase_date__gte=days_ago_60)
         quantity_filter = Q(product__quantity__gte=1500)
         
         exclude_populars = ~Q(pk__in=popular_list)
-        day_tf_21 = datetime.today - datetime.delta(days=self.__class__.NEAREST_DAY)
-        day_tf_3 = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
-        day_tf_14 = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)
         
         self.subcats = subcats
         self.__all_products = metrics_data.filter(subcat_filter & product_filter &
                                                    quantity_filter & exclude_populars)
 
 
-        def __get_preleminary_aggregates(self):
+    def __get_preleminary_aggregates(self):
             
-          
-            self.__purchase_aggregates = self.__all_products.annotate(
+        nearest_date = datetime.today - datetime.delta(days=self.__class__.NEAREST_DAY)
+        further_date = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
+        furthest_date = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)  
+        
+        self.__purchase_aggregates = self.__all_products.annotate(
                                 product_count=Count('product'),
                                 total_purchases=Sum('quantity'),
-                three_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_3,
+            three_d_purchases=Sum(Case(When(purchase_date__gte=nearest_date,
                                                  then=F('quantity')), default=0)),
-                    fourteen_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_14,
+                    fourteen_d_purchases=Sum(Case(When(purchase_date__gte=further_date,
                                                         then=F('quantity')), default=0)),
-                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=day_tf_21,
+                        twentyone_d_purchases=Sum(Case(When(purchase_date__gte=furthest_date,
                                                              then=F('quantity')), default=0))
                            )
 
