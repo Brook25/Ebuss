@@ -4,7 +4,7 @@ from functools import reduce
 from supplier.models import Metrics
 from .serializers import ProductSerializer
 from django.core.paginator import Paginator
-from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value)
+from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value, OuterRef)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
 from collections import Counter
