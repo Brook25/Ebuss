@@ -6,7 +6,7 @@ from supplier.models import Metrics
 from .models import Product
 from .utils import PopularityCheck
 from supplier.models import Metrics
-import json
+from product.models import SubCategory
 from .serializers import ProductSerializer
 
 @celery_app.task
