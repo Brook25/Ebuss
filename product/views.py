@@ -55,12 +55,10 @@ class ProductView(APIView):
         if path == 'my':
             product_data = request.data
             products = product_data.get('products', [])
-            if products and ProductView.validate_tags(products, request.user):
-
-                validate_product_data = ProductSerializer(data=products, many=True)
-                if validate_product_data.is_valid():
-                    created = validate_product_data.bulk_create(products) 
-                    return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
+            validate_product_data = ProductSerializer(data=products, many=True)
+            if validate_product_data.is_valid():
+                created = validate_product_data.bulk_create(products) 
+                return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 

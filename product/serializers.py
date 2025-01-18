@@ -70,13 +70,12 @@ class ProductSerializer(serializers.ModelSerializer):
         def validate_tags(products):
             subcategory_ids = set([product.get('subcat_id') for product in products])
             subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
-            subcategories = {subcat.id: subcat for subcat in subcategories}
+            subcategories = {subcat.id: set(subcat.tags.all().values_list('name')) for subcat in subcategories}
             for product in products:
                 subcat_id = product.get('subcategory_id')
-                subcategory = subcategories.get(subcat_id)
-                tags = set(product.get('tags').keys())
-                subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
-                if not tags.issubset(subcat_tags):
+                sc_tags = subcategories.get(subcat_id, set())
+                product_tags = set(product.get('tags').keys())
+                if not product_tags.issubset(sc_tags):
                     return False
             return True
         
