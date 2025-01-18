@@ -84,9 +84,9 @@ class PopularityCheck:
     
     def __calculate_purchase_rate(self):
 
-        three_day_popular = Q(three_d_purchase__gte=Value(self.three_d_thresholds.get(F('product__subcateogry__id'))))
-        fourteen_day_popular = Q(fourteen_d_purchase__gte=Value(self.fourteen_d_threshold.get(F('product__subcategory__id'))))
-        twentyone_day_popular = Q(twentyone_d_purchase__gte=Value(self.twentyone_d_threshold.get(F('product__subcategory__id'))))
+        three_day_popular = Q(three_d_purchase__gte=F('product__subcategory__three_day_threshold'))
+        fourteen_day_popular = Q(fourteen_d_purchase__gte=F('product__subcategory__fourteenday_threshold'))
+        twentyone_day_popular = Q(twentyone_d_purchase__gte=F('product__subcategory__twentyoneday_threshold'))
         is_popular = Q(three_day_popular | fourteen_day_popular | twentyone_day_popular)
             
         popular = self.__purchase_aggregates.filter(is_popular)
@@ -96,9 +96,9 @@ class PopularityCheck:
 
     def __calculate_wishlist(self, **kwargs):
 
-        wishlist_threshold = kwargs.get('wishlist_threshold', 0)
         popular = self.__purchase_aggregates.annotate(
-            wishlist_total=Count('product__wishlist_in')).filter(wishlist_total__gte=wishlist_threshold)
+            wishlist_total=Count('product__wishlist_in')).filter(
+                wishlist_total__gte=F('product__subcategory__wishlist_threshold'))
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
@@ -106,8 +106,8 @@ class PopularityCheck:
     
     def __calculate_conversion_rate(self, **kwargs):
 
-        threshold = kwargs.get('conversion_threshold', 0)
-        popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs') >= threshold)
+        popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs')
+                                                     >= F('product__subcategory_conversion_threshold'))
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
         return popular
@@ -115,8 +115,8 @@ class PopularityCheck:
     def __calculate_reviews(self, **kwargs):
 
         purchase_threshold = kwargs.get('purchase_thresholds', 100)
-        rating_threshold = kwargs.get('rating_threshold', 4)
-        popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, rating__gte=rating_threshold)
+        popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, 
+                                                    rating__gte=F('product__subcategory__rating_threshold'))
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 

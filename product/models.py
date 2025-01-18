@@ -43,6 +43,9 @@ class SubCategory(models.Model):
     three_day_threshold = PositiveIntegerField(null=False)
     fourteen_day_threshold = PositiveIntegerField(null=False)
     twenty_one_day_threshold = PositiveIntegerField(null=False)
+    wishlist_threshold = PositiveIntegerField(null=False)
+    conversion_reate_threshold = PositiveIntegerField(null=False)
+    rating_threshold = PositiveIntegerField(null=False)
 
 class Tag(models.Model):
     name = CharField(max_length=20, null=False, blank=False)
