@@ -11,7 +11,6 @@ from rest_framework import status
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
-from .signals import (post_save, post_delete, post_update)
 from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
 from supplier.models import Metrics
@@ -26,7 +25,7 @@ import json
 class ProductView(APIView):
 
     @staticmethod
-    def validate_tags(products, user):
+    def validate_tags(products):
 
         subcategory_ids = set([product.get('subcat_id') for product in products])
         subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
