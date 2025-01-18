@@ -40,7 +40,9 @@ class SubCategory(models.Model):
     tags = ManyToManyField('Tag', related_name='subcategories')
     date_added = DateTimeField(auto_now=True)
     popularity_ratio = DecimalField(default=0.1, validators=[MaxValueValidator(1)])
-
+    three_day_threshold = PositiveIntegerField(null=False)
+    fourteen_day_threshold = PositiveIntegerField(null=False)
+    twenty_one_day_threshold = PositiveIntegerField(null=False)
 
 class Tag(models.Model):
     name = CharField(max_length=20, null=False, blank=False)
