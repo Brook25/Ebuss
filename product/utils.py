@@ -69,14 +69,15 @@ class PopularityCheck:
     def __calculate_purchase_percentage(self):
 
         all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values(
-                    'product__subcategory').annotate(total_purchase=Sum('amount'))
+                    'product__subcategory', 'popularity_ratio').annotate(total_purchase=Sum('amount'))
         
-        product_purchase_sums = self.__purchase_aggregates.values('product', 'amount').annotate(subcat_total=Subquery(
+        product_subcat_totals = self.__purchase_aggregates.values('product', 'amount').annotate(subcat_total=Subquery(
             all_subcategory_sums.filter(
                 product__subcategory=OuterRef(
-                    'product__subcategory'))).values('total_purchase')).filter(F('subcat_total') / Sum('amount') >= )
+                    'product__subcategory'))).values('total_purchase'))
         
-        popular = self.__purchase_aggregates.filter(F('popular_by_total_purchase') / all_product_agg >= ratio)
+        popular = product_subcat_totals.filter(
+                        F('subcat_total') / Sum('amount') >= F('product__subcategory__popularity_ratio'))
 
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
         return popular
