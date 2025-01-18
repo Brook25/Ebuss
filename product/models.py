@@ -39,6 +39,7 @@ class SubCategory(models.Model):
     category = ForeignKey('Category', on_delete=models.CASCADE, related_name='sub_categories')
     tags = ManyToManyField('Tag', related_name='subcategories')
     date_added = DateTimeField(auto_now=True)
+    popularity_ratio = DecimalField(default=0.1, validators=[MaxValueValidator(1)])
 
 
 class Tag(models.Model):

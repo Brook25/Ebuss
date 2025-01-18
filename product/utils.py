@@ -4,7 +4,7 @@ from functools import reduce
 from supplier.models import Metrics
 from .serializers import ProductSerializer
 from django.core.paginator import Paginator
-from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value, OuterRef)
+from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value, OuterRef, Subquery)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
 from collections import Counter
@@ -44,6 +44,7 @@ class PopularityCheck:
         exclude_populars = ~Q(pk__in=popular_list)
         
         self.subcats = subcats
+        self.purchase_ratio = kwargs.get('purchase_ratios', None)
         self.__all_products = metrics_data.filter(subcat_filter & product_filter &
                                                    quantity_filter & exclude_populars)
 
@@ -65,9 +66,16 @@ class PopularityCheck:
                                                              then=F('quantity')), default=0))
                            )
 
-    def __calculate_purchase_percentage(self, ratio):
+    def __calculate_purchase_percentage(self):
 
-        all_product_agg = self.__all_products.aggregate(sum=Sum('quantity'))['sum']
+        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values(
+                    'product__subcategory').annotate(total_purchase=Sum('amount'))
+        
+        product_purchase_sums = self.__purchase_aggregates.values('product', 'amount').annotate(subcat_total=Subquery(
+            all_subcategory_sums.filter(
+                product__subcategory=OuterRef(
+                    'product__subcategory'))).values('total_purchase')).filter(F('subcat_total') / Sum('amount') >= )
+        
         popular = self.__purchase_aggregates.filter(F('popular_by_total_purchase') / all_product_agg >= ratio)
 
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
