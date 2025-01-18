@@ -37,28 +37,11 @@ def do_popularity_check():
         subcat_check_order = [subcat['pk'] for subcat in subcat_check_order]
         pipeline.lpush('subcat_popularity_check', subcat_check_order[:19] + subcats_check_order[19:])
 
-    percentage_thresholds = pipeline.hmget('purchase_percentage_thresholds', *subcat_check_order[:19])
-    total_purchase_thresholds = pipeline.hmget('total_purchase_thresholds', *subcat_check_order[:19])
-    purchase_3drate_thresholds = pipeline.hmget('purchase_3drate_thresholds', *subcat_check_order[:19])
-    purhcase_14drate_thresholds = pipeline.hmget('purchase_14drate_thresholds', *subcat_check_order[:19])
-    purhcase_21drate_thresholds = pipeline.hmget('purchase_21drate_thresholds', *subcat_check_order[:19])
-    wishlist_thresholds = pipeline.hmget('wishlist_thresholds', *subcat_check_order[:19])
-    conversion_rate_thresholds = pipeline.hmget('conversion_rate_thresholds', *subcat_check_order[:19])
-    pipeline.execute()
-
-    popularity_thresholds = {
-            'percentage_thresholds': percentage_thresholds,
-                'total_purchase_thresholds': total_purchase_thresholds,
-                    'purchase_3drate_thresholds': purchase_3drate_thresholds,
-                        'purchase_14drate_thresholds': purchase_14drate_thresholds,
-                            'purchase_21drate_thresholds': purchase_21drate_thresholds,
-                                'wishlist_thresholds': wishlist_thresholds,
-                                    'conversion_rate_thresholds': conversion_rate_thresholds
-            }
+    pipeline.execute()   
 
     
-    subcats_tobe_checked = Metrics.objects.filter(product__subcategor__ypk__in=subcat_check_order)
-    popularity_check = PopularityCheck(subcats_tobe_checked, **popularity_thresholds)
+    subcats_tobe_checked = Metrics.objects.filter(product__subcategory__pk__in=subcat_check_order)
+    popularity_check = PopularityCheck(subcats_tobe_checked)
     popular = popularity_check.find_popular()
  
     if popular: # This is supposed to serialize the product and store it in redis
