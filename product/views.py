@@ -2,8 +2,9 @@ from datetime import (datetime, timedelta)
 from django_redis import get_redis_connection
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse 
+from django.http import JsonResponse
 from django.db.models import (Sum, Count) 
+from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -30,13 +31,13 @@ class ProductView(APIView):
         
         if path == 'my':
     
-            user_products = request.user.products.all().order_by('-date_added')
+            user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))
             user_products = paginate_queryset(user_products, request, ProductSerializer, 40)
             return Response(user_products.data,
                 status=status.HTTP_200_OK)
         
         if path == 'view':
-            product = Product.objects.filter(pk=index).first()
+            product = get_object_or_404(Product.objects.get(pk=index))
             # add an option to serializer description, other attrs will be added
             product = ProductSerializer(product)
 
