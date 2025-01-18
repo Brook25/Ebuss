@@ -164,7 +164,6 @@ class SearchEngine:
         self.__subcategory = kwargs.get('subcategories', None)
         self.__category  = kwargs.get('category', None)
         self.__tags = {k: v for k, v in kwargs.items() if k not in ['subcategory', 'category']}
-        print(self.__lemmatized_tokens)
     
     async def __search_token_to_subcategory(self, popularity='high'):
         """
@@ -188,17 +187,14 @@ class SearchEngine:
         related_subcats = TokenToSubCategory.objects.filter(token__in=self.__lemmatized_tokens).all().values('subcategories')
         related_subcats = [subcat['subcategories'] for subcat in related_subcats]
         related_subcats = list(reduce(lambda subcat1, subcat2: subcat1 + subcat2, related_subcats))
-        print(related_subcats)
         return related_subcats
 
 
     def get_subcats(self):
         count_related_subcats = Counter(self.related_subcats) 
         count_related_subcats = sorted(count_related_subcats.items(), key=lambda x: x[1], reverse=True)
-        print(count_related_subcats)
         most_related = [subcat for subcat, count in count_related_subcats if count >= 1/2 * len(self.__lemmatized_tokens)]
         most_related = SubCategory.objects.filter(name__in=most_related)
-        print(most_related)
         return most_related
 
 
@@ -227,7 +223,6 @@ class SearchEngine:
         )).annotate(overlap_len=Func(F('overlap'),
            function='CARDINALITY', output_field=IntegerField())).filter(
             overlap_len__gte=0.8*len(self.__lemmatized_tokens))
-        print(product_matches)
         paginate = Paginator(product_matches, 20)
         matched_products = paginate.page(self.__index).object_list
         products_serialized = ProductSerializer(matched_products, many=True)
