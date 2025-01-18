@@ -24,21 +24,6 @@ import json
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
 
-    @staticmethod
-    def validate_tags(products):
-
-        subcategory_ids = set([product.get('subcat_id') for product in products])
-        subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
-        subcategories = {subcat.id: subcat for subcat in subcategories}
-        for product in products:
-            subcat_id = product.get('subcategory_id')
-            subcategory = subcategories.get(subcat_id)
-            tags = set(product.get('tags').keys())
-            subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
-            if not tags.issubset(subcat_tags):
-                return False
-
-        return True
     
 
     def get(self, request, path, index, *args, **kwargs):
@@ -84,7 +69,7 @@ class ProductView(APIView):
         if path == 'my':
             product_data = request.data
             update_data = product_data.get('update_data')
-            validate_data = ProductSerializer(data=update_data, partial=True)
+            validate_data = ProductSerializer(data=update_data)
 
             if validate_data.is_valid():
 

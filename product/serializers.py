@@ -65,7 +65,28 @@ class ProductSerializer(serializers.ModelSerializer):
                 post_save(Product, product, reason, old_quantity)
 
         return product
+    
+    def validate(self, *args, **kwargs):
+        def validate_tags(products):
+            subcategory_ids = set([product.get('subcat_id') for product in products])
+            subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
+            subcategories = {subcat.id: subcat for subcat in subcategories}
+            for product in products:
+                subcat_id = product.get('subcategory_id')
+                subcategory = subcategories.get(subcat_id)
+                tags = set(product.get('tags').keys())
+                subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
+                if not tags.issubset(subcat_tags):
+                    return False
+            return True
+        
+        products = self.data.get('products', [])
+        if validate_tags(products):
+            return super().validate(*args, **kwargs)
+        return False
 
+    
+    
     def bulk_create(self, validated_data):
         
         with transaction.atomic():
@@ -75,6 +96,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
+        extra_kwargs = {'supplier': {'read_only': True},
+                        'subcategory': {'read_only': True}
+                        }
 
 
 class TagSerializer(serializers.ModelSerializer):

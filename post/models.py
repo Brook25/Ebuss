@@ -9,7 +9,7 @@ from shared.validators import check_vulgarity
 
 class Commentable(models.Model):
     text = TextField(validators=[check_vulgarity], null=False, blank=False)
-    timestamp = DateTimeField(auto_now_add=True)
+    created_at = DateTimeField(auto_now_add=True)
     likes = PositiveIntegerField(default=0)
     comments = PositiveIntegerField(default=0)
     views = PositiveIntegerField(default=0)

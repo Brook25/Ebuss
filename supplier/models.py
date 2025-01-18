@@ -14,7 +14,7 @@ class Metrics(models.Model):
 
 class Inventory(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='inventory_changes')
-    date = DateField(auto_now_add=True)
+    created_at = DateField(auto_now_add=True)
     adjustment = IntegerField(null=False, blank=False)
     quantity_before = PositiveIntegerField(null=False, blank=False)
     quantity_after = PositiveIntegerField(null=False, blank=False)
