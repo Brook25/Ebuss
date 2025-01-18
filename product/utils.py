@@ -3,6 +3,7 @@ from .models import (Product, SubCategory,
 from functools import reduce
 from supplier.models import Metrics
 from .serializers import ProductSerializer
+from shared.utils import paginate_queryset
 from django.core.paginator import Paginator
 from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case,
                                When, Count, OuterRef, Subquery)
@@ -144,7 +145,9 @@ class SearchEngine:
     spellchecker = None
     
     
-    def __init__(self, search_string, user, index, **kwargs):
+    def __init__(self, search_string, request, index, **kwargs):
+        
+        self.request = request
         
         if not SearchEngine.Lemmatizer:
             self.Lemmatizer = WordNetLemmatizer()
@@ -156,7 +159,7 @@ class SearchEngine:
             self.nltk_wordnet_downloaded = True
         if not self.StopWords:
             self.StopWords = nltk.corpus.stopwords.words('english')
-            
+        
         
         search_tokens = [token for token in search_string.split(' ') if token not in SearchEngine.StopWords]
         self.__lemmatized_tokens = [self.Lemmatizer.lemmatize(word) for word in search_tokens]
@@ -223,10 +226,8 @@ class SearchEngine:
         )).annotate(overlap_len=Func(F('overlap'),
            function='CARDINALITY', output_field=IntegerField())).filter(
             overlap_len__gte=0.8*len(self.__lemmatized_tokens))
-        paginate = Paginator(product_matches, 20)
-        matched_products = paginate.page(self.__index).object_list
-        products_serialized = ProductSerializer(matched_products, many=True)
-        return products_serialized.data
+        products = paginate_queryset(product_matches, self.request, ProductSerializer, 40)
+        return products.data
 
     @property
     async def specified_search(self):
