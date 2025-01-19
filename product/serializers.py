@@ -38,33 +38,39 @@ class ProductSerializer(serializers.ModelSerializer):
         self.Meta.fields = fields[:-1] if simple else fields
         super.__init__(*args, **kwargs)
 
-
     def create(self, validated_data):
         with transaction.atomic():
             product = Product.objects.create(**validated_data)
             post_save(Product, product, '', 0, 0)
 
-    def update(self, product_data):
+    def update(self, **kwargs):
         
         with transaction.atomic():
-            product_id = product_data.get('product_id')
-            product = Product.objects.select_for_update.get(pk=product_id)
+            product_id = self.data.pop('id', None)
+            product = Product.objects.select_for_update.filter(pk=product_id).first()
             old_quantity = product.quantity
-            new_quantity = product_data.pop('quantity', old_quantity)
-
-            for k, v in product_data.items():
-                setattr(product, k, v)
+            new_quantity = self.validated_data['quantity']
+            inventory_update = kwargs.get('update_inventory', False)
+            tag_change = kwargs.get('tag_change', False)
+            exclude_fields = ['id', 'subcategory', 'supplier']
+            
+            if tag_change:
+                exclude_fields += ['tags', 'tag_values']
+            
+            for k, v in self.validated_data.items():
+                if k not in exclude_fields:
+                    setattr(product, k, v)
             product.save()
 
-            inventory_update = product_data.get('update_inventory', False)
+            
             if inventory_update and new_quantity != old_quantity:
                 product.quantity = new_quantity
-                reason = product_data.get('reason', None)
+                reason = self.validated_data.get('reason', None)
                 product.save()
                 post_save(Product, product, reason, old_quantity)
 
         return product
-    
+
     def validate(self, *args, **kwargs):
         def validate_tags(products):
             subcategory_ids = set([product.get('subcat_id') for product in products])
@@ -77,13 +83,12 @@ class ProductSerializer(serializers.ModelSerializer):
                 if not product_tags.issubset(sc_tags):
                     return False
             return True
-        
+
         products = self.data.get('products', [])
         if validate_tags(products):
             return super().validate(*args, **kwargs)
         return False
 
-    
     def bulk_create(self, validated_data):
 
         with transaction.atomic():
