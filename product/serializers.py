@@ -61,8 +61,7 @@ class ProductSerializer(serializers.ModelSerializer):
                 if k not in exclude_fields:
                     setattr(product, k, v)
             product.save()
-
-            
+        
             if inventory_update and new_quantity != old_quantity:
                 product.quantity = new_quantity
                 reason = self.validated_data.get('reason', None)
@@ -103,7 +102,6 @@ class ProductSerializer(serializers.ModelSerializer):
         extra_kwargs = {'supplier': {'read_only': True},
                         'subcategory': {'read_only': True}
                         }
-
 
 class TagSerializer(serializers.ModelSerializer):
 
