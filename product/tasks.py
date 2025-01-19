@@ -22,7 +22,7 @@ def do_popularity_check():
     #+ timeframes
     #+ the last one is for conversion arguements that we will get from redis
     # certain elements of the list should be removed based on timestamp
-        
+
     pipeline = redis_client.pipeline()
 
     if redis_client.exists('subcat_popularity_check'):
@@ -37,7 +37,7 @@ def do_popularity_check():
         subcat_check_order = [subcat['pk'] for subcat in subcat_check_order]
         pipeline.lpush('subcat_popularity_check', subcat_check_order[:19] + subcats_check_order[19:])
 
-    pipeline.execute()   
+    pipeline.execute()
 
     
     subcats_tobe_checked = Metrics.objects.filter(product__subcategory__pk__in=subcat_check_order)

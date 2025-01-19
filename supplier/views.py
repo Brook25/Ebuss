@@ -10,8 +10,10 @@ from order import (SingleProductOrder, CartOrder)
 from order.serializers import (SingleProductOrderSerializer, CartOrderSerializer)
 from user.serializers import UserSerializer
 from permisions.supplier_permissions import IsSupplier
+from product.models import Product
 from product.serializers import ProductSerializer
 from .serializers import InventorySerializer
+from user.models import User
 # Create your views here.
 
 class DashBoardHome(APIView):
