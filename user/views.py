@@ -1,12 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.shortcuts import render
+from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.conf.auth import authenticate
 from django.core.paginator import Paginator
 from django.core.cache import cache
+from django.db.models import Prefetch
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from order.models import (CartOrder, SingleProductOrder)
@@ -33,7 +34,8 @@ class NotificationView(APIView):
        
         curr_date = datetime.now()
         page_until = curr_date - timedelta(days=30)
-        notifications = paginate_queryset(Notification.objects.filter(user=request.user, created_at__gte=page_until).all(), request, 20, NotificationSerializer)
+        notifications = get_list_or_404(Notification.objects.filter(user=request.user, created_at__gte=page_until).all())
+        notifications = paginate_queryset(notifications, request, 20, NotificationSerializer)
         
         return Response(notifications.data, status=status.HTTP_200_OK)
 
@@ -45,10 +47,10 @@ class HistoryView(APIView):
         
         products = Product.objects.only('id', 'name')
         cartOrders = CartOrder.objects.filter(user=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
-        cartOrders = paginate_queryset(cartorders, request, 20, CartOrderSerializer)
+        cartOrders = paginate_queryset(cartOrders, request, 20, CartOrderSerializer)
         
         singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-date').select_related('product')
-        serialized_singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
+        singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
         
         return Response({ 'singleProductOrders': singleProductOrders,
                                 'Cartorders': cartOrders },
@@ -60,7 +62,7 @@ class WishListView(APIView):
     
     def get(self, request, *args, **kwargs):
         try:
-            wishlist = Wishlist.objects.get(user=request.user))
+            wishlist = get_object_or_404(Wishlist, created_by=request.user)
             serialized_data = WishListSerializer(wishlist)
             return Response(serialized_data.data, status=status.HTTP_200_OK)
         except Wishlist.DoesNotExist:
@@ -73,8 +75,8 @@ class WishListView(APIView):
             wishlist_data = request.data.get('wishlist', {})
             product_id = wishlist_data.get('product_id', None)
             if product_id:
-                product = Product.objects.filter(pk=product_id).first()
-                wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=user).prefetch_related('product')
+                product = get_object_or_404(Product, pk=product_id)
+                wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=request.user).prefetch_related('product')
                 if product not in wishlist_obj.product.all():
                     wishlist_obj.product.add(product)
                 
@@ -83,18 +85,17 @@ class WishListView(APIView):
                     'wishlist succefully updated'
                     },
                     status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    'message':
-                    'wishlist not succefully updated, product not found'
-                    },
-                    status=501)
+            return Response({
+                'message':
+                'wishlist not succefully updated, product not found'
+                },
+            status=status.HTTP_404_PAGE_NOT_FOUND)
         
         except json.JSONDecodeError as e:
                 return Response({
                     'message': 'wishlist not succefully updated'
                     },
-                    status=501)
+                    status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
     def delete(self, request, *args, **kwargs):
