@@ -51,12 +51,11 @@ class ProductSerializer(serializers.ModelSerializer):
             product = Product.objects.select_for_update.get(pk=product_id)
             old_quantity = product.quantity
             new_quantity = product_data.pop('quantity', old_quantity)
-     
 
             for k, v in product_data.items():
                 setattr(product, k, v)
             product.save()
-            
+
             inventory_update = product_data.get('update_inventory', False)
             if inventory_update and new_quantity != old_quantity:
                 product.quantity = new_quantity
@@ -85,13 +84,14 @@ class ProductSerializer(serializers.ModelSerializer):
         return False
 
     
-    
     def bulk_create(self, validated_data):
-        
-        with transaction.atomic():
-            product_objs = [Product(**product_data) for product_data in validated_data]
-            post_save(Product, product_objs, '', 0, 0, many=True)
 
+        with transaction.atomic():
+            try:
+                product_objs = [Product(**product_data) for product_data in validated_data]
+                post_save(Product, product_objs, '', 0, 0, many=True)
+            except Exception as e:
+                return str(e)
 
     class Meta:
         model = Product

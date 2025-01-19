@@ -25,8 +25,6 @@ import json
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
 
-    
-
     def get(self, request, path, index, *args, **kwargs):
         
         if path == 'my':
