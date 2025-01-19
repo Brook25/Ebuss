@@ -30,7 +30,7 @@ class ProductView(APIView):
     def get(self, request, path, index, *args, **kwargs):
         
         if path == 'my':
-    
+
             user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))
             user_products = paginate_queryset(user_products, request, ProductSerializer, 40)
             return Response(user_products.data,
@@ -84,13 +84,10 @@ class ProductView(APIView):
         product_id = product_data.get('product_id', None)
 
         if product_id:
-            product = Product.objects.filter(pk=product_id).first()
-            
-            if product:
-                product.delete()
-                return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
-        return Response({'message': 'Product not deleted'}, status=status.HTTP_400_BAD_REQUEST)
-
+            product = get_object_or_404(Product, pk=product_id)
+            product.delete()
+            return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+        
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(View):
