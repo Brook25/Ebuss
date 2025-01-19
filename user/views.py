@@ -98,21 +98,20 @@ class WishListView(APIView):
                     status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
-    def delete(self, request, *args, **kwargs):
-        data = json.data
-        product_id = data.get('product_id', None)
-        if not product_id:
-            user.wishlist_for.delete()
+    def delete(self, request, type, *args, **kwargs):
+
+        product_id = json.data.get('product_id', None)
+        if not product_id and type == 'c':
+            request.user.wishlist_for.delete()
             return Response({
                 'message':
                     'wishlist successfully deleted.'
                 }, 
                 status=status.HTTP_200_OK)
-        else:
+        elif type == 'p':
             product = Product.objects.filter(pk=product_id).first()
-            user.wishlist_for.product.remove(product)
+            request.user.wishlist_for.product.remove(product)
             
-
             return Response({
                 'product_id': product.id,
                 'message':
@@ -124,7 +123,7 @@ class WishListView(APIView):
             'message':
                 'Action not succefully completed.'
             },
-            status=501)
+            status=status.HTTP_400_PAGE_NOT_FOUND)
 
         
 
@@ -146,8 +145,9 @@ class Recent(APIView):
     def post(self, request, *args, **kwargs):
         try:
             newly_viewed = json.data
+            username = request.user.username
             if newly_viewed and isinstance(newly_viewed, list):
-                recently_viewed = json.loads(cache.get(request.user__username + ':recently_viewed'))
+                recently_viewed = json.loads(cache.get(username + ':recently_viewed'))
                 if 0 < len(newly_viewed) < 25:
                     range_to_stay = recently_viewed[:25 - len(newly_viewed)]
                     updated_recently_viewed = newly_viewed + range_to_stay
@@ -174,7 +174,7 @@ class Recent(APIView):
                     }, status=400)
                         
         except json.JSONDecodeError as e:
-            return Response({'message': str(e)}, status=HTTP_400_NAD_REQUEST)
+            return Response({'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -182,8 +182,7 @@ class Subscriptions(APIView):
 
     def get(self, request, index, *args, **kwargs):
         
-        user = User.objects.filter(user=request.user).first()
-        subs = user.subscriptions.all()
+        subs = get_list_or_404(request.user.subscriptions.all())
         serialized_subs = paginate_queryset(subs, request, 30, UserSerializer)
  
         if serialized_subs:
@@ -199,14 +198,13 @@ class Subscriptions(APIView):
     def post(self, request, *args, **kwargs):
         
         data = json.loads(request.body) or {}
-        sub = data.get('subscription', None)
-        if sub and isinstance(sub, int):
-            subscribed_to = User.objects.filter(pk=sub).first()
-        if subscribed_to:
+        sub_id = data.get('subscription', None)
+        if isinstance(sub_id, int):
+            subscribed_to = get_object_or_404(User, pk=sub_id)
             request.user.subscriptions.add(subscribed_to)
-            return Response({'message': 'subscription succsefully added'}, status=HTTP_200_OK)
-        else:
-            return JsonResponse(data={'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
+            return Response({'message': 'subscription succsefully added'}, status=status.HTTP_200_OK)
+        
+        return Response({'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
         
