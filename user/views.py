@@ -46,10 +46,13 @@ class HistoryView(APIView):
     def get(self, request, index, *args, **kwargs):
         
         products = Product.objects.only('id', 'name')
-        cartOrders = CartOrder.objects.filter(user=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
+        cartOrders = get_list_or_404(CartOrder.objects.filter(
+            user=request.user).order_by('-date').prefetch_related(
+                Prefetch('product', queryset=products)))
         cartOrders = paginate_queryset(cartOrders, request, 20, CartOrderSerializer)
         
-        singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-date').select_related('product')
+        singleProductOrders = get_list_or_404(SingleProductOrder.objects.filter(
+            user=request.user).order_by('-date').select_related('product'))
         singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
         
         return Response({ 'singleProductOrders': singleProductOrders,
@@ -123,7 +126,6 @@ class WishListView(APIView):
             },
             status=status.HTTP_400_PAGE_NOT_FOUND)
 
-        
 
 class Recommendations(APIView):
 
