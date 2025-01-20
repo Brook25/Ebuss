@@ -61,12 +61,10 @@ class HistoryView(APIView):
 class WishListView(APIView):
     
     def get(self, request, *args, **kwargs):
-        try:
-            wishlist = get_object_or_404(Wishlist, created_by=request.user)
-            serialized_data = WishListSerializer(wishlist)
-            return Response(serialized_data.data, status=status.HTTP_200_OK)
-        except Wishlist.DoesNotExist:
-            return Response({ 'error': 'couldn\'t load wishlist'}, status=404)
+        
+        wishlist = get_object_or_404(Wishlist, created_by=request.user)
+        serialized_data = WishListSerializer(wishlist)
+        return Response(serialized_data.data, status=status.HTTP_200_OK)
 
     
     def post(self, request, *args, **kwargs):
