@@ -38,7 +38,6 @@ def do_popularity_check():
         pipeline.lpush('subcat_popularity_check', subcat_check_order[:19] + subcats_check_order[19:])
 
     pipeline.execute()
-
     
     subcats_tobe_checked = Metrics.objects.filter(product__subcategory__pk__in=subcat_check_order)
     popularity_check = PopularityCheck(subcats_tobe_checked, popular_list=popular_list)

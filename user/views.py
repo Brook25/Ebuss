@@ -196,9 +196,8 @@ class Subscriptions(APIView):
 
 
     def post(self, request, *args, **kwargs):
-        
-        data = json.loads(request.body) or {}
-        sub_id = data.get('subscription', None)
+
+        sub_id = json.data.get('subscription', None)
         if isinstance(sub_id, int):
             subscribed_to = get_object_or_404(User, pk=sub_id)
             request.user.subscriptions.add(subscribed_to)
@@ -206,8 +205,6 @@ class Subscriptions(APIView):
         
         return Response({'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
-
-        
 
 class Settings(APIView):
 
