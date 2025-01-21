@@ -17,7 +17,7 @@ from .serializers import (ProductSerializer, CategorySerializer, SubCategorySeri
 from supplier.models import Metrics
 from .utils import SearchEngine
 from .tasks import do_popularity_check
-from utils import paginate_queryset
+from shared.utils import paginate_queryset
 import json
 # Create your views here.
 
@@ -57,7 +57,7 @@ class ProductView(APIView):
             validate_product_data = ProductSerializer(data=products, many=True)
             if validate_product_data.is_valid():
                 created = validate_product_data.bulk_create(products) 
-                return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
+                return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 

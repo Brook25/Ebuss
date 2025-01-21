@@ -39,12 +39,12 @@ class SubCategory(models.Model):
     category = ForeignKey('Category', on_delete=models.CASCADE, related_name='sub_categories')
     tags = ManyToManyField('Tag', related_name='subcategories')
     created_at = DateTimeField(auto_now=True)
-    popularity_ratio = DecimalField(default=0.1, validators=[MaxValueValidator(1)])
+    popularity_ratio = DecimalField(default=0.1, validators=[MaxValueValidator(1)], decimal_places=1, max_digits=2)
     three_day_threshold = PositiveIntegerField(null=False)
     fourteen_day_threshold = PositiveIntegerField(null=False)
     twenty_one_day_threshold = PositiveIntegerField(null=False)
     wishlist_threshold = PositiveIntegerField(null=False)
-    conversion_reate_threshold = PositiveIntegerField(null=False)
+    conversion_rate_threshold = PositiveIntegerField(null=False)
     rating_threshold = PositiveIntegerField(null=False)
 
 class Tag(models.Model):

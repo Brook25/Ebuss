@@ -6,10 +6,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from shared.utils import paginate_queryset
 from .metrics import ProductMetrics
-from order import (SingleProductOrder, CartOrder)
+from order.models import (SingleProductOrder, CartOrder)
 from order.serializers import (SingleProductOrderSerializer, CartOrderSerializer)
 from user.serializers import UserSerializer
-from permisions.supplier_permissions import IsSupplier
+from .permissions.supplier_permissions import IsSupplier
 from product.models import Product
 from product.serializers import ProductSerializer
 from .serializers import InventorySerializer
@@ -45,7 +45,7 @@ class DashBoardHome(APIView):
                 'quarterly_metrics': quarterly_metrics,
                 'subscribers': subscriber_data
                }
-        return Response(data, status.200_HTTP_OK)
+        return Response(data, status.HTTP_200_OK)
 
 class DashBoardDate(APIView):
     
@@ -69,7 +69,7 @@ class DashBoardDate(APIView):
             product = request.GET.get('product')
             metric_data = metric_obj.popularity_metric(product)
 
-        return Response(metric_data, status=status.200_HTTP_OK)
+        return Response(metric_data, status=status.HTTP_200_OK)
         
 
 
@@ -81,7 +81,7 @@ class Store(APIView):
         
         products = Product.objects.filter(supplier=request.user, quantity__gt=0).order_by('-date_added')
         paginated_products = paginate_queryset(products, request, ProductSerializer, 60)
-        return Response(paginated_products, status=status.200_HTTP_OK)
+        return Response(paginated_products, status=status.HTTP_200_OK)
 
 
 
@@ -93,4 +93,4 @@ class Inventory(APIView):
         
         inventory = Inventory.objects.filter(product__supplier=request.user).order_by('-date')
         paginated_inventory = paginate_queryset(inventory, request, InventorySerializer, 100)
-        return Response(paginated_inventory, status=status.200_HTTP_OK)
+        return Response(paginated_inventory, status=status.HTTP_200_OK)

@@ -24,15 +24,15 @@ class MetricSerializer(BaseSerializer):
         return { 'order_id': obj.order.id }
 
 class AnnotatedMetricSerializer(MetricSerializer):
-    month = serializers.PositiveIntegerField()
-    count = serializers.PositiveIntegerField()
-    total_purchases = serializers.PositiveIntegerField()
+    month = serializers.IntegerField(min_value=1)
+    count = serializers.IntegerField(min_value=1)
+    total_purchases = serializers.IntegerField(min_value=1)
 
     class Meta(MetricSerializer):
         fields = MetricSerializer.Meta.fields + ['month', 'count', 'total_purchases']
 
 
-class InventorySerialzer(BaseSerializer):
+class InventorySerializer(BaseSerializer):
     product = serializers.SerializerMethodField()
     
     class Meta:

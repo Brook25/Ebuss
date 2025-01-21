@@ -36,7 +36,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'supplier', 'description']
         simple = kwargs.get('simple', False)
         self.Meta.fields = fields[:-1] if simple else fields
-        super.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def create(self, validated_data):
         with transaction.atomic():

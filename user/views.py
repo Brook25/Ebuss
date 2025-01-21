@@ -4,7 +4,6 @@ from rest_framework import status
 from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
-from django.conf.auth import authenticate
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.db.models import Prefetch
@@ -17,7 +16,6 @@ from shared.utils import paginate_queryset
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)
-from utils import (generate_access_token, generate_refresh_token)
 from order.serializers import (CartOrderSerializer, SingleProductOrderSerializer)
 from datetime import datetime, timedelta
 import json

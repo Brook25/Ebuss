@@ -66,9 +66,8 @@ MIDDLEWARE = [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
-# add this middleware at the end
-#'appstore.settings.middlewares.LogCountryMiddlware'
-
+    # add the middleware next to the list of middlewares
+    #+ 'appstore.settings.middlewares.LogCountryMiddlware'
 
 INTERNAL_IPS = [
         '127.0.0.1',
