@@ -25,6 +25,13 @@ from utils import SetupObjects
 # Create your views here.
 
 
+class HomeView(APIView):
+
+    permission_classes = [AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        pass
+
 
 
 class NotificationView(APIView):
