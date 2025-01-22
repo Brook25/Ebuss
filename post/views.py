@@ -10,9 +10,9 @@ from datetime import datetime
 from .signals import increment_no_comments
 from .serializers import PostSerializer
 from rest_framework.response import Response
-from rest_framwork.status import status
+from rest_framework import status
 import json
-from utils import paginate_queryset
+from shared.utils import paginate_queryset
 # Create your views here.
 
 class News(View):

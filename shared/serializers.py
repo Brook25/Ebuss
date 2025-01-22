@@ -9,6 +9,9 @@ from rest_framework import serializers
 
 class BaseSerializer(serializers.ModelSerializer):
 
+    id = serializers.IntegerField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
     def create(self, **kwargs):
         self.Meta.model.create(self.validated_data)
     
@@ -21,4 +24,3 @@ class BaseSerializer(serializers.ModelSerializer):
     def bulk_create(self, kwargs):
         model = self.Meta.model
         return model.bulk_create(model(**data) for data in self.validated_data)
-        

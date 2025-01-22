@@ -2,8 +2,9 @@ from datetime import (datetime, timedelta)
 from django_redis import get_redis_connection
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse 
+from django.http import JsonResponse
 from django.db.models import (Sum, Count) 
+from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,13 +12,12 @@ from rest_framework import status
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
-from .signals import (post_save, post_delete, post_update)
 from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
 from supplier.models import Metrics
 from .utils import SearchEngine
 from .tasks import do_popularity_check
-from utils import paginate_queryset
+from shared.utils import paginate_queryset
 import json
 # Create your views here.
 
@@ -25,34 +25,17 @@ import json
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
 
-    @staticmethod
-    def validate_tags(products, user):
-
-        subcategory_ids = set([product.get('subcat_id') for product in products])
-        subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
-        subcategories = {subcat.id: subcat for subcat in subcategories}
-        for product in products:
-            subcat_id = product.get('subcategory_id')
-            subcategory = subcategories.get(subcat_id)
-            tags = set(product.get('tags').keys())
-            subcat_tags = set([name for name, in subcategory.tags.all().values_list('name')])
-            if not tags.issubset(subcat_tags):
-                return False
-
-        return True
-    
-
     def get(self, request, path, index, *args, **kwargs):
         
         if path == 'my':
-    
-            user_products = request.user.products.all().order_by('-date_added')
+
+            user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))
             user_products = paginate_queryset(user_products, request, ProductSerializer, 40)
             return Response(user_products.data,
                 status=status.HTTP_200_OK)
         
         if path == 'view':
-            product = Product.objects.filter(pk=index).first()
+            product = get_object_or_404(Product.objects.get(pk=index))
             # add an option to serializer description, other attrs will be added
             product = ProductSerializer(product)
 
@@ -71,12 +54,10 @@ class ProductView(APIView):
         if path == 'my':
             product_data = request.data
             products = product_data.get('products', [])
-            if products and ProductView.validate_tags(products, request.user):
-
-                validate_product_data = ProductSerializer(data=products, many=True)
-                if validate_product_data.is_valid():
-                    created = validate_product_data.bulk_create(products) 
-                    return Response({'message': 'product successfully added.'}, status=status.200_HTTP_OK)
+            validate_product_data = ProductSerializer(data=products, many=True)
+            if validate_product_data.is_valid():
+                created = validate_product_data.bulk_create(products) 
+                return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 
@@ -85,7 +66,7 @@ class ProductView(APIView):
         if path == 'my':
             product_data = request.data
             update_data = product_data.get('update_data')
-            validate_data = ProductSerializer(data=update_data, partial=True)
+            validate_data = ProductSerializer(data=update_data)
 
             if validate_data.is_valid():
 
@@ -101,13 +82,10 @@ class ProductView(APIView):
         product_id = product_data.get('product_id', None)
 
         if product_id:
-            product = Product.objects.filter(pk=product_id).first()
-            
-            if product:
-                product.delete()
-                return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
-        return Response({'message': 'Product not deleted'}, status=status.HTTP_400_BAD_REQUEST)
-
+            product = get_object_or_404(Product, pk=product_id)
+            product.delete()
+            return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+        
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(View):

@@ -3,8 +3,10 @@ from .models import (Product, SubCategory,
 from functools import reduce
 from supplier.models import Metrics
 from .serializers import ProductSerializer
+from shared.utils import paginate_queryset
 from django.core.paginator import Paginator
-from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case, When, Count, Value, OuterRef)
+from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case,
+                               When, Count, OuterRef, Subquery)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
 from collections import Counter
@@ -44,6 +46,7 @@ class PopularityCheck:
         exclude_populars = ~Q(pk__in=popular_list)
         
         self.subcats = subcats
+        self.purchase_ratio = kwargs.get('purchase_ratios', None)
         self.__all_products = metrics_data.filter(subcat_filter & product_filter &
                                                    quantity_filter & exclude_populars)
 
@@ -65,19 +68,27 @@ class PopularityCheck:
                                                              then=F('quantity')), default=0))
                            )
 
-    def __calculate_purchase_percentage(self, ratio):
+    def __calculate_purchase_percentage(self):
 
-        all_product_agg = self.__all_products.aggregate(sum=Sum('quantity'))['sum']
-        popular = self.__purchase_aggregates.filter(F('popular_by_total_purchase') / all_product_agg >= ratio)
+        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory').annotate(
+            total_purchase=Sum('amount'))
+        
+        product_subcat_totals = self.__purchase_aggregates.values('product', 'amount').annotate(product_total= Sum('amount'), subcat_total=Subquery(
+            all_subcategory_sums.filter(
+                product__subcategory=OuterRef(
+                    'product__subcategory'))).values('total_purchase')[:1])
+        
+        popular = product_subcat_totals.filter(
+                        F('subcat_total') / F('product_total') >= F('product__subcategory__popularity_ratio'))
 
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
         return popular
     
     def __calculate_purchase_rate(self):
 
-        three_day_popular = Q(three_d_purchase__gte=Value(self.three_d_thresholds.get(F('product__subcateogry__id'))))
-        fourteen_day_popular = Q(fourteen_d_purchase__gte=Value(self.fourteen_d_threshold.get(F('product__subcategory__id'))))
-        twentyone_day_popular = Q(twentyone_d_purchase__gte=Value(self.twentyone_d_threshold.get(F('product__subcategory__id'))))
+        three_day_popular = Q(three_d_purchase__gte=F('product__subcategory__three_day_threshold'))
+        fourteen_day_popular = Q(fourteen_d_purchase__gte=F('product__subcategory__fourteenday_threshold'))
+        twentyone_day_popular = Q(twentyone_d_purchase__gte=F('product__subcategory__twentyoneday_threshold'))
         is_popular = Q(three_day_popular | fourteen_day_popular | twentyone_day_popular)
             
         popular = self.__purchase_aggregates.filter(is_popular)
@@ -87,9 +98,9 @@ class PopularityCheck:
 
     def __calculate_wishlist(self, **kwargs):
 
-        wishlist_threshold = kwargs.get('wishlist_threshold', 0)
         popular = self.__purchase_aggregates.annotate(
-            wishlist_total=Count('product__wishlist_in')).filter(wishlist_total__gte=wishlist_threshold)
+            wishlist_total=Count('product__wishlist_in')).filter(
+                wishlist_total__gte=F('product__subcategory__wishlist_threshold'))
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
@@ -97,8 +108,8 @@ class PopularityCheck:
     
     def __calculate_conversion_rate(self, **kwargs):
 
-        threshold = kwargs.get('conversion_threshold', 0)
-        popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs') >= threshold)
+        popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs')
+                                                     >= F('product__subcategory_conversion_threshold'))
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
         return popular
@@ -106,8 +117,8 @@ class PopularityCheck:
     def __calculate_reviews(self, **kwargs):
 
         purchase_threshold = kwargs.get('purchase_thresholds', 100)
-        rating_threshold = kwargs.get('rating_threshold', 4)
-        popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, rating__gte=rating_threshold)
+        popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, 
+                                                    rating__gte=F('product__subcategory__rating_threshold'))
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
@@ -134,7 +145,9 @@ class SearchEngine:
     spellchecker = None
     
     
-    def __init__(self, search_string, user, index, **kwargs):
+    def __init__(self, search_string, request, index, **kwargs):
+        
+        self.request = request
         
         if not SearchEngine.Lemmatizer:
             self.Lemmatizer = WordNetLemmatizer()
@@ -146,7 +159,7 @@ class SearchEngine:
             self.nltk_wordnet_downloaded = True
         if not self.StopWords:
             self.StopWords = nltk.corpus.stopwords.words('english')
-            
+        
         
         search_tokens = [token for token in search_string.split(' ') if token not in SearchEngine.StopWords]
         self.__lemmatized_tokens = [self.Lemmatizer.lemmatize(word) for word in search_tokens]
@@ -154,7 +167,6 @@ class SearchEngine:
         self.__subcategory = kwargs.get('subcategories', None)
         self.__category  = kwargs.get('category', None)
         self.__tags = {k: v for k, v in kwargs.items() if k not in ['subcategory', 'category']}
-        print(self.__lemmatized_tokens)
     
     async def __search_token_to_subcategory(self, popularity='high'):
         """
@@ -178,17 +190,14 @@ class SearchEngine:
         related_subcats = TokenToSubCategory.objects.filter(token__in=self.__lemmatized_tokens).all().values('subcategories')
         related_subcats = [subcat['subcategories'] for subcat in related_subcats]
         related_subcats = list(reduce(lambda subcat1, subcat2: subcat1 + subcat2, related_subcats))
-        print(related_subcats)
         return related_subcats
 
 
     def get_subcats(self):
         count_related_subcats = Counter(self.related_subcats) 
         count_related_subcats = sorted(count_related_subcats.items(), key=lambda x: x[1], reverse=True)
-        print(count_related_subcats)
         most_related = [subcat for subcat, count in count_related_subcats if count >= 1/2 * len(self.__lemmatized_tokens)]
         most_related = SubCategory.objects.filter(name__in=most_related)
-        print(most_related)
         return most_related
 
 
@@ -217,11 +226,8 @@ class SearchEngine:
         )).annotate(overlap_len=Func(F('overlap'),
            function='CARDINALITY', output_field=IntegerField())).filter(
             overlap_len__gte=0.8*len(self.__lemmatized_tokens))
-        print(product_matches)
-        paginate = Paginator(product_matches, 20)
-        matched_products = paginate.page(self.__index).object_list
-        products_serialized = ProductSerializer(matched_products, many=True)
-        return products_serialized.data
+        products = paginate_queryset(product_matches, self.request, ProductSerializer, 40)
+        return products.data
 
     @property
     async def specified_search(self):

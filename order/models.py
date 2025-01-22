@@ -19,7 +19,7 @@ STATUS_TYPES = (
 
 
 class Order(models.Model):
-    date = DateTimeField(default=datetime.now)
+    created_at = DateTimeField(default=datetime.now)
     order_status = CharField(max_length=30, default='pending')
    
     class Meta:
@@ -91,5 +91,5 @@ class ShipmentInfo(Shipment):
 class Payment(models.Model):
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='payments')
     amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
-    date = DateTimeField(auto_now=True)
+    created_at = DateTimeField(auto_now=True)
     status = CharField(max_length=30, choices=STATUS_TYPES)

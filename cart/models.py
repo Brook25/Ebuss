@@ -9,7 +9,7 @@ from django.db.models import (
 class Cart(models.Model):
     name = CharField(max_length=40, validators=[check_vulgarity], null=False, blank=False)
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='carts')
-    timestamp = DateTimeField(auto_now=True)
+    created_at = DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('name', 'user')
@@ -22,6 +22,7 @@ class CartData(models.Model):
     cart = ForeignKey('Cart', related_name='cart_data_for', on_delete=models.CASCADE)
     product = ForeignKey('product.Product', related_name='product_data_for', on_delete=models.DO_NOTHING)
     quantity = PositiveIntegerField(default=1)
+    created_at = DateTimeField(auto_now=True)
 
     def __repr__(self):
         return '<CartData> {}'.format(self.__dict__)

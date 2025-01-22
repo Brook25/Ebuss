@@ -1,6 +1,8 @@
+from django.contrib.auth import authenticate
 from django.shortcuts import render
 import jwt
 from django.conf import settings
+from rest_framework.views import APIView
 # Create your views here.
 
 class RegisterView(APIView):

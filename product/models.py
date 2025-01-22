@@ -19,7 +19,7 @@ class Product(models.Model):
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='products')
     price = DecimalField(max_digits=11, decimal_places=2, null=False, blank=False, validators=[MinValueValidator(20)])
     sub_category = ForeignKey('SubCategory', on_delete=models.CASCADE, related_name='products')
-    date_added = DateField(auto_now_add=True)
+    created_at = DateField(auto_now_add=True)
     quantity = PositiveIntegerField(blank=False)
     tags = JSONField(default=dict, blank=True)
     tag_values = ArrayField(CharField(max_length=50))  # Don't forget to add the product name in there
@@ -32,14 +32,20 @@ class Product(models.Model):
 
 class Category(models.Model):
     name = CharField(max_length=30, null=False, blank=False, unique=True)
-    date_added = DateTimeField(auto_now=True)
+    created_at = DateTimeField(auto_now=True)
 
 class SubCategory(models.Model):
     name = CharField(max_length=30, null=False, blank=False, unique=True)
     category = ForeignKey('Category', on_delete=models.CASCADE, related_name='sub_categories')
     tags = ManyToManyField('Tag', related_name='subcategories')
-    date_added = DateTimeField(auto_now=True)
-
+    created_at = DateTimeField(auto_now=True)
+    popularity_ratio = DecimalField(default=0.1, validators=[MaxValueValidator(1)], decimal_places=1, max_digits=2)
+    three_day_threshold = PositiveIntegerField(null=False)
+    fourteen_day_threshold = PositiveIntegerField(null=False)
+    twenty_one_day_threshold = PositiveIntegerField(null=False)
+    wishlist_threshold = PositiveIntegerField(null=False)
+    conversion_rate_threshold = PositiveIntegerField(null=False)
+    rating_threshold = PositiveIntegerField(null=False)
 
 class Tag(models.Model):
     name = CharField(max_length=20, null=False, blank=False)
@@ -62,7 +68,7 @@ class Review(models.Model):
     product = ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
     review = TextField(validators=[check_vulgarity, MinLengthValidator(1)], null=True)
     rating = PositiveIntegerField(null=True)
-    timestamp = DateTimeField(auto_now_add=True)
+    created_at = DateTimeField(auto_now_add=True)
 
     def validate_review_rating(self):
         if not (self.review and self.rating):
