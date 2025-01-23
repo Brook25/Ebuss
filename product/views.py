@@ -26,7 +26,8 @@ import json
 class ProductView(APIView):
 
     def get(self, request, path, index, *args, **kwargs):
-        
+       
+        print('Hello')
         if path == 'my':
 
             user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))
@@ -46,7 +47,6 @@ class ProductView(APIView):
             products = Product.objects.all()
             # add an option to serializer description, other attrs will be added
             products = paginate_queryset(products, request, ProductSerializer, 300)
-
             return Response(products.data, status=status.HTTP_200_OK)
 
     def post(self, request, path, *args, **kwargs):
@@ -88,7 +88,7 @@ class ProductView(APIView):
         
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CategoryView(View):
+class CategoryView(APIView):
 
     def get(self, request, type, index, *args, **kwargs):
         if type == 'all':
@@ -137,19 +137,15 @@ class CategoryView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class SubCategoryView(View):
+class SubCategoryView(APIView):
     
     def get(self, request, type, index, *args, **kwargs):
 
         if type == 'all':
             subcategories = SubCategory.objects.all()
-            paginated_data = self.paginate(subcategories, 40, index)
-            subcat_data = paginated_data.get('values', [])
+            paginated = paginate_queryset(subcategories, request, SubCategorySerializer, 40)
 
-            serialized_subcat = SubCategorySerializer(subcat_data, many=True)
-
-            return Response({'data': serialized_subcat.data,
-                'has_next': paginated_data.get('has_next', False)}, status=status.HTTP_200_OK)
+            return Response(paginated.data, status=status.HTTP_200_OK)
                 
         if type == 'product':
             subcat_id = request.GET.get('subcat_id', None)
@@ -196,7 +192,7 @@ class SubCategoryView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class TagView(View):
+class TagView(APIView):
 
     def get(self, request, type, *args, **kwargs):
 
@@ -228,7 +224,7 @@ class TagView(View):
 
 
 
-class Search(View):
+class Search(APIView):
 
     async def get(self, request, *args, **kwargs):
         user = await asyncio.to_thread(self.get_user)
@@ -245,7 +241,7 @@ class Search(View):
             results = await search_engine.specified_search
             
 
-        return Response({'data': results}, status=200)
+        return Response({'data': results}, status=status.HTTP_200_OK)
 
     def get_user(self):
         return User.objects.filter(username='emilyjim1').first()
@@ -268,7 +264,7 @@ class Search(View):
 
 
 
-class Popular(View):
+class Popular(APIView):
 
     def get(self, request, path, *args, **kwargs):
         redis_client = get_redis_connection('default')

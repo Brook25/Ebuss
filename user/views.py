@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
@@ -24,9 +25,8 @@ from utils import SetupObjects
 # Create your views here.
 
 
-
-
 class NotificationView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
        
@@ -40,6 +40,7 @@ class NotificationView(APIView):
 
 
 class HistoryView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
         
@@ -60,7 +61,8 @@ class HistoryView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WishListView(APIView):
-    
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, *args, **kwargs):
         
         wishlist = get_object_or_404(Wishlist, created_by=request.user)
@@ -98,7 +100,7 @@ class WishListView(APIView):
 
 
     def delete(self, request, type, *args, **kwargs):
-
+        
         product_id = json.data.get('product_id', None)
         if not product_id and type == 'c':
             request.user.wishlist_for.delete()
@@ -133,6 +135,7 @@ class Recommendations(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Recent(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         username = request.user.username
@@ -177,7 +180,8 @@ class Recent(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Subscriptions(APIView):
-
+    permission_classes = [IsAuthenticated]
+    
     def get(self, request, index, *args, **kwargs):
         
         subs = get_list_or_404(request.user.subscriptions.all())
@@ -205,7 +209,8 @@ class Subscriptions(APIView):
 
 
 class Settings(APIView):
-
+    permission_classes = [IsAuthenticated]
+    
     def get(self, request, *args, **kwargs):
 
         settings = request.cookies.get('settings', None)
