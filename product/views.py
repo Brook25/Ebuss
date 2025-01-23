@@ -26,8 +26,7 @@ import json
 class ProductView(APIView):
 
     def get(self, request, path, index, *args, **kwargs):
-       
-        print('Hello')
+ 
         if path == 'my':
 
             user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))

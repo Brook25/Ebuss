@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
@@ -30,7 +30,7 @@ class HomeView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request, *args, **kwargs):
-        pass
+        return Response("Hello user", status=status.HTTP_200_OK)        
 
 
 class NotificationView(APIView):
@@ -108,7 +108,7 @@ class WishListView(APIView):
 
 
     def delete(self, request, type, *args, **kwargs):
-        
+
         product_id = json.data.get('product_id', None)
         if not product_id and type == 'c':
             request.user.wishlist_for.delete()

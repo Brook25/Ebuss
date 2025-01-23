@@ -21,21 +21,21 @@ class News(View):
 
             if index:
                 subscriptions = request.user.subscriptions.all()
-                all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=request.user)).order_by('-timestamp')
+                all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=request.user)).order_by('-created_at')
                 posts = paginate_queryset(all_posts, request, PostSerializer)
 
                 return Response(posts, status=status.HTTP_200_OK)
             return Response({'message': 'no index provided'},
-                        status=400)
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class Timeline(View):
 
     def get(self, request, index, *args, **kwargs):
-        my_posts = request.user.posts.all().order_by('-timestamp')
+        my_posts = request.user.posts.all().order_by('-created_at')
         posts = paginate_queryset(my_posts, request, PostSerializer)
 
-        return Response(posts, status=200)
+        return Response(posts, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -45,7 +45,6 @@ class PostView(View):
                         'c':{'model': Comment, 'serializer': CommentSerializer},
                             'r': {'model': Reply, 'serializer': ReplySerializer}
                             }
-
 
     def get(self, request, post, *args, **kwargs):
 

@@ -3,9 +3,11 @@ from django.shortcuts import render
 import jwt
 from django.conf import settings
 from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 # Create your views here.
 
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         new_user_data = request.data
@@ -26,9 +28,10 @@ class RegisterView(APIView):
 
 
 def LogIn(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        
+
         username = request.data.get('username')
         password = request.data.get('password')
         
@@ -49,6 +52,7 @@ def LogIn(APIView):
 
 
 class GetToken(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         
@@ -71,7 +75,7 @@ class GetToken(APIView):
 
         if not user:
             return Response({'error': 'User not found'}, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         access_token = get_access_token(user)
         refresh_token = get_refresh_token(user)
 

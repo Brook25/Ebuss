@@ -83,12 +83,13 @@ class OrderView(APIView):
         elif type == 'cart':
 
             with transaction.atomic():
-                cart_order = CartData.objects.filter(cart__pk=id).prefetch_related('product', 'quantity')
+                cart_order = CartData.objects.filter(cart__pk=id).prefetch_related('cart', 'product', 'quantity')
                 if cart_order:
                     for cart_data in cart_order:
                         cart_data.product.quantity += cart_data.quantity
                         cart_data.product.save()
                     cart_order.delete()
+                    cart_order.cart.delete()
                 else:
                     return Response('Order not found', status=400)
 

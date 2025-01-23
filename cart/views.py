@@ -3,6 +3,7 @@ from django.core.cache import cache
 from product.models import Product
 from rest_framework.respose import Response
 from rest_framwork.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 import json
 from .models import (Cart, CartData)
@@ -11,6 +12,7 @@ from datetime import datetime
 # Create your views here.
 
 class CartView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
 
