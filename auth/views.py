@@ -15,13 +15,22 @@ class RegisterView(APIView):
 
         if user.is_valid():
             user.create()
-            jwt_tokens = {
-                            'access_token': generate_access_tokens(),
-                            'refresh_token': generate_refresh_token()
-                        }
-            return Response({'jwt': jwt_tokens,
+            access_token =  generate_access_tokens(),
+            refresh_token =  generate_refresh_token()
+            response =  Response({
                 'status':'success'},
                 status=status.HTTP_200_OK)
+            
+            response['Authorization'] = f'Bearer {access_token}'
+            response.set_cookie('refresh_token',
+                                refresh_token,
+                                httpOnly=True,
+                                samesite='Lax',
+                                max_age=1296000
+                                )
+
+            return response
+
         return Response({'status': 'failed',
                                 'error': user.error},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -39,7 +48,7 @@ def LogIn(APIView):
         if not user:
             return Response({'error': 'Invalid username or password'},
                     status=HTTP_401_UNAUTHORIZED)
-        
+
         access_token = get_access_token(user)
         refresh_token = get_refresh_token(user)
 
