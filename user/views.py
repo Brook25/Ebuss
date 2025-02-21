@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from order.models import (CartOrder, SingleProductOrder)
 from product.models import Product
 from user.models import Wishlist
-from shared.utils import paginate_queryset
+from shared.utils import (paginate_queryset, get_populars)
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)
@@ -26,19 +26,24 @@ from utils import SetupObjects
 
 
 class HomeView(APIView):
-
-    permission_classes = [AllowAny]
     
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
-        return Response("Hello user", status=status.HTTP_200_OK)        
+        subcats = paginate_queryset(SubCategory.objects.all(), request, 30, SubCategorySerializer)
+        popular_products = get_populars('product')
+        return Response("Hello user", status=status.HTTP_200_OK)
 
 
 class NotificationView(APIView):
+    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
        
         curr_date = datetime.now()
+        print(request.user)
+        print(request.user.notifications.all())
         page_until = curr_date - timedelta(days=30)
         notifications = get_list_or_404(Notification.objects.filter(user=request.user, created_at__gte=page_until).all())
         notifications = paginate_queryset(notifications, request, 20, NotificationSerializer)
@@ -48,6 +53,7 @@ class NotificationView(APIView):
 
 
 class HistoryView(APIView):
+    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
@@ -231,3 +237,4 @@ class Settings(APIView):
 
 class Profile(APIView):
     pass
+

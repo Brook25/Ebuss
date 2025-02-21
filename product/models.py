@@ -1,6 +1,6 @@
 from django.db import models
 from datetime import date
-from django.core.validators import MinValueValidator, MaxValueValidator, MinLengthValidator
+from django.core.validators import (MinValueValidator, MaxValueValidator, MinLengthValidator)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models import (
         CharField, DateField, JSONField,
@@ -47,6 +47,9 @@ class SubCategory(models.Model):
     conversion_rate_threshold = PositiveIntegerField(null=False)
     rating_threshold = PositiveIntegerField(null=False)
 
+    class Meta:
+        ordering = ['-popularity_ratio']
+
 class Tag(models.Model):
     name = CharField(max_length=20, null=False, blank=False)
     description = CharField(max_length=100)
@@ -78,6 +81,9 @@ class Review(models.Model):
         self.validate_review_rating()
         super().clean
 
+    def save(self):
+        self.full_clean()
+        super.save()
+
     def __repr__(self):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
-

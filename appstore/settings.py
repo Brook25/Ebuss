@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'order',
     'post',
     'supplier',
+    'Auth',
     'debug_toolbar',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -132,9 +133,6 @@ DATABASES = {
     }
 }
 
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000"]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -176,16 +174,16 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-        'ACCESS_TOKEN_LIFETIME': timedelta(hours=6),
+        'ACCESS_TOKEN_LIFETIME': timedelta(minutes=3),
         'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
         'ROTATE_REFRESH_TOKENS': True,
         'BLACKLIST_AFTER_ROTATION': True,
-        'ALGORITHM': 'H256',
+        'ALGORITHM': 'HS256',
         'SIGNING_KEY': SECRET_KEY,
         'VERIFYING_KEY': None,
         'AUTH_HEADER_TYPES': ('Bearer', 'jwt'),
-        'USER_ID_FIELD': 'id',
-        'USER_ID_CLAIM': 'user_id',
+        'USER_ID_FIELD': 'pk',
+        'USER_ID_CLAIM': 'id',
         'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
         'TOKEN_TYPE_CLAIM': 'token_type',
 }

@@ -266,28 +266,4 @@ class Search(APIView):
 class Popular(APIView):
 
     def get(self, request, path, *args, **kwargs):
-        redis_client = get_redis_connection('default')
-        popular_products = redis_client.lrange('popular', 0, -1)
-        
-        if path == 'products':
-            popular_products = Product.objects.filter(pk__in=popular_products).all()
-            popular_products = ProductSerializer(popular_products, many=True)
-            data = {'popular_products': popular_products.data}
-            return Response(data, status=status.HTTP_200_OK)
-
-        if path == 'subcategory':
-            subcat_id = request.GET.get('subcat_id', None)
-            if subcat_id:
-                subcat = SubCategory.objects.filter(pk=subcat_id)
-                products_in_subcat = subcat.products.filter(pk__in=popular_products).all()
-                popular_products = ProductSerializer(products_in_subcat, many=True)
-                data = {'popular_products': popular_products.data}
-                return Response(data, status=status.HTTP_200_OK)
-        
-        if path == 'category':
-            category_id = request.GET.get('cat_id', None)
-            if category_id:
-                popular_in_cat = Product.objects.filter(subcategory__category__pk=category_id, pk__in=popular_products) 
-                popular_products = ProductSerializer(popular_in_cat, many=True)
-                data = {'popular_products': popular_products.data}
-                return Response(data, status=status.HTTP_200_OK)
+        pass

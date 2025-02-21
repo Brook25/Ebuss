@@ -4,6 +4,7 @@ from .views import (LogIn, RegisterView, GetToken)
 
 
 urlpatterns = [
-        path('auth/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-        path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+        path('signup', RegisterView.as_view(), name='register'),
+        path('login', LogIn.as_view(), name='login'),
+        path('token', GetToken.as_view(), name='token-obtain-pair'),
         ]

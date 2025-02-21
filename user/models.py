@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import (MaxValueValidator, MinValueValidator)
 #from cart.models import Cart
 from product.models import Product
 from shared.validators import check_vulgarity
@@ -34,18 +35,18 @@ ROLES = (
 
 class User(AbstractUser):
     email = EmailField(unique=True, blank=False, null=False)
-    country_code = CharField(null=False)
+    country_code = PositiveIntegerField(validators=[MaxValueValidator(999)])
     phone_no = CharField(max_length=10, validators=[
         RegexValidator(regex=r'^[0-9]{10}$',
         message='Field must contain only numbers.',
         code='invalid_phone_number'
         )
     ], null=False, blank=False)
-    birth_date = DateField()
+    birth_date = DateField(null=False)
     last_modified = DateField(auto_now=True)
     subscriptions = ManyToManyField('User', symmetrical=False, related_name='subscribers')
     recommendations = ManyToManyField('product.Product', related_name='recommended_to') 
-    role = CharField(choices=ROLES, null=False)
+    role = CharField(choices=ROLES, default='customer')
 
     REQUIRED_FIELDS = ['first_name', 'last_name', 'birth_date', 'phone_no']
 

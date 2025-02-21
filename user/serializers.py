@@ -13,10 +13,13 @@ class UserSerializer(BaseSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'username']
+        fields = ['username', 'first_name', 'last_name', 'email', 'password',
+                'birth_date', 'country_code', 'phone_no']
 
+    def create(self, **kwargs):
+        User.objects.create_user(**self.validated_data)
 
-class NotificationSerializer(serializers.ModelSerializer):
+class NotificationSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')
 
     

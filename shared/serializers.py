@@ -13,7 +13,7 @@ class BaseSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(read_only=True)
 
     def create(self, **kwargs):
-        self.Meta.model.create(self.validated_data)
+        self.Meta.model.objects.create(**self.validated_data)
     
     def update(self, instance, **kwargs):
         
@@ -23,4 +23,4 @@ class BaseSerializer(serializers.ModelSerializer):
     
     def bulk_create(self, kwargs):
         model = self.Meta.model
-        return model.bulk_create(model(**data) for data in self.validated_data)
+        return model.objects.bulk_create(model(**data) for data in self.validated_data)
