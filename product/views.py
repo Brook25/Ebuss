@@ -25,6 +25,15 @@ import json
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
 
+    def get_permissions():
+        if self.kwargs.get('path') == 'my':
+            return [IsAuthenticated]
+
+        elif self.kwargs.get('path') == 'all':
+            return [IsAdmin]
+
+        return [AllowAny]
+
     def get(self, request, path, index, *args, **kwargs):
  
         if path == 'my':
@@ -36,7 +45,6 @@ class ProductView(APIView):
         
         if path == 'view':
             product = get_object_or_404(Product.objects.get(pk=index))
-            # add an option to serializer description, other attrs will be added
             product = ProductSerializer(product)
 
             return Response(product.data,
@@ -44,7 +52,6 @@ class ProductView(APIView):
         
         if path == 'all':
             products = Product.objects.all()
-            # add an option to serializer description, other attrs will be added
             products = paginate_queryset(products, request, ProductSerializer, 300)
             return Response(products.data, status=status.HTTP_200_OK)
 
@@ -53,29 +60,29 @@ class ProductView(APIView):
         if path == 'my':
             product_data = request.data
             products = product_data.get('products', [])
-            validate_product_data = ProductSerializer(data=products, many=True)
-            if validate_product_data.is_valid():
-                created = validate_product_data.bulk_create(products) 
+            serializer = ProductSerializer(data=products, many=True)
+            if serializer.is_valid():
+                created = serializer.bulk_create(products) 
                 return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 
-    def put(self, request, path, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         
         if path == 'my':
             product_data = request.data
             update_data = product_data.get('update_data')
-            validate_data = ProductSerializer(data=update_data)
+            serializer = ProductSerializer(data=update_data)
 
             if validate_data.is_valid():
 
-                product_data.update(product_data)
+                serializer.update()
                 return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
             return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-    def delete(self, request, index, *args, **kwargs):
+    def delete(self, index, *args, **kwargs):
         
         product_data = request.data
         product_id = product_data.get('product_id', None)
