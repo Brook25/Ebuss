@@ -55,31 +55,30 @@ class ProductView(APIView):
             products = paginate_queryset(products, request, ProductSerializer, 300)
             return Response(products.data, status=status.HTTP_200_OK)
 
-    def post(self, request, path, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         
-        if path == 'my':
-            product_data = request.data
-            products = product_data.get('products', [])
-            serializer = ProductSerializer(data=products, many=True)
-            if serializer.is_valid():
-                created = serializer.bulk_create(products) 
-                return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
+        product_data = request.data
+        products = product_data.get('products', [])
+        serializer = ProductSerializer(data=products, many=True)
+        if serializer.is_valid():
+            created = serializer.bulk_create(products) 
+            return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
         return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
 
 
     def put(self, request, *args, **kwargs):
         
-        if path == 'my':
-            product_data = request.data
-            update_data = product_data.get('update_data')
-            serializer = ProductSerializer(data=update_data)
+        product_data = request.data
+        update_data = product_data.get('update_data', {})
+        product = get_object_or_404(pk=update_data.get('id'), user=request.user)
+        serializer = ProductSerializer(data=update_data)
 
-            if validate_data.is_valid():
+        if serializer.is_valid():
 
-                serializer.update()
-                return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
+            serializer.update()
+            return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
-            return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
 
     def delete(self, index, *args, **kwargs):
