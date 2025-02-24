@@ -17,7 +17,7 @@ from .serializers import (ProductSerializer, CategorySerializer, SubCategorySeri
 from supplier.models import Metrics
 from .utils import SearchEngine
 from .tasks import do_popularity_check
-from shared.utils import paginate_queryset
+from shared.utils import (paginate_queryset, get_populars)
 import json
 # Create your views here.
 
@@ -151,7 +151,7 @@ class SubCategoryView(APIView):
     
     def get_permissions(self):
         
-        if self.request.METHOD == 'post':
+        if self.request.method == 'post':
             return [IsAdmin()]
         return [AllowAny()]
 
@@ -210,6 +210,8 @@ class SubCategoryView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class TagView(APIView):
 
+    permission_classes = [IsAdmin()]
+
     def get(self, request, type, *args, **kwargs):
 
         if type == 'all':
@@ -241,6 +243,8 @@ class TagView(APIView):
 
 
 class Search(APIView):
+
+    permission_classes = [IsAdmin]
 
     async def get(self, request, *args, **kwargs):
         user = await asyncio.to_thread(self.get_user)
@@ -278,7 +282,12 @@ class Search(APIView):
         new_token_4.save()
         print(TokenToSubCategory.objects.all().values('token', 'subcategories'))
 
+
 class Popular(APIView):
+    
+    permission_classes = [AllowAny()]
 
     def get(self, request, path, *args, **kwargs):
-        pass
+        populars = get_populars(path)
+        return Response('data': populars
+
