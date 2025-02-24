@@ -25,12 +25,12 @@ import json
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
 
-    def get_permissions():
+    def get_permissions(self):
         path = self.kwargs.get('path', None)
         if not path or path == 'my'
-            return [IsAuthenticated]
-
-         return [IsAdmin]
+            return [IsAuthenticated()]
+        
+        return [IsAdmin()]
 
 
     def get(self, request, path, index, *args, **kwargs):
@@ -94,6 +94,7 @@ class ProductView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
+    permission_classes = [AllowAny()]
 
     def get(self, request, type, index, *args, **kwargs):
         if type == 'all':
@@ -140,10 +141,20 @@ class CategoryView(APIView):
                     'products': products.data
                     }, status=status.HTTP_200_OK)
 
+        return Response({
+            'error': 'wrong path.'},
+            status=status.HTTP_400_BAD_REQUEST)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SubCategoryView(APIView):
     
+    def get_permissions(self):
+        
+        if self.request.METHOD == 'post':
+            return [IsAdmin()]
+        return [AllowAny()]
+
     def get(self, request, type, index, *args, **kwargs):
 
         if type == 'all':
@@ -193,7 +204,7 @@ class SubCategoryView(APIView):
                 status=status.HTTP_200_OK)
 
         return Response({'message': 'new subcategory not succefully added'},
-                status=501)
+                status=400)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -266,8 +277,6 @@ class Search(APIView):
         new_token_3.save()
         new_token_4.save()
         print(TokenToSubCategory.objects.all().values('token', 'subcategories'))
-
-
 
 class Popular(APIView):
 
