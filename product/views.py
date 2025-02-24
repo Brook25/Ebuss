@@ -94,7 +94,7 @@ class ProductView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
-    permission_classes = [AllowAny()]
+    permission_classes = [AllowAny]
 
     def get(self, request, type, index, *args, **kwargs):
         if type == 'all':
@@ -210,7 +210,7 @@ class SubCategoryView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class TagView(APIView):
 
-    permission_classes = [IsAdmin()]
+    permission_classes = [IsAdmin]
 
     def get(self, request, type, *args, **kwargs):
 
@@ -244,7 +244,7 @@ class TagView(APIView):
 
 class Search(APIView):
 
-    permission_classes = [IsAdmin()]
+    permission_classes = [IsAdmin]
 
     async def get(self, request, *args, **kwargs):
         user = await asyncio.to_thread(self.get_user)
@@ -285,7 +285,7 @@ class Search(APIView):
 
 class Popular(APIView):
     
-    permission_classes = [AllowAny()]
+    permission_classes = [AllowAny]
 
     def get(self, request, path, *args, **kwargs):
         populars = get_populars(path)

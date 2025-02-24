@@ -16,7 +16,7 @@ from shared.utils import paginate_queryset
 # Create your views here.
 
 class News(View):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
 
@@ -31,7 +31,7 @@ class News(View):
 
 
 class Timeline(View):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
         my_posts = request.user.posts.all().order_by('-created_at')

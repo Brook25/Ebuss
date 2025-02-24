@@ -18,7 +18,7 @@ from user.models import User
 
 class DashBoardHome(APIView):
     
-    permission_classes = [IsSupplier]
+    permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, *args, **kwargs):
         date = request.GET.get('date', '')
@@ -49,7 +49,7 @@ class DashBoardHome(APIView):
 
 class DashBoardDate(APIView):
     
-    permission_classes = [IsSupplier]
+    permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, period, *args, **kwargs):
         
@@ -75,7 +75,7 @@ class DashBoardDate(APIView):
 
 class Store(APIView):
     
-    permission_classes = [IsSupplier]
+    permission_classes = [IsAuthenticated, IsSupplier]
     
     def get(self, request, *args, **kwargs):
         
@@ -87,7 +87,7 @@ class Store(APIView):
 
 class Inventory(APIView):
     
-    permission_classes = [IsSupplier]
+    permission_classes = [IsAuthenticated, IsSupplier]
     
     def get(self, request, *args, **kwargs):
         

@@ -27,7 +27,7 @@ from utils import SetupObjects
 
 class HomeView(APIView):
     
-    permission_classes = [AllowAny()]
+    permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         subcats = paginate_queryset(SubCategory.objects.all(), request, 30, SubCategorySerializer)
@@ -37,7 +37,7 @@ class HomeView(APIView):
 
 class NotificationView(APIView):
     
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
        
@@ -54,7 +54,7 @@ class NotificationView(APIView):
 
 class HistoryView(APIView):
     
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
         
@@ -75,7 +75,7 @@ class HistoryView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WishListView(APIView):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         
@@ -149,7 +149,7 @@ class Recommendations(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Recent(APIView):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         username = request.user.username
@@ -194,8 +194,8 @@ class Recent(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Subscriptions(APIView):
-    permission_classes = [IsAuthenticated()]
-    
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, index, *args, **kwargs):
         
         subs = get_list_or_404(request.user.subscriptions.all())
@@ -223,7 +223,7 @@ class Subscriptions(APIView):
 
 
 class Settings(APIView):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, *args, **kwargs):
 
