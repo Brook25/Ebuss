@@ -26,13 +26,12 @@ import json
 class ProductView(APIView):
 
     def get_permissions():
-        if self.kwargs.get('path') == 'my':
+        path = self.kwargs.get('path', None)
+        if not path or path == 'my'
             return [IsAuthenticated]
 
-        elif self.kwargs.get('path') == 'all':
-            return [IsAdmin]
+         return [IsAdmin]
 
-        return [AllowAny]
 
     def get(self, request, path, index, *args, **kwargs):
  
@@ -56,7 +55,7 @@ class ProductView(APIView):
             return Response(products.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
-        
+     
         product_data = request.data
         products = product_data.get('products', [])
         serializer = ProductSerializer(data=products, many=True)
@@ -67,22 +66,23 @@ class ProductView(APIView):
 
 
     def put(self, request, *args, **kwargs):
-        
+    
         product_data = request.data
         update_data = product_data.get('update_data', {})
-        product = get_object_or_404(pk=update_data.get('id'), user=request.user)
-        serializer = ProductSerializer(data=update_data)
+        product_exists = Product.objects.filter(pk=update_data.get('id'), user=request.user).exists
+        if product_exists:
+            serializer = ProductSerializer(data=update_data)
 
-        if serializer.is_valid():
+            if serializer.is_valid():
 
-            serializer.update()
-            return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
+                serializer.update()
+                return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
 
         return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
 
     def delete(self, index, *args, **kwargs):
-        
+    
         product_data = request.data
         product_id = product_data.get('product_id', None)
 
