@@ -12,7 +12,7 @@ from .utils import (generate_access_token, generate_refresh_token, generate_resp
 # Create your views here.
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny()]
 
     def post(self, request, *args, **kwargs):
         new_user_data = request.data
@@ -29,7 +29,7 @@ class RegisterView(APIView):
 
 
 class LogIn(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny()]
 
     def post(self, request, *args, **kwargs):
 
@@ -52,7 +52,7 @@ class LogIn(APIView):
 
 
 class GetToken(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny()]
 
     def get(self, request, *args, **kwargs):
         
