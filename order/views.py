@@ -15,9 +15,10 @@ from utils import paginate_queryset
 # Create your views here.
 
 class OrderView(APIView):
+    permission_classes = [IsAuthenticated()]
 
     def get(self, request, *args, **kwargs):
- 
+         
         products = Product.objects.select_related('supplier').only('pk', 'name', 'supplier__username')
         singleProdcuctOrders = SingleProductOrder.objects.filter(user=request.user).order_by('date').prefetch_related(Prefetch('product', queryset=products))
         singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer)
@@ -97,6 +98,6 @@ class OrderView(APIView):
             
 
 class Pay(View):
-
+    permission_classes = [IsAuthenticated()]
     def post(request, *args, **kwargs):
         pass
