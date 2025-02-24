@@ -323,24 +323,23 @@ def paginate_queryset(queryset, request, serializer_class, page_size=25):
     return paginator.get_paginated_response(serialized_data.data)
 
 
-def get_populars(path):
+def get_populars(path, request):
     redis_client = get_redis_connection('default')
     popular_products = redis_client.lrange('popular', 0, -1)
 
     query = Q()
     if path == 'products':
-        query = query &= pk__in=popular_products
+        query &= pk__in=popular_products
 
     if path == 'subcategory':
         subcat_ids = request.GET.get('subcat_ids', [])
         if subcat_ids:
-            query = query &= Q(pk__in=popular_products) &  Q(subcategory__pk__in=subcats)
+            query &= Q(pk__in=popular_products) &  Q(subcategory__pk__in=subcats)
 
     if path == 'category':
         category_ids = request.GET.get('cat_id', [])
         if category_ids:
-            query = query &= Q(subcategory__category__pk__in=category_ids) & Q( pk__in=popular_products) 
+             query &= Q(subcategory__category__pk__in=category_ids) & Q( pk__in=popular_products) 
     
     popular_products = ProductSerializer(Product.objects.filter(query), many=True)
-    data = {'popular_products': popular_products.data}
-    return Response(data, status=status.HTTP_200_OK)
+    return {'popular_products': popular_products.data}

@@ -244,7 +244,7 @@ class TagView(APIView):
 
 class Search(APIView):
 
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdmin()]
 
     async def get(self, request, *args, **kwargs):
         user = await asyncio.to_thread(self.get_user)
@@ -289,5 +289,4 @@ class Popular(APIView):
 
     def get(self, request, path, *args, **kwargs):
         populars = get_populars(path)
-        return Response('data': populars
-
+        return Response('data': populars, status=status.HTTP_200_OK)
