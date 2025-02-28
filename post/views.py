@@ -9,6 +9,7 @@ from django.views import View
 from datetime import datetime
 from .signals import increment_no_comments
 from .serializers import PostSerializer
+from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from rest_framework.response import Response
 from rest_framework import status
 import json
@@ -42,7 +43,7 @@ class Timeline(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PostView(View):
-    permission_classes = [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
 
     POST_MODELS = {'p': {'model': Post, 'serializer': PostSerializer},
                         'c':{'model': Comment, 'serializer': CommentSerializer},
@@ -73,7 +74,7 @@ class PostView(View):
         data = request.data
         text = data.get('text', '')
         obj_data = {'user': request.user, 'text': text}
-        if not (text):
+        if not text:
             return Response({
                     'message': 'post should have a text message and a tagged product.'},
                       status=status.HTTP_400_BAD_REQUEST)
@@ -102,5 +103,5 @@ class PostView(View):
         model = self.POST_MODELS.get(post, {}).get('model', None)
         if model:
             post = get_object_or_404(model, pk=index)
-            post.delete() 
+            post.delete()
             return Response({'message': '{} succefully deleted'.format(model.__name__)}, status=HTTP_400_OK)

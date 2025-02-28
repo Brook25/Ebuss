@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from order.models import (CartOrder, SingleProductOrder)
 from product.models import Product
 from user.models import Wishlist
+from shared.permissions import IsAdmin
 from shared.utils import (paginate_queryset, get_populars)
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
@@ -32,7 +33,9 @@ class HomeView(APIView):
     def get(self, request, *args, **kwargs):
         subcats = paginate_queryset(SubCategory.objects.all(), request, 30, SubCategorySerializer)
         popular_products = get_populars('product')
-        return Response("Hello user", status=status.HTTP_200_OK)
+        return Response({'subcats': subcats.data,
+                            'popular_products': popular_products}, 
+                                    status=status.HTTP_200_OK)
 
 
 class NotificationView(APIView):
@@ -42,8 +45,6 @@ class NotificationView(APIView):
     def get(self, request, index, *args, **kwargs):
        
         curr_date = datetime.now()
-        print(request.user)
-        print(request.user.notifications.all())
         page_until = curr_date - timedelta(days=30)
         notifications = get_list_or_404(Notification.objects.filter(user=request.user, created_at__gte=page_until).all())
         notifications = paginate_queryset(notifications, request, 20, NotificationSerializer)
@@ -68,13 +69,14 @@ class HistoryView(APIView):
             user=request.user).order_by('-date').select_related('product'))
         singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
         
-        return Response({ 'singleProductOrders': singleProductOrders,
-                                'Cartorders': cartOrders },
+        return Response({ 'singleProductOrders': singleProductOrders.data,
+                                'Cartorders': cartOrders.data },
                                 status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class WishListView(APIView):
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
@@ -149,13 +151,14 @@ class Recommendations(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Recent(APIView):
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         username = request.user.username
         recently_viewed = cache.get(username + ':recently_viewed')
         recently_viewed = json.dumps(recently_viewed)
-        return Response({ 'data': recently_viewed }, status=status.HTTP_200_OK)
+        return Response(recently_viewed, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         try:
@@ -194,6 +197,7 @@ class Recent(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Subscriptions(APIView):
+    
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
@@ -202,7 +206,7 @@ class Subscriptions(APIView):
         serialized_subs = paginate_queryset(subs, request, 30, UserSerializer)
  
         if serialized_subs:
-            return Response({'data': serialized_subs },
+            return Response(serialized_subs.data,
                 status=status.HTTP_200_OK
                 )
         
@@ -223,6 +227,7 @@ class Subscriptions(APIView):
 
 
 class Settings(APIView):
+    
     permission_classes = [IsAuthenticated]
     
     def get(self, request, *args, **kwargs):

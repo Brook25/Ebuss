@@ -8,12 +8,14 @@ from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from rest_framework import status
 from user.models import User
 import asyncio
 from .models import (Product, SubCategory, Category, Tag, TokenToSubCategory)
 from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
+from shared.permissions import IsAdmin
 from supplier.models import Metrics
 from .utils import SearchEngine
 from .tasks import do_popularity_check
@@ -27,7 +29,7 @@ class ProductView(APIView):
 
     def get_permissions(self):
         path = self.kwargs.get('path', None)
-        if not path or path == 'my'
+        if not path or path == 'my':
             return [IsAuthenticated()]
         
         return [IsAdmin()]
@@ -289,4 +291,4 @@ class Popular(APIView):
 
     def get(self, request, path, *args, **kwargs):
         populars = get_populars(path)
-        return Response('data': populars, status=status.HTTP_200_OK)
+        return Response({'data': populars}, status=status.HTTP_200_OK)

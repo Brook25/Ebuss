@@ -12,6 +12,7 @@ from user.serializers import UserSerializer
 from .permissions.supplier_permissions import IsSupplier
 from product.models import Product
 from product.serializers import ProductSerializer
+from shared.permissions import IsAuthenticated
 from .serializers import InventorySerializer
 from user.models import User
 # Create your views here.

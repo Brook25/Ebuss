@@ -329,12 +329,12 @@ def get_populars(path, request):
 
     query = Q()
     if path == 'products':
-        query &= pk__in=popular_products
+        query &= Q(pk__in=popular_products)
 
     if path == 'subcategory':
         subcat_ids = request.GET.get('subcat_ids', [])
         if subcat_ids:
-            query &= Q(pk__in=popular_products) &  Q(subcategory__pk__in=subcats)
+            query &= Q(pk__in=popular_products) & Q(subcategory__pk__in=subcats)
 
     if path == 'category':
         category_ids = request.GET.get('cat_id', [])
