@@ -141,7 +141,7 @@ class SetupObjects:
         category_4 = Category.objects.create(name='cookware')
         category_5 = Category.objects.create(name='furniture')
 
-        subcategory_3 = SubCategory.objects.create(name='small_appliances', category=category_3)
+        subcategory_3 = SubCategory.objects.create(name='small_appliances', category=category_3, popularity_ratio=0.6, )
         subcategory_4 = SubCategory.objects.create(name='large_appliances', category=category_3)
         subcategory_5 = SubCategory.objects.create(name='pots_and_pans', category=category_4)
         subcategory_6 = SubCategory.objects.create(name='living_area', category=category_5)

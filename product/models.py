@@ -43,9 +43,9 @@ class SubCategory(models.Model):
     three_day_threshold = PositiveIntegerField(null=False)
     fourteen_day_threshold = PositiveIntegerField(null=False)
     twenty_one_day_threshold = PositiveIntegerField(null=False)
-    wishlist_threshold = PositiveIntegerField(null=False)
-    conversion_rate_threshold = PositiveIntegerField(null=False)
-    rating_threshold = PositiveIntegerField(null=False)
+    wishlist_threshold = PositiveIntegerField(null=False, default=500)
+    conversion_rate_threshold = PositiveIntegerField(null=False, default=0.6)
+    rating_threshold = PositiveIntegerField(null=False,default=0.7)
 
     class Meta:
         ordering = ['-popularity_ratio']
