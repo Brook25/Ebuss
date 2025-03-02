@@ -141,11 +141,17 @@ class SetupObjects:
         category_4 = Category.objects.create(name='cookware')
         category_5 = Category.objects.create(name='furniture')
 
-        subcategory_3 = SubCategory.objects.create(name='small_appliances', category=category_3, popularity_ratio=0.6, )
-        subcategory_4 = SubCategory.objects.create(name='large_appliances', category=category_3)
-        subcategory_5 = SubCategory.objects.create(name='pots_and_pans', category=category_4)
-        subcategory_6 = SubCategory.objects.create(name='living_area', category=category_5)
-        subcategory_7 = SubCategory.objects.create(name='dining_area', category=category_5)
+        subcategory_3 = SubCategory.objects.create(name='small_appliances',
+                category=category_3, popularity_ratio=0.6, three_day_threshold=150,
+                    fourteen_day_threshold=1500, twenty_one_day_threshold=2500)
+        subcategory_4 = SubCategory.objects.create(name='large_appliances', category=category_3,
+                popularity_ratio=0.6, three_day_threshold=600, fourteen_day_threshold=1700, twenty_one_day_threshold=2500)
+        subcategory_5 = SubCategory.objects.create(name='pots_and_pans', category=category_4, popularity_ratio=0.5, three_day_threshold=400,
+                            fourteen_day_threshold=800, twenty_one_day_threshold=3000)
+        subcategory_6 = SubCategory.objects.create(name='living_area', category=category_5, popularity_ratio=0.7,
+                        three_day_threshold=50, twenty_one_day_threshold=100, fourteen_day_threshold=300)
+        subcategory_7 = SubCategory.objects.create(name='dining_area', category=category_5, popularity_ratio=0.7, three_day_threshold=50,
+                                    twenty_one_day_threshold=400, fourteen_day_threshold=200)
         
         test_product_3_features = {'brand': 'vitamix', 'power': '400 watts',
                 'blade': 'steel'}
@@ -291,7 +297,6 @@ class SetupObjects:
 
         print(Reply.objects.all())
         print(Comment.objects.all())
-        print('.................objects succefully created....................')
 
 
 
