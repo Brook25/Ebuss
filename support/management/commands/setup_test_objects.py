@@ -1,8 +1,8 @@
 from shared.utils import SetupObjects
-from django.management.base import BaseCommand
+from django.core.management.base import BaseCommand
 
 
-class SetupObjs(BaseCommand):
+class Command(BaseCommand):
     
     help = "Sets up test objects."
 
@@ -10,4 +10,4 @@ class SetupObjs(BaseCommand):
         
         test_objects = SetupObjects()
         test_objects.create_test_objects()
-        self.stdout.write(self.style.success('Object successfully created.'))
+        self.stdout.write(self.style.SUCCESS('Object successfully created.'))

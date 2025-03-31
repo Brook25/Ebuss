@@ -26,9 +26,6 @@ class Post(Commentable):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
 
 class Comment(Commentable):
-    user = ForeignKey('user.User', on_delete=models.DO_NOTHING)
+    user = ForeignKey('user.User', on_delete=models.CASCADE)
     post = ForeignKey('Post', related_name='replies_to', on_delete=models.CASCADE)
-
-
-class Reply(Comment):
-    parent = ForeignKey('Comment', on_delete=models.CASCADE, related_name='replies_to')
+    parent_comment = ForeignKey('self', null=True, on_delete=models.CASCADE, related_name='replies')

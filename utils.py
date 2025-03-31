@@ -3,7 +3,7 @@ from user.models import (User, Wishlist)
 from product.models import (Product, Category, SubCategory, Review)
 from order.models import (CartOrder, SingleProductOrder, ShipmentInfo, BillingInfo)
 from cart.models import Cart
-from post.models import (Post, Comment, Reply)
+from post.models import (Post, Comment)
 import uuid
 
 

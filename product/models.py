@@ -79,11 +79,11 @@ class Review(models.Model):
 
     def clean(self):
         self.validate_review_rating()
-        super().clean
+        super().clean()
 
-    def save(self):
+    def save(self, *args, **kwargs):
         self.full_clean()
-        super.save()
+        super().save(*args, **kwargs)
 
     def __repr__(self):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)

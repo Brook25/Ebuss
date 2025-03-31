@@ -2,8 +2,8 @@ import json
 from user.models import (User, Wishlist) 
 from product.models import (Product, Category, SubCategory, Review)
 from order.models import (CartOrder, SingleProductOrder, ShipmentInfo, BillingInfo)
-from cart.models import Cart
-from post.models import (Post, Comment, Reply)
+from cart.models import (Cart, CartData)
+from post.models import (Post, Comment)
 from rest_framework.pagination import PageNumberPagination
 import uuid
 
@@ -19,6 +19,8 @@ class SetupObjects:
                         'email': 'johndoe@gmail.com',
                         'password': 'johnnyboy27!',
                         'birth_date': '1995-10-10',
+                        'country_code': 251,
+                        'phone_no': '0923456721'
                         }
 
         test_user_2_data = {
@@ -28,6 +30,8 @@ class SetupObjects:
                         'email': 'emilyjames@gmail.com',
                         'password': 'emilyjames27!',
                         'birth_date': '1995-10-10',
+                        'country_code': 33,
+                        'phone_no': '3245679011'
                 }
         
         test_user_1 = User.objects.create(**test_user_1_data)
@@ -41,8 +45,14 @@ class SetupObjects:
         
         category_1 = Category.objects.create(name='electronics')
         category_2 = Category.objects.create(name='cloth')
-        sub_category_1 = SubCategory.objects.create(name='phone', category=category_1)
-        sub_category_2 = SubCategory.objects.create(name='women_cloths', category=category_2)
+        sub_category_1 = SubCategory.objects.create(name='phone', category=category_1,
+                popularity_ratio=5, three_day_threshold=70, fourteen_day_threshold=150,
+                twenty_one_day_threshold=300, wishlist_threshold=100,
+                conversion_rate_threshold=0.7, rating_threshold=3.8)
+        sub_category_2 = SubCategory.objects.create(name='women_cloths', category=category_2,
+                popularity_ratio=5, three_day_threshold=40, fourteen_day_threshold=80,
+                twenty_one_day_threshold=100, wishlist_threshold=30, 
+                conversion_rate_threshold=0.4, rating_threshold=4)
         
         test_product_1_data = {
             'name': 'aurora2024',
@@ -87,9 +97,9 @@ class SetupObjects:
                         }
         test_billing = BillingInfo.objects.create(**billing_info_data)
         test_shipment = ShipmentInfo.objects.create(**shipment_info_data)
-        test_cart_1 = Cart.objects.create(name='mycart', customer=test_user_2, quantity=5)
-        test_cart_1.product.set([test_product_1])
-        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_1, billing=test_billing, shipment=test_shipment)
+        test_cart_1 = Cart.objects.create(name='mycart', user=test_user_2)
+        test_cart_data_11 = CartData.objects.create(cart=test_cart_1, product=test_product_1, quantity=1)
+        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_data_11, billing=test_billing, shipment=test_shipment)
         test_singleproduct_order = SingleProductOrder.objects.create(user=test_user_2, product=test_product_1, billing=test_billing, shipment=test_shipment)
         
         wish_list_1_data = { 'created_by': test_user_2 }
@@ -103,6 +113,8 @@ class SetupObjects:
                         'email': 'viccytom@gmail.com',
                         'password': 'viccytom27!',
                         'birth_date': '1991-10-10',
+                        'country_code': 33,
+                        'phone_no': '3242343034'
                         }
         
         test_user_4_data = {
@@ -112,6 +124,8 @@ class SetupObjects:
                         'email': 'peterpark@gmail.com',
                         'password': 'peterboy27!',
                         'birth_date': '1993-10-10',
+                        'country_code': 25,
+                        'phone_no': '4445679011'
                         }
         
         test_user_5_data = {
@@ -121,6 +135,8 @@ class SetupObjects:
                         'email': 'helenyoni@gmail.com',
                         'password': 'helenyoni27!',
                         'birth_date': '1995-10-10',
+                        'country_code': 1,
+                        'phone_no': '7645679011'
                         }
         
         test_user_6_data = {
@@ -130,6 +146,8 @@ class SetupObjects:
                         'email': 'yonnyabe@gmail.com',
                         'password': 'yonyboy27!',
                         'birth_date': '1994-10-10',
+                        'country_code': 45,
+                        'phone_no': '1235679011'
                         }
         
         test_user_3 = User.objects.create(**test_user_3_data)
@@ -235,12 +253,6 @@ class SetupObjects:
         review=test_review_text, rating=test_rating)        
         
         
-        test_cart_data = {
-                'name': 'Mycart1',
-                'customer': test_user_2,
-                'product': test_product_3,
-                'quantity': 4
-                }
         test_user_3_data = {
                         'first_name': 'James',
                         'last_name': 'Trim',
@@ -248,6 +260,8 @@ class SetupObjects:
                         'email': 'jamestrim@gmail.com',
                         'password': 'jamestrim27!',
                         'birth_date': '1990-10-10',
+                        'country_code': 12,
+                        'phone_no': '5645679011'
                 }
         
         test_user_4_data = {
@@ -257,6 +271,8 @@ class SetupObjects:
                         'email': 'helenapet@gmail.com',
                         'password': 'helena27!',
                         'birth_date': '1993-10-10',
+                        'country_code': 43,
+                        'phone_no': '2445679011'
                 }
         
         post_text = 'Check out this new product.'
@@ -274,22 +290,24 @@ class SetupObjects:
                 image=None
         )
         
-        test_comment_1 = Comment(user=test_user_2,
+        test_comment_1 = Comment.objects.create(user=test_user_2,
                                     post=test_post_1,
                                     text=comment_text,
                                     likes=0,
                                     comments=0,
                                     views=0)
 
-        test_reply_1 = Reply(user=test_user_3,
-                                parent=test_comment_1,
+        test_reply_1 = Comment.objects.create(user=test_user_3,
+                                post=test_post_1,
+                                parent_comment=test_comment_1,
                                 text=reply_to_comment_text,
                                 likes=0,
                                 comments=0,
                                 views=0)
 
-        test_reply_2 = Reply(user=test_user_4,
-                                parent=test_reply_1,
+        test_reply_2 = Comment.objects.create(user=test_user_4,
+                                post=test_post_1,
+                                parent_comment=test_reply_1,
                                 text=reply_to_reply_text,
                                 likes=0,
                                 comments=0,

@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
-from .models import (Post, Comment, Reply)
+from .models import (Post, Comment)
 from .serializers import (PostSerializer, CommentSerializer, ReplySerializer)
 from django.views import View
 from datetime import datetime
@@ -47,7 +47,6 @@ class PostView(View):
 
     POST_MODELS = {'p': {'model': Post, 'serializer': PostSerializer},
                         'c':{'model': Comment, 'serializer': CommentSerializer},
-                            'r': {'model': Reply, 'serializer': ReplySerializer}
                             }
 
     def get(self, request, post, *args, **kwargs):
@@ -61,11 +60,11 @@ class PostView(View):
 
         model = self.POST_MODELS.get(post, {}).get('model', None)
         serializer = self.POST_MODELS.get(post, {}).get('serializer', None)
-        replies = model.objects.get(pk=id).replies_to.all()
+        comments = model.objects.get(pk=id).replies_to.all()
         
-        replies = paginate_queryset(replies, request, serializer)
+        comments = paginate_queryset(comments, request, serializer)
 
-        return Response(replies, status=status.HTTP_200_OK)
+        return Response(comments, status=status.HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 

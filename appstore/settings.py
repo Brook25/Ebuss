@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'post',
     'supplier',
     'Auth',
+    'support',
     'debug_toolbar',
     'rest_framework',
     'rest_framework_simplejwt',
