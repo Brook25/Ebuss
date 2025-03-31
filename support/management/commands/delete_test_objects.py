@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from user.models import (User, Notification, Wishlist)
 from product.models import (Product, SubCategory, Category, Tag, Review)
 from cart.models import (Cart, CartData)
-from post.models import (Post, Comment, Reply)
+from post.models import (Post, Comment)
 from order.models import (CartOrder, SingleProductOrder, BillingInfo, ShipmentInfo)
 from supplier.models import (Metrics, Inventory)
 
