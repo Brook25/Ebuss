@@ -300,7 +300,6 @@ class SetupObjects:
                                 comments=0,
                                 views=0)
 
-        print(Reply.objects.all())
         print(Comment.objects.all())
 
 
@@ -318,7 +317,7 @@ class SetupObjects:
             cred = {'username': user['username'],
                                         'password': user['password']
                                         }
-            res1 = requests.post(url=url1, data=cred)
+            res1 = requests.post(url=url1, data=user)
             res2 = requests.post(url=url2, data=cred)
 
             #print(res.json())
