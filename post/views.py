@@ -4,7 +4,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
 from .models import (Post, Comment)
-from .serializers import (PostSerializer, CommentSerializer, ReplySerializer)
+from .serializers import (PostSerializer, CommentSerializer)
 from django.views import View
 from datetime import datetime
 from .signals import increment_no_comments
@@ -68,8 +68,8 @@ class PostView(View):
 
     def post(self, request, post, *args, **kwargs):
 
-        model = self.POST_MODELS.get(post, {}).get('model', Reply)
-        serializer = self.POST_MODELS.get(post, {}).get('serializer', ReplySerializer)
+        model = self.POST_MODELS.get(post, {}).get('model', Comment)
+        serializer = self.POST_MODELS.get(post, {}).get('serializer', CommentSerializer)
         data = request.data
         text = data.get('text', '')
         obj_data = {'user': request.user, 'text': text}
@@ -83,11 +83,11 @@ class PostView(View):
             obj_data['image'] = img
             obj_data['tagged_product'] = tagged_product
         else:
-            parent_name = 'post' if post == 'p' else 'comment' if 'post' == 'r-c' else 'reply'
+            parent_name = 'post' if post == 'p' else 'comment'
             parent_id = data.get('parent_id', None)
             parent = get_object_or_404(model, pk=parent_id)
             obj_data[parent_name] = parent
-        obj = serializer(data=obj_data)      
+        obj = serializer(data=obj_data)
         
         if obj.is_valid():
             obj.create()

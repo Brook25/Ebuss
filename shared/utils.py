@@ -22,7 +22,7 @@ class SetupObjects:
                         'country_code': 251,
                         'phone_no': '0923456721'
                         }
-
+        
         test_user_2_data = {
                         'first_name': 'Emily',
                         'last_name': 'James',
@@ -34,9 +34,65 @@ class SetupObjects:
                         'phone_no': '3245679011'
                 }
         
-        test_user_1 = User.objects.create(**test_user_1_data)
-        test_user_2 = User.objects.create(**test_user_2_data)
+        test_user_3_data = {
+                        'first_name': 'Veronica',
+                        'last_name': 'Thomas',
+                        'username': 'vertom1',
+                        'email': 'viccytom@gmail.com',
+                        'password': 'viccytom27!',
+                        'birth_date': '1991-10-10',
+                        'country_code': 33,
+                        'phone_no': '3242343034'
+                        }
         
+        test_user_4_data = {
+                        'first_name': 'Peter',
+                        'last_name': 'Parker',
+                        'username': 'peterpark1',
+                        'email': 'peterpark@gmail.com',
+                        'password': 'peterboy27!',
+                        'birth_date': '1993-10-10',
+                        'country_code': 25,
+                        'phone_no': '4445679011'
+                        }
+        
+        test_user_5_data = {
+                        'first_name': 'Helen',
+                        'last_name': 'Yonas',
+                        'username': 'helenyon1',
+                        'email': 'helenyoni@gmail.com',
+                        'password': 'helenyoni27!',
+                        'birth_date': '1995-10-10',
+                        'country_code': 1,
+                        'phone_no': '7645679011'
+                        }
+        
+        test_user_6_data = {
+                        'first_name': 'Yonas',
+                        'last_name': 'Abebe',
+                        'username': 'yonyabe1',
+                        'email': 'yonnyabe@gmail.com',
+                        'password': 'yonyboy27!',
+                        'birth_date': '1994-10-10',
+                        'country_code': 45,
+                        'phone_no': '1235679011'
+                        }
+        
+       
+        test_users_data = [test_user_1_data, test_user_2_data,
+                test_user_3_data, test_user_4_data,
+                test_user_5_data, test_user_6_data]
+
+        self.register_user(test_users_data)
+
+        test_user_1 = User.objects.get(username='johnnydoe1')
+        test_user_2 = User.objects.get(username='emilyjim1')
+        test_user_3 = User.objects.get(username='vertom1')
+        test_user_4 = User.objects.get(username='peterpark1')
+        test_user_5 = User.objects.get(username='helenyon1')
+        test_user_6 = User.objects.get(username='yonyabe1')
+        
+
         test_product_1_features = { 'brand': 'Aurora', 'screen': '14Mp',
                 'ram': '64GB', 'os': 'android13', 'storage': '64GB' }
         
@@ -106,54 +162,7 @@ class SetupObjects:
         test_wishlist_1 = Wishlist.objects.create(**wish_list_1_data)
         test_wishlist_1.product.add(test_product_2)
         
-        test_user_3_data = {
-                        'first_name': 'Veronica',
-                        'last_name': 'Thomas',
-                        'username': 'vertom1',
-                        'email': 'viccytom@gmail.com',
-                        'password': 'viccytom27!',
-                        'birth_date': '1991-10-10',
-                        'country_code': 33,
-                        'phone_no': '3242343034'
-                        }
         
-        test_user_4_data = {
-                        'first_name': 'Peter',
-                        'last_name': 'Parker',
-                        'username': 'peterpark1',
-                        'email': 'peterpark@gmail.com',
-                        'password': 'peterboy27!',
-                        'birth_date': '1993-10-10',
-                        'country_code': 25,
-                        'phone_no': '4445679011'
-                        }
-        
-        test_user_5_data = {
-                        'first_name': 'Helen',
-                        'last_name': 'Yonas',
-                        'username': 'helenyon1',
-                        'email': 'helenyoni@gmail.com',
-                        'password': 'helenyoni27!',
-                        'birth_date': '1995-10-10',
-                        'country_code': 1,
-                        'phone_no': '7645679011'
-                        }
-        
-        test_user_6_data = {
-                        'first_name': 'Yonas',
-                        'last_name': 'Abebe',
-                        'username': 'yonyabe1',
-                        'email': 'yonnyabe@gmail.com',
-                        'password': 'yonyboy27!',
-                        'birth_date': '1994-10-10',
-                        'country_code': 45,
-                        'phone_no': '1235679011'
-                        }
-        
-        test_user_3 = User.objects.create(**test_user_3_data)
-        test_user_4 = User.objects.create(**test_user_4_data)
-        test_user_5 = User.objects.create(**test_user_5_data)
-        test_user_6 = User.objects.create(**test_user_6_data)
         
         category_3 = Category.objects.create(name='kitchen_appliances')
         category_4 = Category.objects.create(name='cookware')
@@ -253,36 +262,14 @@ class SetupObjects:
         review=test_review_text, rating=test_rating)        
         
         
-        test_user_3_data = {
-                        'first_name': 'James',
-                        'last_name': 'Trim',
-                        'username': 'jimmytim1',
-                        'email': 'jamestrim@gmail.com',
-                        'password': 'jamestrim27!',
-                        'birth_date': '1990-10-10',
-                        'country_code': 12,
-                        'phone_no': '5645679011'
-                }
-        
-        test_user_4_data = {
-                        'first_name': 'Helena',
-                        'last_name': 'Peter',
-                        'username': 'helenpet1',
-                        'email': 'helenapet@gmail.com',
-                        'password': 'helena27!',
-                        'birth_date': '1993-10-10',
-                        'country_code': 43,
-                        'phone_no': '2445679011'
-                }
-        
         post_text = 'Check out this new product.'
         comment_text = 'Its really great.'
         reply_to_comment_text = 'I liked it too.'
         reply_to_reply_text = 'Great insight.'
         
-        test_user_3 = User.objects.create(**test_user_3_data)
+        #test_user_3 = User.objects.create(**test_user_3_data)
         
-        test_user_4 = User.objects.create(**test_user_4_data)
+        #test_user_4 = User.objects.create(**test_user_4_data)
 
         test_post_1 = Post.objects.create(user=test_user_1,
                 text=post_text, likes=0,
@@ -318,6 +305,33 @@ class SetupObjects:
 
 
 
+    def register_user(self, user_data):
+        import requests
+
+        import os
+        import json
+
+        url1 = 'http://localhost:8000/auth/signup'
+        url2 = 'http://localhost:8000/auth/login'
+        auth_dict = {}
+        for user in user_data:
+            cred = {'username': user['username'],
+                                        'password': user['password']
+                                        }
+            res1 = requests.post(url=url1, data=cred)
+            res2 = requests.post(url=url2, data=cred)
+
+            #print(res.json())
+
+            access_token = res2.headers['Authorization']
+            refresh_token = res2.cookies['refresh_token']
+            auth_dict[user['username']] = {'access_token': access_token, 'refresh_token': refresh_token}
+        
+
+        with open('tokens.json', 'w') as file:
+            json.dump(auth_dict, file)
+
+
     def delete_all_objects(self):
         User.objects.all().delete()
         Product.objects.all().delete()
@@ -327,7 +341,6 @@ class SetupObjects:
         #Notifications.objects.all().delete()
         Post.objects.all().delete()
         Comment.objects.all().delete()
-        Reply.objects.all().delete()
         CartOrder.objects.all().delete()
         SingleProductOrder.objects.all().delete()
         BillingInfo.objects.all().delete()

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from shared.serializers import BaseSerializer
 from user.serializers import UserSerializer
-from .models import (Post, Comment, Reply)
+from .models import (Post, Comment)
 
 class PostSerializer(BaseSerializer):
     user = UserSerializer()
@@ -16,14 +16,4 @@ class CommentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Comment
-        fields = ['text', 'timestamp', 'views', 'likes', 'comments', 'user']
-
-
-class ReplySerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-
-    class Meta:
-        model = Reply
         fields = '__all__'
-
-

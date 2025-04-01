@@ -36,7 +36,7 @@ class LogIn(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
         print(username, password)
-        user = User.objects.all().first()
+        user = User.objects.get(username=username)
         print(user.username, user.password)
         user = authenticate(request, username=username, password=password)
  

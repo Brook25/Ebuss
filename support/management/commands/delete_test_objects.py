@@ -23,7 +23,6 @@ class Command(BaseCommand):
             'cart_data': CartData,
             'post': Post,
             'comment': Comment,
-            'reply': Reply,
             'cart_order': CartOrder,
             'sigle_order': SingleProductOrder,
             'billing_info': BillingInfo,
