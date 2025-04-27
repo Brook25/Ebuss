@@ -226,20 +226,6 @@ class Subscriptions(APIView):
         
         return Response({'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
-# may be remove
-class Settings(APIView):
-    
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request, *args, **kwargs):
-
-        settings = request.cookies.get('settings', None)
-
-        if settings:
-            settings = json.data
-            return Response(settings, status=status.HTTP_200_OK)
-        return JsonResponse("error: Page not found", status=status.HTTP_404_PAGE_NOT_FOUND)
-
 
 class Profile(APIView):
     pass
