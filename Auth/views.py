@@ -66,7 +66,7 @@ class GetToken(APIView):
         
         try:
             payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithm)
-        except jwt.ExpiredTokenError:
+        except jwt.ExpiredSignatureError:
             return Response({'status': 'error', 'error': 'Refresh token has expired. Log in with your credentials.'},
                     status=status.HTTP_401_UNAUTHORIZED)
         except jwt.InvalidTokenError:

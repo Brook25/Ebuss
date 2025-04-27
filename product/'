@@ -6,29 +6,26 @@ from cart.models import (Cart, CartData)
 from product.models import Product
 from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
 from rest_framework.views import APIView
-from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
 from rest_framework import status
 from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           SerializeShipment)
-from shared.utils import paginate_queryset
+from utils import paginate_queryset
 # Create your views here.
 
 class OrderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated()]
 
     def get(self, request, *args, **kwargs):
          
         products = Product.objects.select_related('supplier').only('pk', 'name', 'supplier__username')
-        singleProductOrders = SingleProductOrder.objects.filter(user=request.user).order_by('-created_at').prefetch_related(Prefetch('product', queryset=products))
+        singleProdcuctOrders = SingleProductOrder.objects.filter(user=request.user).order_by('date').prefetch_related(Prefetch('product', queryset=products))
         singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer)
 
-        carts = Cart.objects.get(user=request.user, status='active').cart_data_for.all()
-        cartOrders = CartOrder.objects.filter(user=request.user).select_related('cart').prefetch_related('cart__cart_data_for')
-        print(cartOrders)
+        cartOrders = CartOrder.objects.filter(user=request.user).prefetch_related('cart', 
+                Prefetch('product', queryset=products))
         cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer)
-        print('cart', '==>', cartOrders.data, '\n', 'single', '==>', singleProductOrders.data)
         
         return Response({'cart_orders': cartOrders.data,
                             'single_product_orders': singleProductOrders.data}, status=status.HTTP_200_OK)
@@ -55,7 +52,7 @@ class OrderView(APIView):
                             order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
                             order.save()
                             post_save.send(Order, order, request.user)
-                            clear_cart.send(Order)
+                            clear_cart.send(Order, order, request.user)
                         return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
                     
                 message = 'Error: order failed, Please check order details.'
@@ -64,8 +61,6 @@ class OrderView(APIView):
                 return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
 
         except (json.JsonDecoderError, ValueError, TypeError) as e:
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
             message = "Error: couldn't parse values recieved. " + str(e)
             return Response("Order successfully placed.", status=501)
         

@@ -2,14 +2,18 @@ from django.db import models
 from shared.validators import check_vulgarity
 from django.db.models import (
         CharField, DateTimeField, ForeignKey,
-        PositiveIntegerField, ManyToManyField
+        PositiveIntegerField,
         )
+
+CART_STATUS = (('active', 'Active'),
+                  ('inactive', 'inactive'))
 
 
 class Cart(models.Model):
     name = CharField(max_length=40, validators=[check_vulgarity], null=False, blank=False)
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='carts')
     created_at = DateTimeField(auto_now=True)
+    status = CharField(choices=CART_STATUS, null=False, default='active')
 
     class Meta:
         unique_together = ('name', 'user')

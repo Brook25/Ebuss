@@ -353,7 +353,7 @@ def paginate_queryset(queryset, request, serializer_class, page_size=25):
         raise(ValueError, "one of queryset, request or serializer_class arguments not provided properly.")
     paginator = PageNumberPagination()
     paginator.page_size = page_size
-    paginated_queryset = paginator.paginate_queryset(query_set, request)
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
     serialized_data = serializer_class(paginated_queryset, many=True)
     return paginator.get_paginated_response(serialized_data.data)
 

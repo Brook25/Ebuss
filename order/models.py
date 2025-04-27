@@ -32,8 +32,8 @@ class Order(models.Model):
 
 
 class CartOrder(Order):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name = 'cart_orders')
-    cart = ForeignKey('cart.CartData', on_delete=models.DO_NOTHING, related_name='cartorders_in')
+    user = ForeignKey('user.User', on_delete=models.DO_NOTHING, related_name='cartorders_made')
+    cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING, related_name='cartorder_in')
     billing = ForeignKey('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
 

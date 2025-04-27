@@ -1,13 +1,23 @@
 from rest_framework import serializers
-from cart.serializers import Cart
+from cart.models import (Cart, CartData)
 from product.serializers import ProductSerializer
+from user.serializers import UserSerializer
+
+
+
+class CartDataSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(simple=True)
+
+    class Meta:
+        model = CartData
+        fields = '__all__'
+
 
 class CartSerializer(serializers.ModelSerializer):
-    products = serializers.MethodSerializerField(many=True)
-
+    user = UserSerializer()
+    cart_data_for = CartDataSerializer(many=True)
+    
     class Meta:
         model = Cart
         fields = '__all__'
 
-    def get_products(self, obj):
-        return ProductSerializer(obj.products, many=True, simple=True)

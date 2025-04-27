@@ -11,12 +11,13 @@ from .signals import increment_no_comments
 from .serializers import PostSerializer
 from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status
 import json
 from shared.utils import paginate_queryset
 # Create your views here.
 
-class News(View):
+class News(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
@@ -26,23 +27,23 @@ class News(View):
                 all_posts = Post.objects.filter(Q(user__in=subscriptions) | Q(user=request.user)).order_by('-created_at')
                 posts = paginate_queryset(all_posts, request, PostSerializer)
 
-                return Response(posts, status=status.HTTP_200_OK)
+                return Response(posts.data, status=status.HTTP_200_OK)
             return Response({'message': 'no index provided'},
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class Timeline(View):
+class Timeline(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
-        my_posts = request.user.posts.all().order_by('-created_at')
+        my_posts = Post.objects.filter(user=request.user).order_by('-created_at')
         posts = paginate_queryset(my_posts, request, PostSerializer)
 
-        return Response(posts, status=status.HTTP_200_OK)
+        return Response(posts.data, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class PostView(View):
+class PostView(APIView):
     permission_classes = [IsAuthenticated]
 
     POST_MODELS = {'p': {'model': Post, 'serializer': PostSerializer},

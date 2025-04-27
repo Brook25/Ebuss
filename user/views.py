@@ -10,6 +10,7 @@ from django.core.cache import cache
 from django.db.models import Prefetch
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from cart.models import CartData
 from order.models import (CartOrder, SingleProductOrder)
 from product.models import Product
 from user.models import Wishlist
@@ -61,13 +62,13 @@ class HistoryView(APIView):
         
         products = Product.objects.only('id', 'name')
         cartOrders = get_list_or_404(CartOrder.objects.filter(
-            user=request.user).order_by('-date').prefetch_related(
-                Prefetch('product', queryset=products)))
-        cartOrders = paginate_queryset(cartOrders, request, 20, CartOrderSerializer)
+                user=request.user, cart__status='active').order_by('-created_at').prefetch_related(
+                    Prefetch('cart__cart_data_for', queryset=CartData.objects.prefetch_related('cart__cart_data_for__product'))))
+        cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer, 20)
         
         singleProductOrders = get_list_or_404(SingleProductOrder.objects.filter(
-            user=request.user).order_by('-date').select_related('product'))
-        singleProductOrders = paginate_queryset(singleProductOrders, request, 20, SingleProductOrderSerializer)
+            user=request.user).order_by('-created_at').select_related('product'))
+        singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer, 20)
         
         return Response({ 'singleProductOrders': singleProductOrders.data,
                                 'Cartorders': cartOrders.data },
@@ -156,16 +157,16 @@ class Recent(APIView):
 
     def get(self, request, *args, **kwargs):
         username = request.user.username
-        recently_viewed = cache.get(username + ':recently_viewed')
-        recently_viewed = json.dumps(recently_viewed)
+        recently_viewed = cache.get(username + ':recently_viewed', [])        
+        print(recently_viewed)
         return Response(recently_viewed, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         try:
-            newly_viewed = json.data
+            newly_viewed = request.data
             username = request.user.username
             if newly_viewed and isinstance(newly_viewed, list):
-                recently_viewed = json.loads(cache.get(username + ':recently_viewed'))
+                recently_viewed = cache.get(username + ':recently_viewed', [])
                 if 0 < len(newly_viewed) < 25:
                     range_to_stay = recently_viewed[:25 - len(newly_viewed)]
                     updated_recently_viewed = newly_viewed + range_to_stay
@@ -201,9 +202,9 @@ class Subscriptions(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, index, *args, **kwargs):
-        
+       
         subs = get_list_or_404(request.user.subscriptions.all())
-        serialized_subs = paginate_queryset(subs, request, 30, UserSerializer)
+        serialized_subs = paginate_queryset(subs, request, UserSerializer, 30)
  
         if serialized_subs:
             return Response(serialized_subs.data,
@@ -217,7 +218,7 @@ class Subscriptions(APIView):
 
     def post(self, request, *args, **kwargs):
 
-        sub_id = json.data.get('subscription', None)
+        sub_id = request.data
         if isinstance(sub_id, int):
             subscribed_to = get_object_or_404(User, pk=sub_id)
             request.user.subscriptions.add(subscribed_to)
@@ -225,7 +226,7 @@ class Subscriptions(APIView):
         
         return Response({'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
-
+# may be remove
 class Settings(APIView):
     
     permission_classes = [IsAuthenticated]
@@ -242,4 +243,3 @@ class Settings(APIView):
 
 class Profile(APIView):
     pass
-

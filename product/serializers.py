@@ -34,7 +34,7 @@ class ProductSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         
         fields = ['id', 'name', 'supplier', 'description']
-        simple = kwargs.get('simple', False)
+        simple = kwargs.pop('simple', False)
         self.Meta.fields = fields[:-1] if simple else fields
         super().__init__(*args, **kwargs)
 

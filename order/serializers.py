@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import CartOrder, SingleProductOrder, Shipment
+from cart.models import CartData
+from cart.serializers import CartSerializer
 from product.serializers import ProductSerializer
 from shared.serializers import BaseSerializer
 from user.serializers import UserSerializer
@@ -16,24 +18,18 @@ class SingleProductOrderSerializer(BaseSerializer):
     
     def get_product(self, obj):
         if hasattr(obj, 'product'):
-            return ProductSerializer(data=obj.product, simple=True)
+            return ProductSerializer(obj.product, simple=True).data
         
         return None
     
 
 
 class CartOrderSerializer(SingleProductOrderSerializer):
-    cart = serializers.SerializerMethodField()
+    cart = CartSerializer()
 
     class Meta:
         model = CartOrder
         fields = '__all__'
-
-    
-    def get_cart(self, obj):
-        if hasattr(obj, 'cart'):
-            return { 'cart_id': obj.cart.id, 'cart_name': obj.cart.name }
-        return None
 
 
 
