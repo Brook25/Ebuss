@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import (F, Q)
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from user.models import User
@@ -7,7 +7,6 @@ from .models import (Post, Comment)
 from .serializers import (PostSerializer, CommentSerializer)
 from django.views import View
 from datetime import datetime
-from .signals import increment_no_comments
 from .serializers import PostSerializer
 from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from rest_framework.response import Response
@@ -60,12 +59,13 @@ class PostView(APIView):
                 {'message': error}, status=status.HTTP_400_BAD_REQUEST)
 
         model = self.POST_MODELS.get(post, {}).get('model', None)
+        obj = get_object_or_404(model, pk=id)
         serializer = self.POST_MODELS.get(post, {}).get('serializer', None)
-        comments = model.objects.get(pk=id).replies_to.all()
+        comments = obj.replies_to.all().select_related('user')
         
         comments = paginate_queryset(comments, request, serializer)
 
-        return Response(comments, status=status.HTTP_200_OK)
+        return Response(comments.data, status=status.HTTP_200_OK)
 
     def post(self, request, post, *args, **kwargs):
 
@@ -73,7 +73,7 @@ class PostView(APIView):
         serializer = self.POST_MODELS.get(post, {}).get('serializer', CommentSerializer)
         data = request.data
         text = data.get('text', '')
-        obj_data = {'user': request.user, 'text': text}
+        obj_data = {'user': request.user.pk, 'text': text}
         if not text:
             return Response({
                     'message': 'post should have a text message and a tagged product.'},
@@ -84,24 +84,52 @@ class PostView(APIView):
             obj_data['image'] = img
             obj_data['tagged_product'] = tagged_product
         else:
-            parent_name = 'post' if post == 'p' else 'comment'
+            parent_name = 'post' if post == 'p' else 'parent_comment'
             parent_id = data.get('parent_id', None)
-            parent = get_object_or_404(model, pk=parent_id)
-            obj_data[parent_name] = parent
+            obj_data[parent_name] = parent_id
         obj = serializer(data=obj_data)
         
         if obj.is_valid():
             obj.create()
+            
+            return Response(data={'message':
+                '{} successfully added'.format(model.__name__)}, status=status.HTTP_200_OK)
         
-        return Response(data={'message':
-            '{} successfully added'.format(model.__name__)}, status=status.HTTP_200_OK)
-        
+        return Response(obj.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, post, index, *args, **kwargs):
-        if not index.is_digit():
+        if not isinstance(index, int):
             return Response({'message': 'index should be integer'}, status=status.HTTP_400_BAD_REQUEST)
         model = self.POST_MODELS.get(post, {}).get('model', None)
         if model:
-            post = get_object_or_404(model, pk=index)
-            post.delete()
-            return Response({'message': '{} succefully deleted'.format(model.__name__)}, status=HTTP_400_OK)
+            posted_obj = get_object_or_404(model, pk=index)
+            if model == 'c':
+                if posted_obj.parent_comment:
+                    posted_obj.parent_comment.comments = F('comments') - 1
+                    posted_obj.parent_comment.save()
+                else:
+                    posted_obj.post.comments = F('comments') - 1
+                    posted_obj.post.save()
+            posted_obj.delete()
+            return Response({'message': '{} succefully deleted'.format(model.__name__)}, status=status.HTTP_200_OK)
+
+
+class LikeView(APIView):
+
+    def post(self, request, post, path,  pk, *args, **kwargs):
+
+        Model = Post if post == 'p' else Comment
+        obj = get_object_or_404(Model, pk=pk)
+        amount = request.data.get('amount', 0)
+
+        if path == 'like':
+            obj.likes = F('likes') + amount
+            obj.save(update_fields=['likes'])
+        elif path == 'view':
+            obj.views = F('views') + amount
+            obj.save(update_fields=['views'])
+        else:
+            return Response({'message': 'wrong parameter'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        obj.save()
+        return Response({'message: amount succefully added.'}, status=status.HTTP_200_OK)

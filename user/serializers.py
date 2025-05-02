@@ -8,7 +8,6 @@ import jwt
 SECRET_KEY = settings.SECRET_KEY
 
 
-
 class UserSerializer(BaseSerializer):
 
     class Meta:

@@ -1,4 +1,5 @@
 import json
+from django.db.models.query import QuerySet
 from user.models import (User, Wishlist) 
 from product.models import (Product, Category, SubCategory, Review)
 from order.models import (CartOrder, SingleProductOrder, ShipmentInfo, BillingInfo)
@@ -280,12 +281,13 @@ class SetupObjects:
         test_comment_1 = Comment.objects.create(user=test_user_2,
                                     post=test_post_1,
                                     text=comment_text,
+                                    parent_comment=None,
                                     likes=0,
                                     comments=0,
                                     views=0)
 
         test_reply_1 = Comment.objects.create(user=test_user_3,
-                                post=test_post_1,
+                                post=None,
                                 parent_comment=test_comment_1,
                                 text=reply_to_comment_text,
                                 likes=0,
@@ -293,7 +295,7 @@ class SetupObjects:
                                 views=0)
 
         test_reply_2 = Comment.objects.create(user=test_user_4,
-                                post=test_post_1,
+                                post=None,
                                 parent_comment=test_reply_1,
                                 text=reply_to_reply_text,
                                 likes=0,
@@ -349,7 +351,7 @@ class SetupObjects:
 
 def paginate_queryset(queryset, request, serializer_class, page_size=25):
 
-    if not (queryset and request and serializer_class):
+    if not (isinstance(queryset, QuerySet)  and request and serializer_class):
         raise(ValueError, "one of queryset, request or serializer_class arguments not provided properly.")
     paginator = PageNumberPagination()
     paginator.page_size = page_size
