@@ -33,9 +33,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         
-        fields = ['id', 'name', 'supplier', 'description']
+        fields = ['id', 'name', 'supplier']
         simple = kwargs.pop('simple', False)
-        self.Meta.fields = fields[:-1] if simple else fields
+        self.Meta.fields = fields if simple else '__all__'
         super().__init__(*args, **kwargs)
 
     def create(self, validated_data):
@@ -54,7 +54,7 @@ class ProductSerializer(serializers.ModelSerializer):
             tag_change = kwargs.get('tag_change', False)
             exclude_fields = ['id', 'subcategory', 'supplier']
             
-            if tag_change:
+            if not tag_change:
                 exclude_fields += ['tags', 'tag_values']
             
             for k, v in self.validated_data.items():

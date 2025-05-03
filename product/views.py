@@ -32,20 +32,19 @@ class ProductView(APIView):
         if not path or path == 'my':
             return [IsAuthenticated()]
         
-        return [IsAdmin()]
+        return [AllowAny()]
 
 
     def get(self, request, path, index, *args, **kwargs):
  
         if path == 'my':
-
             user_products = get_list_or_404(Product.objects.filter(supplier=request.user).order_by('-created_at'))
             user_products = paginate_queryset(user_products, request, ProductSerializer, 40)
             return Response(user_products.data,
                 status=status.HTTP_200_OK)
         
         if path == 'view':
-            product = get_object_or_404(Product.objects.get(pk=index))
+            product = get_object_or_404(Product, pk=index)
             product = ProductSerializer(product)
 
             return Response(product.data,

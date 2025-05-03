@@ -350,9 +350,8 @@ class SetupObjects:
 
 
 def paginate_queryset(queryset, request, serializer_class, page_size=25):
-
-    if not (isinstance(queryset, QuerySet)  and request and serializer_class):
-        raise(ValueError, "one of queryset, request or serializer_class arguments not provided properly.")
+    if not (isinstance(queryset, QuerySet) or isinstance(queryset, list) and request and serializer_class):
+        raise ValueError( "one of queryset, request or serializer_class arguments not provided properly.")
     paginator = PageNumberPagination()
     paginator.page_size = page_size
     paginated_queryset = paginator.paginate_queryset(queryset, request)
