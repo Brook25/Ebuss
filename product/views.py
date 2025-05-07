@@ -78,7 +78,7 @@ class ProductView(APIView):
 
         serializer = ProductSerializer(data=data, many=many)
         
-        if serializer.is_valid() and serializer.bulk_validate_tag():
+        if serializer.is_valid() and serializer.bulk_validate_tags():
             created = serializer.bulk_create() if len(products) > 1 else serializer.create()
             return Response({'message': 'product successfully added.'}, status=status.HTTP_201_OK)
         
@@ -89,15 +89,15 @@ class ProductView(APIView):
     def put(self, request, *args, **kwargs):
     
         product_data = request.data
-        update_data = product_data.get('update_data', {})
-        product_exists = Product.objects.filter(pk=update_data.get('id'), user=request.user).exists
-        if product_exists:
-            serializer = ProductSerializer(data=update_data)
+        product = get_object_or_404(Product, pk=product_data.get('id'))
+        if product.supplier != request.user:
+            return Response({'message': 'User not authorized to do the update operation on this product.'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        serializer = ProductSerializer(data=product_data)
 
-            if serializer.is_valid():
-
-                serializer.update()
-                return Response({'message': 'product successfully updated.'}, status=status.HTTP_201_OK)
+        if serializer.is_valid():
+            serializer.update(product)
+            return Response({'message': 'product successfully updated.'}, status=status.HTTP_201_CREATED)
 
         return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -112,10 +112,10 @@ class ProductView(APIView):
             if product.supplier == request.user:
                 product.delete()
                 return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+            
+            return Response({'message': 'User Not authorized to delete the specified product'}, status=status.HTTP_NOT_AUTHORIZED_401)
                 
-        return Response({'message': 'Product not found'}, status=status.HTTP_400_BAD_REQUEST)
         
-
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     permission_classes = [AllowAny]
