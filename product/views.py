@@ -55,15 +55,35 @@ class ProductView(APIView):
             products = paginate_queryset(products, request, ProductSerializer, 300)
             return Response(products.data, status=status.HTTP_200_OK)
 
+        return Response({'message': 'Page Not Found.'}, status=status.HTTP_404_PAGE_NOT_FOUND)
+
+
     def post(self, request, *args, **kwargs):
      
-        product_data = request.data
-        products = product_data.get('products', [])
-        serializer = ProductSerializer(data=products, many=True)
-        if serializer.is_valid():
-            created = serializer.bulk_create(products) 
-            return Response({'message': 'product successfully added.'}, status=status.HTTP_200_OK)
-        return Response({'message': 'product isn\'t added, data validation failed.'}, status=400)
+        products = request.data
+        
+        if not products:
+            return Response({'message': 'No product data provided.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+        for product in products:
+            product['supplier'] = request.user.pk
+        
+        if len(products) > 1:
+            many = True
+            data = products
+        else:
+            print(products)
+            many = False
+            data = products[0]
+
+        serializer = ProductSerializer(data=data, many=many)
+        
+        if serializer.is_valid() and serializer.bulk_validate_tag():
+            created = serializer.bulk_create() if len(products) > 1 else serializer.create()
+            return Response({'message': 'product successfully added.'}, status=status.HTTP_201_OK)
+        
+        return Response({'message': 'product isn\'t added, data validation failed.', 'errors': serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
     def put(self, request, *args, **kwargs):
@@ -77,7 +97,7 @@ class ProductView(APIView):
             if serializer.is_valid():
 
                 serializer.update()
-                return Response({'message': 'product successfully updated.'}, status=status.HTTP_200_OK)
+                return Response({'message': 'product successfully updated.'}, status=status.HTTP_201_OK)
 
         return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -89,8 +109,11 @@ class ProductView(APIView):
 
         if product_id:
             product = get_object_or_404(Product, pk=product_id)
-            product.delete()
-            return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+            if product.supplier == request.user:
+                product.delete()
+                return Response({'message': 'Product successfully deleted'}, status=status.HTTP_200_OK)
+                
+        return Response({'message': 'Product not found'}, status=status.HTTP_400_BAD_REQUEST)
         
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -122,8 +145,8 @@ class CategoryView(APIView):
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
                     product__subcategory__category__id=category_id,
-                        date_added__gte=month_ago).annotate(count=Count('product'), purchases=Sum('qunatity'),
-                                ).filter(purchases__gte=200).order_by('purchases').select_related('product')
+                        date_added__gte=month_ago).select_related('product').values('product').annotate(purchases=Sum('qunatity'),
+                                ).filter(purchases__gte=200).order_by('purchases')
 
                 new_products = [metric.product for metric in new_in_category_metrics]
                 products = paginate_queryset(new_products, request, ProductSerializer, 40)

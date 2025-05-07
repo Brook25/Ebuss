@@ -29,7 +29,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProductSerializer(serializers.ModelSerializer):
-    supplier = UserSerializer()
+    supplier = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    sub_category = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all())
 
     def __init__(self, *args, **kwargs):
         
@@ -38,9 +39,9 @@ class ProductSerializer(serializers.ModelSerializer):
         self.Meta.fields = fields if simple else '__all__'
         super().__init__(*args, **kwargs)
 
-    def create(self, validated_data):
+    def create(self):
         with transaction.atomic():
-            product = Product.objects.create(**validated_data)
+            product = Product.objects.create(**self.validated_data)
             post_save(Product, product, '', 0, 0)
 
     def update(self, **kwargs):
@@ -70,38 +71,75 @@ class ProductSerializer(serializers.ModelSerializer):
 
         return product
 
-    def validate(self, *args, **kwargs):
-        def validate_tags(products):
-            subcategory_ids = set([product.get('subcat_id') for product in products])
+    def bulk_validate_tags(self, *args, **kwargs):
+        
+        if type(self.validated_data) is dict:
+            products = [self.validated_data] if isinstance(self.validated_data, list) else self.validated_data
+        
+        subcategory_ids = set([product.get('subcat_id') for product in products if product.get('tags', {})])
+        if subcateogry_ids:
             subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
             subcategories = {subcat.id: set(subcat.tags.all().values_list('name')) for subcat in subcategories}
+            
+            invalid_products = {'amount': 0, 'data': [], 'error': 'Invalid tag key for specified suncategory.'}
             for product in products:
                 subcat_id = product.get('subcategory_id')
                 sc_tags = subcategories.get(subcat_id, set())
                 product_tags = set(product.get('tags').keys())
                 if not product_tags.issubset(sc_tags):
-                    return False
-            return True
+                    invalid_tags = product_tags.difference(sc_tags)
+                    invalid_products['amount'] += 1
+                    invalid_products['data'].append({'product_name': product['name'], 'subcat_id': subcat_id, 'tags': invalid_tags})
+           
+            if invalid_products['amount']:
+                self._errors['invalid_products'] = invalid_products
+                return False
+        
+        return True
 
-        products = self.data.get('products', [])
-        if validate_tags(products):
-            return super().validate(*args, **kwargs)
-        return False
 
-    def bulk_create(self, validated_data):
+    def validate_description(self, value):
+        if 270 > len(value) > 1500:
+            raise serializers.ValidationError('length of description must be between specified values.')
+        return value
+
+
+    def validate_tags(self, value):
+        for v in value.values():
+            if len(v) > 20:
+                raise serializers.ValidationError('tag values must have less than 20 characters.')
+        return value
+
+    def create_tag_values(self, description):
+    
+        tag_values = []
+        for token in (description).split('#'):
+            
+            trimmed_token = token.strip()
+            if len(trimmed_token) < 20 and ' ' not in trimmed_token:
+                tag_values.append(trimmed_token)
+        return tag_values if not tag_values else tag_values[1:]
+    
+    
+    def validate(self, attrs):
+
+        tag_values = [v for v in attrs.get('tags', {}).values()]
+        tag_values.append(self.create_tag_values(attrs.get('desctiption', '')))
+        
+        return attrs
+
+
+    def bulk_create(self):
 
         with transaction.atomic():
             try:
-                product_objs = [Product(**product_data) for product_data in validated_data]
+                product_objs = [Product(**product_data) for product_data in self.validated_data]
                 post_save(Product, product_objs, '', 0, 0, many=True)
             except Exception as e:
                 return str(e)
 
     class Meta:
         model = Product
-        extra_kwargs = {'supplier': {'read_only': True},
-                        'subcategory': {'read_only': True}
-                        }
 
 class TagSerializer(serializers.ModelSerializer):
 

@@ -4,6 +4,6 @@ from .views import (ProductView, SubCategoryView,
 
 urlpatterns = [
         path('<str:path>/<int:index>/', ProductView.as_view(), name='product'),
-        path('<str:path>', ProductView.as_view(), name='product_post'),
+        path('', ProductView.as_view(), name='product_post'),
         path('search/', Search.as_view(), name='product_search')
         ]

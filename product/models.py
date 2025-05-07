@@ -15,16 +15,15 @@ class Product(models.Model):
     name = CharField(max_length=100, validators=[
         check_vulgarity
         ])
-    description = TextField()
+    description = TextField(validators=[check_vulgarity])
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='products')
     price = DecimalField(max_digits=11, decimal_places=2, null=False, blank=False, validators=[MinValueValidator(20)])
     sub_category = ForeignKey('SubCategory', on_delete=models.CASCADE, related_name='products')
     created_at = DateField(auto_now_add=True)
     quantity = PositiveIntegerField(blank=False)
-    tags = JSONField(default=dict, blank=True)
-    tag_values = ArrayField(CharField(max_length=50))  # Don't forget to add the product name in there
+    tags = JSONField(default=dict)
+    tag_values = ArrayField(CharField(max_length=50), default=list)  # Don't forget to add the product name in there
     rating = PositiveIntegerField(validators=[MaxValueValidator(5)], default=0)
-    review = ManyToManyField('Review', related_name='reviewed_product')
 
     def __repr__(self):
         return '<Product> {}'.format(self.__dict__)

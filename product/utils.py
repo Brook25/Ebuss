@@ -251,3 +251,5 @@ class SearchEngine:
             matches = [product for product in subcategory.products if set(self.__tags.itmes()) <= set(json.loads(product.tags).items())]
 
         return matches
+
+        
