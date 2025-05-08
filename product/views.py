@@ -115,7 +115,8 @@ class ProductView(APIView):
             
             return Response({'message': 'User Not authorized to delete the specified product'}, status=status.HTTP_NOT_AUTHORIZED_401)
                 
-        
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     permission_classes = [AllowAny]
