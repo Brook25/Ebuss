@@ -13,8 +13,8 @@ class CategorySerializer(BaseSerializer):
         model = Category
         fields = '__all__'
 
-class SubCategorySerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
+class SubCategorySerializer(BaseSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), write_only=True)
 
         
     class Meta:

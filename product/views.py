@@ -191,7 +191,7 @@ class SubCategoryView(APIView):
         if type == 'product':
             subcat_id = request.GET.get('subcat_id', None)
             if subcat_id:
-                products = SubCategory.objects.filter(pk=subcat_id).products.all().order_by('-timestamp')
+                products = Product.objects.filter(sub_category__pk=subcat_id).order_by('-created_at')
                 products = paginate_queryset(products, request, ProductSerializer, 40)
                 return Response(products.data,
                      status=status.HTTP_200_OK)
