@@ -57,7 +57,7 @@ class PopularityCheck:
         further_date = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
         furthest_date = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)  
         
-        self.__purchase_aggregates = self.__all_products.annotate(
+        self.__purchase_aggregates = self.__all_products.values('product', 'product__sub_category').annotate(
                                 total_purchases=Sum('quantity'),
             three_d_purchases=Sum(Case(When(purchase_date__gte=nearest_date,
                                                  then=F('quantity')), default=0)),
@@ -69,16 +69,10 @@ class PopularityCheck:
 
     def __calculate_purchase_percentage(self):
 
-        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory').annotate(
+        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory', 'product__subcategory__ratio').annotate(
             total_purchase=Sum('amount'))
         
-        product_subcat_totals = self.__purchase_aggregates.values('product', 'amount').annotate(product_total= Sum('amount'), subcat_total=Subquery(
-            all_subcategory_sums.filter(
-                product__subcategory=OuterRef(
-                    'product__subcategory'))).values('total_purchase')[:1])
-        
-        popular = product_subcat_totals.filter(
-                        F('subcat_total') / F('product_total') >= F('product__subcategory__popularity_ratio'))
+                
 
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
         return popular
