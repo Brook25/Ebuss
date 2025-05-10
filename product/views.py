@@ -146,8 +146,8 @@ class CategoryView(APIView):
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
                     product__subcategory__category__id=category_id,
-                        date_added__gte=month_ago).select_related('product').values('product').annotate(purchases=Sum('qunatity'),
-                                ).filter(purchases__gte=200).order_by('purchases')
+                        date_added__gte=month_ago).values('product__id', 'product__name', 'product__description', 'product__price', 'product__image').annotate(purchases=Sum('qunatity'),
+                                ).filter(purchases__gte=200).order_by('-purchases')
 
                 
                 return Response(
@@ -157,16 +157,19 @@ class CategoryView(APIView):
         if type == 'products':
             cat_id = request.GET.get('category_id', None)
             if cat_id:
-                products = Product.objects.filter(subcategory__category__id=cat_id).order_by('-quantity')
- 
-                products = paginate_queryset(products, request, ProductSerializer, 40)
+                queryset = Product.objects.filter(subcategory__category__id=cat_id).order_by('-quantity')
+                
+                products = get_list_or_404(queryset)
+                
+                paginated_products = paginate_queryset(products, request, ProductSerializer, 40)
+                
                 return Response({
-                    'products': products.data
+                    'products': paginated_products.data
                     }, status=status.HTTP_200_OK)
 
         return Response({
-            'error': 'wrong path.'},
-            status=status.HTTP_400_BAD_REQUEST)
+            'message': 'wrong uri.'},
+            status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -193,12 +196,13 @@ class SubCategoryView(APIView):
                 products = paginate_queryset(products, request, ProductSerializer, 40)
                 return Response(products.data,
                      status=status.HTTP_200_OK)
-        #add date and page number pagination
+        
+        #add date and cursor pagination
         if type == 'new':
             subcat_id = request.GET.get('subcat_id', None)
             if subcat_id:
                 month_ago = datetime.today() - timedelta(days=30)
-                
+
                 new_product_metrics = Metrics.objects.filter(product__sub_category__pk=subcat_id,
                                         product__created_at__gte=month_ago).values('product__id', 'product__name', 'product__price', 'product__description').annotate(purchases=Sum('quantity')).filter(purchases__gte=500).order_by('-purchases')
 
@@ -238,6 +242,16 @@ class TagView(APIView):
             serialized_tags = TagSerializer(tags, many=True)
             return Response(serialized_tags.data,
                     status=status.HTTP_200_OK)
+
+        if type == 's':
+
+            subcat_id = request.GET.get('id', None)
+            subcat = get_object_or_404(SubCategory, pk=subcat_id)
+            tags_for_subcat = subcat.tags.all()
+
+            serialized_tags = paginate_queryset(tags_for_subcat, request, TagSerializer, 50)
+
+            return Response(serialized_tags.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
 
