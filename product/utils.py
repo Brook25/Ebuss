@@ -5,6 +5,7 @@ from supplier.models import Metrics
 from .serializers import ProductSerializer
 from shared.utils import paginate_queryset
 from django.core.paginator import Paginator
+from django.db import connections
 from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case,
                                When, Count, OuterRef, Subquery)
 from django.contrib.postgres.fields import (ArrayField)
@@ -37,7 +38,7 @@ class PopularityCheck:
         if not subcategory_ids:
             raise ValueError("subcategory ids not specified.")
         
-        days_ago_60 = datetime.today - datetime.timedelta(days=60)
+        days_ago_60 = datetime.today() - datetime.timedelta(days=60)
         subcat_filter = Q(product__sub_category__in=subcategory_ids)
         
         product_filter = Q(purchase_date__gte=days_ago_60)
@@ -69,12 +70,34 @@ class PopularityCheck:
 
     def __calculate_purchase_percentage(self):
 
-        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory', 'product__subcategory__ratio').annotate(
+        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory').annotate(
             total_purchase=Sum('amount'))
-        
-                
 
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
+        raw_sql = """
+        SELECT product.id, SUM(quantity) as total_purchase FROM supplier_metrics sm JOIN product_product p
+        ON p.id = sm.product_id JOIN product_sub_category sc on p.sub_category_id = sc.id
+        
+        WHERE sc.id IN %[sub_category_ids]% AND
+              sm.created_at >= %[start_date]%
+        
+        GROUP BY p.id
+        
+        HAVING total_purchase >= (
+                SELECT SUM(spm.quantity) * popularity_ratio FROM supplier_metrics spm JOIN product_product pp ON spm.product_id = pp.id
+                JOIN product_sub_category ssc ON ssc.id = p.subcategory_id
+
+                WHERE ssc.id = sc.id AND
+                      spm.created_at >= %[start_date]%
+                );
+            """                
+
+        subcategory_ids = [value['pk'] for value in self.subcats.values('pk')]
+        with connections.cursor() as cursor:
+            cursor.execute(raw_sql, [subcategory_ids, datetime.today()])
+            popular_product_ids = [popular for popular, in cursor.fetchall()]
+            print(popular_product_ids)
+
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(id__in=popular)
         return popular
     
     def __calculate_purchase_rate(self):
@@ -89,7 +112,7 @@ class PopularityCheck:
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
         return popular
 
-    def __calculate_wishlist(self, **kwargs):
+    def __calculate_wishlist(self):
 
         popular = self.__purchase_aggregates.annotate(
             wishlist_total=Count('product__wishlist_in')).filter(
@@ -99,7 +122,7 @@ class PopularityCheck:
 
         return popular
     
-    def __calculate_conversion_rate(self, **kwargs):
+    def __calculate_conversion_rate(self):
 
         popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs')
                                                      >= F('product__subcategory_conversion_threshold'))
@@ -107,7 +130,7 @@ class PopularityCheck:
 
         return popular
 
-    def __calculate_reviews(self, **kwargs):
+    def __calculate_reviews(self):
 
         purchase_threshold = kwargs.get('purchase_thresholds', 100)
         popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, 
@@ -119,11 +142,10 @@ class PopularityCheck:
 
     def find_popular(self):
  
-        return self.calculate_purchase_percentage + \
-                self.calculate_purchase_rate + \
-                    self.calculate_wishlist + \
-                        self.calculate_purchase_percentage
-
+        return self.calculate_purchase_percentage() + \
+                self.calculate_purchase_rate() + \
+                    self.calculate_wishlist() + \
+                        self.calculate_purchase_percentage()
 
 
 class SearchEngine:
