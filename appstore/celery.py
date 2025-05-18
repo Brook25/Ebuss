@@ -7,14 +7,16 @@ import os
 app = Celery('appstore')
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appstore.settings')
-django.settings()
+django.setup()
 
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
+app.autodiscover_tasks(['product'])
 
+'''
 app.conf.beat_schedule = {
     'popularity_checker': {
-        'task': 'tasks.do_popularity_check',
+        'task': 'product.tasks.do_popularity_check',
         'schedule': crontab(minute=0, hour=0, day_of_month='*/10'),
     },
 }
+'''

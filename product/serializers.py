@@ -4,8 +4,8 @@ from user.models import User
 from .models import (Product, Category, SubCategory,
         Tag, Review)
 from shared.serializers import BaseSerializer
-from user.serializers import UserSerializer
 from .signals import post_save
+from user.serializers import UserSerializer
 
 class CategorySerializer(BaseSerializer):
     

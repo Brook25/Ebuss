@@ -2,7 +2,7 @@ from .models import (Product, SubCategory,
         TokenToSubCategory, SubCategorySearchWeight)
 from functools import reduce
 from supplier.models import Metrics
-from .serializers import ProductSerializer
+import user.serializers
 from shared.utils import paginate_queryset
 from django.core.paginator import Paginator
 from django.db import connections

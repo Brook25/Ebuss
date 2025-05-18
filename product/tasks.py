@@ -1,4 +1,4 @@
-from celery import app as celery_app
+from appstore import celery_app
 from django_redis import get_redis_connection
 import ast
 from datetime import datetime
