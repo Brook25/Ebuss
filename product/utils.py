@@ -12,6 +12,7 @@ from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
 from collections import Counter
 from django.conf import settings
+import datetime as datetime_object
 from datetime import datetime
 import enchant
 import json
@@ -31,32 +32,33 @@ class PopularityCheck:
     FURTHER_DAY = 14
     FURTHEST_DAY = 21
 
-    def __init__(self, metrics_data, subcats, *args, **kwargs):
+    def __init__(self, metric_data, *args, **kwargs):
 
         popular_list = kwargs.get('popular_list', [])
         subcategory_ids = kwargs.get('subcategory_ids')
         if not subcategory_ids:
             raise ValueError("subcategory ids not specified.")
         
-        days_ago_60 = datetime.today() - datetime.timedelta(days=60)
+        days_ago_60 = datetime.today() - datetime_object.timedelta(days=60)
         subcat_filter = Q(product__sub_category__in=subcategory_ids)
         
         product_filter = Q(purchase_date__gte=days_ago_60)
         quantity_filter = Q(product__quantity__gte=1500)
 
         exclude_populars = ~Q(pk__in=popular_list)
-        
-        self.subcats = subcats
+ 
+        self.subcats = subcategory_ids
         self.purchase_ratio = kwargs.get('purchase_ratios', None)
-        self.__all_products = metrics_data.filter(subcat_filter & product_filter &
+        self.__all_products = metric_data.filter(subcat_filter & product_filter &
                                                    quantity_filter & exclude_populars)
 
 
     def __get_preleminary_aggregates(self):
             
-        nearest_date = datetime.today - datetime.delta(days=self.__class__.NEAREST_DAY)
-        further_date = datetime.today - datetime.delta(days=self.__class__.FURTHER_DAY)
-        furthest_date = datetime.today - datetime.delta(days=self.__class__.FURTHEST_DAY)  
+        today = datetime.today()
+        nearest_date = today - datetime_object.timedelta(days=self.__class__.NEAREST_DAY)
+        further_date = today - datetime_object.timedelta(days=self.__class__.FURTHER_DAY)
+        furthest_date = today - datetime_object.timedelta(days=self.__class__.FURTHEST_DAY)  
         
         self.__purchase_aggregates = self.__all_products.values('product', 'product__sub_category').annotate(
                                 total_purchases=Sum('quantity'),
@@ -70,15 +72,18 @@ class PopularityCheck:
 
     def __calculate_purchase_percentage(self):
 
-        all_subcategory_sums = Metrics.objects.filter(product__subcategory__in=self.subcats).values('product__subcategory').annotate(
-            total_purchase=Sum('amount'))
+        all_subcategory_sums = Metrics.objects.filter(product__sub_category__pk__in=self.subcats).values('product__sub_category').annotate(
+            total_purchase=Sum('quantity'))
+
+        subcat_placeholder = (', ').join(['%s'] * len(self.subcats))
+        date = datetime.today().date()
 
         raw_sql = """
         SELECT product.id, SUM(quantity) as total_purchase FROM supplier_metrics sm JOIN product_product p
         ON p.id = sm.product_id JOIN product_sub_category sc on p.sub_category_id = sc.id
         
-        WHERE sc.id IN %[sub_category_ids]% AND
-              sm.created_at >= %[start_date]%
+        WHERE sc.id IN ({subcat_placeholder}) AND
+              sm.created_at >= %s
         
         GROUP BY p.id
         
@@ -87,13 +92,14 @@ class PopularityCheck:
                 JOIN product_sub_category ssc ON ssc.id = p.subcategory_id
 
                 WHERE ssc.id = sc.id AND
-                      spm.created_at >= %[start_date]%
+                      spm.created_at >= %s
                 );
             """                
-
-        subcategory_ids = [value['pk'] for value in self.subcats.values('pk')]
-        with connections.cursor() as cursor:
-            cursor.execute(raw_sql, [subcategory_ids, datetime.today()])
+        
+        with connections['default'].cursor() as cursor:
+            params = self.subcats + [date, date]
+            print(params)
+            cursor.execute(raw_sql, params)
             popular_product_ids = [popular for popular, in cursor.fetchall()]
             print(popular_product_ids)
 
@@ -141,11 +147,13 @@ class PopularityCheck:
         return popular
 
     def find_popular(self):
- 
-        return self.calculate_purchase_percentage() + \
-                self.calculate_purchase_rate() + \
-                    self.calculate_wishlist() + \
-                        self.calculate_purchase_percentage()
+        
+        self.__get_preleminary_aggregates()
+
+        return self.__calculate_purchase_percentage() + \
+                self.__calculate_purchase_rate() + \
+                    self.__calculate_wishlist() + \
+                        self.__calculate_reviews()
 
 
 class SearchEngine:

@@ -39,10 +39,9 @@ def do_popularity_check():
         redis_client.lpush('subcat_popularity_check', all_subcat_ids[19:] + all_subcat_ids[:19])
         subcat_check = all_subcat_ids[:19]
 
-    subcat_check = [int(pk.decode('utf-8')) for pk in subcat_check]
-    print(subcat_check)
+    print(subcat_check) 
     metricdata_for_subcats = Metrics.objects.filter(product__sub_category__pk__in=subcat_check)
-    popularity_check = PopularityCheck(metricdata_for_subcats, subcategory_ids=subcat_check, popular_list=popular_list)
+    popularity_check = PopularityCheck(metricdata_for_subcats, popular_list=popular_list)
     popular = popularity_check.find_popular()
  
     if popular: # This is supposed to serialize the product and store it in redis
