@@ -1,5 +1,5 @@
 from django.contrib.auth.signals import user_logged_out
-from celery import app as celery_app
+from appstore import celery_app
 from .models import Cart
 
 @celery_app.task

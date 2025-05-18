@@ -4,13 +4,13 @@ import django
 import os
 
 
-app = Celery('appstore')
-
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appstore.settings')
 django.setup()
 
+app = Celery('appstore')
+
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks(['product'])
+app.autodiscover_tasks()
 
 '''
 app.conf.beat_schedule = {
