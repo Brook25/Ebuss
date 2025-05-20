@@ -78,33 +78,33 @@ class PopularityCheck:
         subcat_placeholder = (', ').join(['%s'] * len(self.subcats))
         date = datetime.today().date()
 
-        raw_sql = """
-        SELECT product.id, SUM(quantity) as total_purchase FROM supplier_metrics sm JOIN product_product p
-        ON p.id = sm.product_id JOIN product_sub_category sc on p.sub_category_id = sc.id
+        raw_sql = f"""
+        SELECT p.id FROM supplier_metrics sm JOIN product_product p
+        ON p.id = sm.product_id JOIN product_subcategory sc on p.sub_category_id = sc.id
         
         WHERE sc.id IN ({subcat_placeholder}) AND
-              sm.created_at >= %s
+              sm.purchase_date >= %s
         
         GROUP BY p.id
         
-        HAVING total_purchase >= (
-                SELECT SUM(spm.quantity) * popularity_ratio FROM supplier_metrics spm JOIN product_product pp ON spm.product_id = pp.id
-                JOIN product_sub_category ssc ON ssc.id = p.subcategory_id
+        HAVING SUM(sm.quantity) >= (
+                SELECT SUM(spm.quantity) * ssc.popularity_ratio FROM supplier_metrics spm JOIN product_product pp ON spm.product_id = pp.id
+                JOIN product_subcategory ssc ON ssc.id = p.sub_category_id
 
-                WHERE ssc.id = sc.id AND
-                      spm.created_at >= %s
+                WHERE ssc.id = p.sub_category_id AND
+                      spm.purchase_date >= %s
+
+                GROUP BY ssc.id
                 );
             """                
         
         with connections['default'].cursor() as cursor:
             params = self.subcats + [date, date]
-            print(params)
             cursor.execute(raw_sql, params)
             popular_product_ids = [popular for popular, in cursor.fetchall()]
-            print(popular_product_ids)
 
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(id__in=popular)
-        return popular
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(id__in=popular_product_ids)
+        return popular_product_ids
     
     def __calculate_purchase_rate(self):
 
@@ -138,9 +138,7 @@ class PopularityCheck:
 
     def __calculate_reviews(self):
 
-        purchase_threshold = kwargs.get('purchase_thresholds', 100)
-        popular = self.__purchase_aggregates.filter(F('product_purchases') >= purchase_threshold, 
-                                                    rating__gte=F('product__subcategory__rating_threshold'))
+        popular = self.__purchase_aggregates.filter(rating__gte=F('product__subcategory__rating_threshold'))
         
         self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
 
