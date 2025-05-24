@@ -15,7 +15,7 @@ from order.models import (CartOrder, SingleProductOrder)
 from product.models import Product
 from user.models import Wishlist
 from shared.permissions import IsAdmin
-from shared.utils import (paginate_queryset, get_populars)
+from shared.utils import (paginate_queryset)
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)

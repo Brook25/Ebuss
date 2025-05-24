@@ -1,5 +1,6 @@
 from appstore import celery_app
 from django_redis import get_redis_connection
+from django.db.models import Q
 import ast
 from datetime import datetime
 from supplier.models import Metrics

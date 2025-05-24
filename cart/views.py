@@ -16,17 +16,16 @@ class CartView(APIView):
 
     def get(self, request, *args, **kwargs):
 
-        cart = get_object_or_404(user=request.user)
+        cart = get_object_or_404(Cart, user=request.user)
         serialized_cart = CartSerializer(cart)
         Response(serialized_cart.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
   
-        cart_data = json.loads(request.body)
-        products_in_cart = cache.hget('cart', request.user__username) or []
+        cart_data  = request.data
+        products_in_cart = cache.hget('cart', request.user__username, [])
         if products_in_cart and isinstance(cart_data, list):
             product = get_object_or_404(Product, pk=cart_data.get('product_id', None))
-            products_in_cache = json.loads(cache)
             if products_in_cache and isinstance(products_in_cache, list):
                 if len(products_in_cache) == 10:
                     cart_data = {'user': request.user, 'status': 'active'}
@@ -40,7 +39,7 @@ class CartView(APIView):
                         cache.hset('cache', request.user__username, json.dumps([]))
                         return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
             products_in_cart.append(product.id)
-            added = cache.hset('cart', request.user__username, json.dumps(cart))
+            added = cache.hset('cart', request.user__username, json.dumps(products_in_cart))
             if added:
                 return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)      
         return Response({'message': 'product not successfully added. Please check your product details'},

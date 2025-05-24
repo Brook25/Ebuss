@@ -10,6 +10,7 @@ from django.db.models import (CharField, IntegerField, Q, Func, F, Sum, Case,
                                When, Count, OuterRef, Subquery)
 from django.contrib.postgres.fields import (ArrayField)
 from django.db.models.expressions import RawSQL
+from django_redis import get_redis_connection
 from collections import Counter
 from django.conf import settings
 import datetime as datetime_object
@@ -18,6 +19,7 @@ import enchant
 import json
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
+from .serializers import ProductSerializer
 import asyncio
 import os
 import csv
@@ -103,44 +105,51 @@ class PopularityCheck:
             cursor.execute(raw_sql, params)
             popular_product_ids = [popular for popular, in cursor.fetchall()]
 
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(id__in=popular_product_ids)
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(product__pk__in=popular_product_ids)
         return popular_product_ids
     
     def __calculate_purchase_rate(self):
 
-        three_day_popular = Q(three_d_purchase__gte=F('product__subcategory__three_day_threshold'))
-        fourteen_day_popular = Q(fourteen_d_purchase__gte=F('product__subcategory__fourteenday_threshold'))
-        twentyone_day_popular = Q(twentyone_d_purchase__gte=F('product__subcategory__twentyoneday_threshold'))
+        three_day_popular = Q(three_d_purchases__gte=F('product__sub_category__three_day_threshold'))
+        fourteen_day_popular = Q(fourteen_d_purchases__gte=F('product__sub_category__fourteen_day_threshold'))
+        twentyone_day_popular = Q(twentyone_d_purchases__gte=F('product__sub_category__twenty_one_day_threshold'))
         is_popular = Q(three_day_popular | fourteen_day_popular | twentyone_day_popular)
             
         popular = self.__purchase_aggregates.filter(is_popular)
+        popular = [p.get('product', None) for p in popular]
 
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(product__pk__in=popular)
         return popular
 
     def __calculate_wishlist(self):
 
         popular = self.__purchase_aggregates.annotate(
-            wishlist_total=Count('product__wishlist_in')).filter(
-                wishlist_total__gte=F('product__subcategory__wishlist_threshold'))
+            wishlist_total=Count('product__wishlists_in')).filter(
+                wishlist_total__gte=F('product__sub_category__wishlist_threshold'))
+
+        popular = [p.get('product', None) for p in popular]
         
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(product__pk__in=popular)
 
         return popular
     
     def __calculate_conversion_rate(self):
 
         popular = self.__purchase_aggregates.filter(F('product_purchases') / F('click_throughs')
-                                                     >= F('product__subcategory_conversion_threshold'))
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
+                                                     >= F('product__sub_category_conversion_threshold'))
+
+        popular = [p.get('pk', None) for p in popular]
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(product__pk__in=popular)
 
         return popular
 
     def __calculate_reviews(self):
 
-        popular = self.__purchase_aggregates.filter(rating__gte=F('product__subcategory__rating_threshold'))
+        popular = self.__purchase_aggregates.filter(product__rating__gte=F('product__sub_category__rating_threshold'))
         
-        self.__purchase_aggregates = self.__purchase_aggregates.exclude(popular)
+        popular = [p.get('pk', None) for p in popular]
+
+        self.__purchase_aggregates = self.__purchase_aggregates.exclude(product__pk__in=popular)
 
         return popular
 
@@ -239,7 +248,6 @@ class SearchEngine:
 
     def get_matching_products(self):
         
-        Product.objects.filter(pk=913).update(tag_values=['Aurora', '14Mp', '64GB', 'android13'])
         product_matches = Product.objects.filter(sub_category__in=self.__subcategory_matches).annotate(overlap=RawSQL(
         sql="ARRAY(select UNNEST (ARRAY[%s]::text[]) INTERSECT select UNNEST(tag_values))",
         params=tuple([self.__lemmatized_tokens]),
@@ -274,3 +282,23 @@ class SearchEngine:
         return matches
 
         
+def get_populars(path, request):
+    redis_client = get_redis_connection('default')
+    popular_products = [int(product) for product in redis_client.lrange('popular', 0, -1)]
+
+    query = Q()
+    if path == 'product':
+        query &= Q(pk__in=popular_products)
+
+    elif path == 'subcategory':
+        subcat_ids = request.GET.get('subcat_ids', [])
+        if subcat_ids:
+            query &= Q(pk__in=popular_products) & Q(subcategory__pk__in=subcats)
+
+    elif path == 'category':
+        category_ids = request.GET.get('cat_id', [])
+        if category_ids:
+             query &= Q(subcategory__category__pk__in=category_ids) & Q( pk__in=popular_products)
+    
+    popular_products = ProductSerializer(Product.objects.filter(query), many=True)
+    return {'popular_products': popular_products.data}

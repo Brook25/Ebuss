@@ -17,12 +17,13 @@ from supplier.models import Inventory
 from .serializers import (ProductSerializer, CategorySerializer, SubCategorySerializer, TagSerializer)
 from shared.permissions import IsAdmin
 from supplier.models import Metrics
-from .utils import SearchEngine
+from .utils import (SearchEngine, get_populars)
 from .tasks import do_popularity_check
-from shared.utils import (paginate_queryset, get_populars)
+from shared.utils import (paginate_queryset)
 import json
 # Create your views here.
 
+# Use ViewSets and APIViews accordingly.
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ProductView(APIView):
@@ -141,7 +142,7 @@ class CategoryView(APIView):
             
         if type == 'new':
             
-            month_ago = datetime.today() - timedelta(day=30)
+            month_ago = datetime.today() - timedelta(days=30)
             category_id = request.GET.get('category_id')
             if category_id:
                 new_in_category_metrics = Metrics.objects.filter(
@@ -279,40 +280,19 @@ class Search(APIView):
     permission_classes = [IsAdmin]
 
     async def get(self, request, *args, **kwargs):
-        user = await asyncio.to_thread(self.get_user)
         await asyncio.to_thread(self.get_tokens)
         query_string = request.GET.get('q', None)
         search_type = request.GET.get('type', 'specified')
         index = request.GET.get('index', 1)
         if not (query_string and search_type):
-            return JsonResponse(data={data: None, message: 'query string can\'t be empty'}, safe=False, status=400)
-        search_engine = SearchEngine(query_string, user, index)
+            return Response(data={'message': 'query string can\'t be empty'}, safe=False, status=400)
+        search_engine = SearchEngine(query_string, request.user, index)
         if search_type == 'blind':
             results = await search_engine.blind_search
         else:
             results = await search_engine.specified_search
             
-
         return Response({'data': results}, status=status.HTTP_200_OK)
-
-    def get_user(self):
-        return User.objects.filter(username='emilyjim1').first()
-
-    def get_tokens(self):
-        TokenToSubCategory.objects.all().delete()
-        new_token_1 = TokenToSubCategory.objects.create(**{'token': 'Aurora'})
-        new_token_1.subcategories.append('phone')
-        new_token_2 = TokenToSubCategory.objects.create(**{'token': '64GB'})
-        new_token_2.subcategories.append('phone')
-        new_token_3 = TokenToSubCategory.objects.create(**{'token': '14Mp'})
-        new_token_3.subcategories.append('phone')
-        new_token_4 = TokenToSubCategory.objects.create(**{'token': 'android13'})
-        new_token_4.subcategories.append('phone')
-        new_token_1.save()
-        new_token_2.save()
-        new_token_3.save()
-        new_token_4.save()
-        print(TokenToSubCategory.objects.all().values('token', 'subcategories'))
 
 
 class Popular(APIView):
@@ -320,5 +300,7 @@ class Popular(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, path, *args, **kwargs):
-        populars = get_populars(path)
+        if path not in ['subcategory', 'category', 'product']:
+            return Response({'message': f'Wrong positional parameter {path}'}, status=status.HTTP_404_PAGE_NOT_FOUND)
+        populars = get_populars(path, request)
         return Response({'data': populars}, status=status.HTTP_200_OK)
