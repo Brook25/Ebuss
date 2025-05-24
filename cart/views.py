@@ -23,28 +23,30 @@ class CartView(APIView):
     def post(self, request, *args, **kwargs):
   
         cart_data  = request.data
-        products_in_cart = cache.hget('cart', request.user__username, [])
-        if products_in_cart and isinstance(cart_data, list):
-            product = get_object_or_404(Product, pk=cart_data.get('product_id', None))
-            if products_in_cache and isinstance(products_in_cache, list):
-                if len(products_in_cache) == 10:
-                    cart_data = {'user': request.user, 'status': 'active'}
-                    active_cart = CartSerializer(data=cart_data)
-                    if active_cart.is_valid():
-                        created, active_cart = Cart.objects.get_or_create(**active_cart.validated_data)
-                        if created:
-                            cart_data = CartData.objects.create(cart=active_cart).product.add(*products_in_cart)
-                        else:
-                            cart_data = CartData.objects.get(cart=active_cart).product.add(*products_in_cart)
-                        cache.hset('cache', request.user__username, json.dumps([]))
-                        return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
-            products_in_cart.append(product.id)
-            added = cache.hset('cart', request.user__username, json.dumps(products_in_cart))
-            if added:
-                return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)      
+        cart_in_cache = cache.hget('cart', request.user.username, [])
+        validated_data = CartDataSerializer(data=cart_data)
+        if cart_data and validated_data.is_valid():
+            cart_in_cache.append(json.dumps(cart_data))
+            cache.hset('cart', request.user.username, cart_in_cache)
+            cart = Cart.objects.create(user=request.user, status='active')
+            if len(products_in_cache) == 14:
+                cart_in_cache = [json.dumps(cart.decode('utf-8')) for cart in cart_in_cache]
+                cart_data_objs = CartData.objects.bulk_create([CartData(**cart) for cart in cart_in_cache])
+            else:
+                pass
+                
+                    return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
+        products_in_cart.append(product.id)
+        added = cache.hset('cart', request.user__username, json.dumps(products_in_cart))
+        if added:
+            return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)      
         return Response({'message': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)
-    
+   
+    def put(self, request, *args, **kwargs):
+
+
+
     def delete(self, request, *args,**kwargs):
         
         product_id = request.GET.get('product_id', None)

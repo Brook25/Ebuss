@@ -10,13 +10,10 @@ CART_STATUS = (('active', 'Active'),
 
 
 class Cart(models.Model):
-    name = CharField(max_length=40, validators=[check_vulgarity], null=False, blank=False)
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='carts')
     created_at = DateTimeField(auto_now=True)
     status = CharField(choices=CART_STATUS, null=False, default='active')
 
-    class Meta:
-        unique_together = ('name', 'user')
 
     def __repr__(self):
         return '<Cart> {}'.format(self.__dict__)
