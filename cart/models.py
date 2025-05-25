@@ -2,7 +2,7 @@ from django.db import models
 from shared.validators import check_vulgarity
 from django.db.models import (
         CharField, DateTimeField, ForeignKey,
-        PositiveIntegerField,
+        PositiveIntegerField, Q
         )
 
 CART_STATUS = (('active', 'Active'),
@@ -14,6 +14,13 @@ class Cart(models.Model):
     created_at = DateTimeField(auto_now=True)
     status = CharField(choices=CART_STATUS, null=False, default='active')
 
+
+    class Meta:
+        constraints = [
+                models.UniqueConstraint(fields=['user'],
+                    condition=Q(status='active'),
+                    name='unique_active_cart_for_user')
+                ]
 
     def __repr__(self):
         return '<Cart> {}'.format(self.__dict__)

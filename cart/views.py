@@ -29,22 +29,16 @@ class CartView(APIView):
             cart_in_cache.append(json.dumps(cart_data))
             cache.hset('cart', request.user.username, cart_in_cache)
             cart = Cart.objects.create(user=request.user, status='active')
-            if len(products_in_cache) == 14:
+            if len(products_in_cache) % 10 == 0:
                 cart_in_cache = [json.dumps(cart.decode('utf-8')) for cart in cart_in_cache]
                 cart_data_objs = CartData.objects.bulk_create([CartData(**cart) for cart in cart_in_cache])
-            else:
-                pass
                 
-                    return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
-        products_in_cart.append(product.id)
-        added = cache.hset('cart', request.user__username, json.dumps(products_in_cart))
-        if added:
-            return Response({'message': 'product succfully added'}, status=status.HTTP_200_OK)      
+            return Response({'message': 'product successfully added to cart.'}, status=status.HTTP_200_OK)
         return Response({'message': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)
    
     def put(self, request, *args, **kwargs):
-
+        pass
 
 
     def delete(self, request, *args,**kwargs):
