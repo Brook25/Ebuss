@@ -22,28 +22,33 @@ class CartView(APIView):
 
     def post(self, path, request, *args, **kwargs):
   
-        cart_data  = request.data
-        if not cart_data:
+        if not (request.data or isinstance(request.data, list) or all(isinstance(item, dict) for item in request.data)):
             return Response({'error': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)
+        cart = None
+        
         if path == 'create':
             cart = Cart.objects.create(user=request.user)
-            cart_data = [{**cart_item, 'cart': cart.pk} for cart_item in cart_data]
+            cart_id = cart.pk
+            cart_data = [{**cart_item, 'cart': cart.pk} for cart_item in request.data]
             cart_to_cache = cart_data
+        
         elif path == 'add':
             cart_to_cache = json.loads(cache.get(f'cart:{request.user.username}'))
-            cart_id = cart_data.get('cart_id')
-            cart_to_cache += cart_data
+            cart_id = request.data.get('cart_id')
+            cart_to_cache += request.data
             
-        serializer = CartDataSerializer(data=cart_data, many=True)
+        serializer = CartDataSerializer(data=request.data, many=True)
         if serializer.is_valid():
                 cache.set(f'cart:{request.user.username}', cart_to_cache)
-                serializer.bulk_create(cart_data)
-                return Response({'cart_id': cart.pk, 'message':
+                serializer.bulk_create(request.data)
+                return Response({'cart_id': cart_id, 'message':
                     'product successfully added to cart.'},
                     status=status.HTTP_200_OK
                     )
-        Cart.objects.get('pk'=cart.pk).delete()
+        if cart:
+            cart.delete()
+        
         return Response({'error': 'product not successfully added. Please check your product details'},
                             status=status.HTTP_400_BAD_REQUEST)
    
