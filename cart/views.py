@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.core.cache import cache
 from product.models import Product
 from rest_framework.respose import Response
@@ -20,60 +21,105 @@ class CartView(APIView):
         serialized_cart = CartSerializer(cart)
         Response(serialized_cart.data, status=status.HTTP_200_OK)
 
-    def post(self, path, request, *args, **kwargs):
-  
-        if not (request.data or isinstance(request.data, list) or all(isinstance(item, dict) for item in request.data)):
-            return Response({'error': 'product not successfully added. Please check your product details'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        cart = None
-        
-        if path == 'create':
-            cart = Cart.objects.create(user=request.user)
-            cart_id = cart.pk
-            cart_data = [{**cart_item, 'cart': cart.pk} for cart_item in request.data]
-            cart_to_cache = cart_data
-        
-        elif path == 'add':
-            cart_to_cache = json.loads(cache.get(f'cart:{request.user.username}'))
-            cart_id = request.data.get('cart_id')
-            cart_to_cache += request.data
-            
-        serializer = CartDataSerializer(data=request.data, many=True)
-        if serializer.is_valid():
-                cache.set(f'cart:{request.user.username}', cart_to_cache)
-                serializer.bulk_create(request.data)
-                return Response({'cart_id': cart_id, 'message':
-                    'product successfully added to cart.'},
-                    status=status.HTTP_200_OK
-                    )
-        if cart:
-            cart.delete()
-        
-        return Response({'error': 'product not successfully added. Please check your product details'},
-                            status=status.HTTP_400_BAD_REQUEST)
-   
-    def put(self, request, *args, **kwargs):
-        cart_data  = request.data
-        cart_id = cart_data.get('pk', None)
-        if not (cart_data and cart_id):
-            return Response({'error': 'cart id not provided.'},
-                    status=status.HTTP_404_PAGE_NOT_FOUND)
-        cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
-        validated_data = CartDataSerializer(data=cart_data)
-        if not validated_data.is_valid():
-            return Response({'error': 'Wrong cart details provided.'})
-        
-        if path == 'update':
-            for index, product in enumerate(cart_in_cache):
-                if product.get('product') == validated_data.get('product'):
-                    product['amount'] = validated_data.get('amount')
-            if index == len(cart_in_cache):
-                cart_in_cache.append(validated_data)
-            if len(products_in_cache) % 10 == 0:
-                cart_in_cache = CartData.objects.update_or_create()
-                cart_data_objs = CartData.objects.bulk_create([CartData(**cart) for cart in cart_in_cache])
+    def post(self, request, *args, **kwargs):
+        if not (request.data and isinstance(request.data, list) and all(isinstance(item, dict) for item in request.data)):
+            return Response(
+                {'error': 'Invalid product data format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        
+        try:
+            with transaction.atomic():
+                # Create new cart
+                cart = Cart.objects.create(user=request.user)
+                
+                # Prepare cart data with cart ID
+                cart_data = [{**item, 'cart': cart.id} for item in request.data]
+                
+                # Validate and save cart items
+                serializer = CartDataSerializer(data=cart_data, many=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    # Set initial cache
+                    cache.set(f'cart:{request.user.username}', json.dumps(cart_data))
+                    return Response({
+                        'cart_id': cart.id,
+                        'message': 'Cart created successfully with products',
+                        'products': cart_data
+                    }, status=status.HTTP_201_CREATED)
+                
+                # If validation fails, delete the cart
+                cart.delete()
+                return Response(
+                    {'error': 'Invalid product data', 'details': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def put(self, request, *args, **kwargs):
+        cart_id = request.data.get('cart_id')
+        product_id = request.data.get('product_id')
+        amount = request.data.get('amount')
+
+        if not all([cart_id, product_id, amount]):
+            return Response(
+                {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                # Lock the cart for update
+                cart = Cart.objects.select_for_update().get(
+                    id=cart_id,
+                    user=request.user
+                )
+                
+                # Update or create the cart item
+                cart_item, created = CartData.objects.update_or_create(
+                    cart=cart,
+                    product_id=product_id,
+                    defaults={'amount': amount}
+                )
+
+                # Update cache
+                cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}') or '[]')
+                for item in cart_in_cache:
+                    if item.get('product_id') == product_id:
+                        item['amount'] = amount
+                        break
+                else:
+                    cart_in_cache.append({
+                        'product_id': product_id,
+                        'amount': amount
+                    })
+                
+                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache))
+
+                return Response({
+                    'message': 'Cart item updated successfully',
+                    'created': created,
+                    'cart_item': {
+                        'product_id': product_id,
+                        'amount': amount
+                    }
+                }, status=status.HTTP_200_OK)
+
+        except Cart.DoesNotExist:
+            return Response(
+                {'error': 'Cart not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def delete(self, request, *args,**kwargs):
         
