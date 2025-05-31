@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 import json
 from .models import (Cart, CartData)
-from .serializers import CartSerializer
+from .serializers import (CartSerializer, CartDataSerializer)
 from datetime import datetime
 # Create your views here.
 
