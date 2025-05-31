@@ -18,6 +18,7 @@ class CartView(APIView):
     def get(self, request, *args, **kwargs):
 
         cart = get_object_or_404(Cart, user=request.user)
+        print(cart)
         serialized_cart = CartSerializer(cart)
         Response(serialized_cart.data, status=status.HTTP_200_OK)
 
