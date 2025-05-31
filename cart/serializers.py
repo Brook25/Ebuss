@@ -8,7 +8,8 @@ from user.serializers import UserSerializer
 
 
 class CartDataSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    cart = serializers.PrimaryKeyRelatedField(queryset=Cart.objects.all())
 
     class Meta:
         model = CartData

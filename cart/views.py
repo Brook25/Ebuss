@@ -20,6 +20,7 @@ class CartView(APIView):
         cart = cache.get(f'cart:{request.user.username}')
         
         if cart:
+            print(cart)
             cart = json.loads(cart)
             return Response(cart, status=status.HTTP_200_OK)
         
@@ -43,11 +44,17 @@ class CartView(APIView):
                 cart = Cart.objects.create(user=request.user)
                 
                 # Validate and save cart items
-                serializer = CartDataSerializer(data=request.data, many=True)
+                cart_data = [{**prod, 'cart': cart.id} for prod in request.data]
+                serializer = CartDataSerializer(data=cart_data, many=True)
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                     # Set initial cache
-                    cache.set(f'cart:{request.user.username}', json.dumps(serializer.validated_data))
+                    validated_data = [{'product': data['product'].pk,
+                        'cart': data['cart'].pk,
+                        'quantity': data['quantity']}
+                        for data in serializer.validated_data]
+
+                    cache.set(f'cart:{request.user.username}', json.dumps(validated_data))
                     return Response({
                         'cart_id': cart.id,
                         'message': 'Cart created successfully with products',
