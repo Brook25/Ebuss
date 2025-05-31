@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from cart.models import (Cart, CartData)
+from product.models import Product
 from product.serializers import ProductSerializer
 from user.serializers import UserSerializer
 
