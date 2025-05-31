@@ -12,22 +12,21 @@ from .serializers import (CartSerializer, CartDataSerializer)
 from datetime import datetime
 # Create your views here.
 
+
 class CartView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
 
         cart = cache.get(f'cart:{request.user.username}')
-        
+         
         if cart:
-            print(cart)
             cart = json.loads(cart)
             return Response(cart, status=status.HTTP_200_OK)
         
-        cart = get_object_or_404(Cart, user=request.user)
-        serialized_cart = CartSerializer(cart)
-        cache.set(f'cart:{request.user.username}', json.dumps(serialized_cart.data))
-        
+        cart = get_list_or_404(CartData, cart__user__in=request.user)
+        serialized_cart = CartDataSerializer(cart)
+        cache.set(f'cart:{request.user.username}', json.dumps(serialized_cart.data), timeout=345600)
         return Response(serialized_cart.data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
@@ -54,7 +53,7 @@ class CartView(APIView):
                         'quantity': data['quantity']}
                         for data in serializer.validated_data]
 
-                    cache.set(f'cart:{request.user.username}', json.dumps(validated_data))
+                    cache.set(f'cart:{request.user.username}', json.dumps(validated_data), timeout=345600)
                     return Response({
                         'cart_id': cart.id,
                         'message': 'Cart created successfully with products',
@@ -83,31 +82,29 @@ class CartView(APIView):
             'product': product,
             'quantity': quantity
             })
-
+    
         if not serializer.is_valid():
             return Response(
-                {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
+                {'error': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
             with transaction.atomic():
                 
-                product = Product.objects.get(pk=product)
-                cart = Cart.objects.get(pk=cart)
-                
-                created, cart_data = CartData.objects.update_or_create(product=product,
-                        cart=cart,
+                created, cart_data = CartData.objects.update_or_create(
+                        product=Product.objects.get(pk=product),
+                        cart=Cart.objects.get(pk=cart),
                         defaults={'quantity':
                             quantity}
                         )
 
                 # Update cache
                 cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
-                print(cart_in_cache)
                 if created:
                     cart_in_cache.append({
-                        'product_id': product_id,
-                        'quantity': quantity
+                        'product': product,
+                        'quantity': quantity,
+                        'cart': cart
                     })
                 
                 else:
@@ -116,7 +113,7 @@ class CartView(APIView):
                             item['quantity'] = quantity
                             break
                 
-                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache))
+                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
 
                 return Response({
                     'message': 'Cart item updated successfully',
