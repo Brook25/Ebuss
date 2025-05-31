@@ -92,10 +92,9 @@ class CartView(APIView):
         
         cart_in_cache_old = cache.get(f'cart:{request.user.username}')
 
-        if not cart_in_cache:
+        if not cart_in_cache_old:
             all_cart_data = Cart.objects.filter(pk=cart).cart_data_for.all()
             cart_in_cache_old = CartDataSerializer(all_cart_data, many=True).data
-
         else:
             cart_in_cache_old = json.loads(cart_in_cache_old)
         
@@ -105,28 +104,25 @@ class CartView(APIView):
                 created, cart_data = CartData.objects.update_or_create(
                         product=Product.objects.get(pk=product),
                         cart=Cart.objects.get(pk=cart),
-                        defaults={'quantity':
-                            quantity}
+                        defaults={'quantity': quantity}
                         )
 
                 # Update cache
+                cart_in_cache_new = cart_in_cache_old.copy()
                 
                 if created:
-
-                    cart_in_cache_new = cart_in_cache_old.copy()
                     cart_in_cache_new.append({
                         'product': product,
                         'quantity': quantity,
                         'cart': cart
                     })
-                
                 else:
-                    for item in cart_in_cach_new:
+                    for item in cart_in_cache_new:
                         if item.get('product') == product:
                             item['quantity'] = quantity
                             break
                 
-                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
+                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache_new), timeout=345600)
 
                 return Response({
                     'message': 'Cart item updated successfully',
@@ -142,7 +138,8 @@ class CartView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            cache.set(f'cart:{request.user.username}', cart_in_cache_old)
+            # Restore old cache state if transaction fails
+            cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache_old), timeout=345600)
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
