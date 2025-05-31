@@ -82,11 +82,8 @@ class CartView(APIView):
                 {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-
         try:
             with transaction.atomic():
-                
                 created, cart_data = CartData.objects.create_or_update(serializer.validated_data)
 
                 # Update cache
