@@ -22,6 +22,7 @@ class CartView(APIView):
          
         if cart:
             cart = json.loads(cart)
+            print(json)
             return Response(cart, status=status.HTTP_200_OK)
         
         cart = get_list_or_404(CartData, cart__user__in=request.user)
@@ -88,6 +89,16 @@ class CartView(APIView):
                 {'error': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        cart_in_cache_old = cache.get(f'cart:{request.user.username}')
+
+        if not cart_in_cache:
+            all_cart_data = Cart.objects.filter(pk=cart).cart_data_for.all()
+            cart_in_cache_old = CartDataSerializer(all_cart_data, many=True).data
+
+        else:
+            cart_in_cache_old = json.loads(cart_in_cache_old)
+        
         try:
             with transaction.atomic():
                 
@@ -99,16 +110,18 @@ class CartView(APIView):
                         )
 
                 # Update cache
-                cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
+                
                 if created:
-                    cart_in_cache.append({
+
+                    cart_in_cache_new = cart_in_cache_old.copy()
+                    cart_in_cache_new.append({
                         'product': product,
                         'quantity': quantity,
                         'cart': cart
                     })
                 
                 else:
-                    for item in cart_in_cache:
+                    for item in cart_in_cach_new:
                         if item.get('product') == product:
                             item['quantity'] = quantity
                             break
@@ -118,7 +131,7 @@ class CartView(APIView):
                 return Response({
                     'message': 'Cart item updated successfully',
                     'cart_item': {
-                        'product_id': product_id,
+                        'product': product,
                         'quantity': quantity
                     }
                 }, status=status.HTTP_200_OK)
@@ -129,6 +142,7 @@ class CartView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            cache.set(f'cart:{request.user.username}', cart_in_cache_old)
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
