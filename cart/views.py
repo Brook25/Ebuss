@@ -17,8 +17,15 @@ class CartView(APIView):
 
     def get(self, request, *args, **kwargs):
 
+        cart = cache.get(f'cart:{request.user.username}')
+        
+        if cart:
+            cart = json.loads(cart)
+            return Response(cart, status=status.HTTP_200_OK)
+        
         cart = get_object_or_404(Cart, user=request.user)
         serialized_cart = CartSerializer(cart)
+        cache.set(f'cart:{request.user.username}', json.dumps(serialized_cart.data))
         
         return Response(serialized_cart.data, status=status.HTTP_200_OK)
 
@@ -37,7 +44,7 @@ class CartView(APIView):
                 
                 # Validate and save cart items
                 serializer = CartDataSerializer(data=request.data, many=True)
-                if serializer.is_valid():
+                if serializer.is_valid(raise_exception=True):
                     serializer.save()
                     # Set initial cache
                     cache.set(f'cart:{request.user.username}', json.dumps(cart_data))
@@ -47,13 +54,6 @@ class CartView(APIView):
                         'products': cart_data
                     }, status=status.HTTP_201_CREATED)
                 
-                # If validation fails, delete the cart
-                cart.delete()
-                return Response(
-                    {'error': 'Invalid product data', 'details': serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
         except Exception as e:
             return Response(
                 {'error': str(e)},
