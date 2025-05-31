@@ -62,19 +62,19 @@ class CartView(APIView):
 
     def put(self, request, *args, **kwargs):
         
-        cart_id = request.data.get('cart_id')
-        product_id = request.data.get('product_id')
-        amount = request.data.get('amount')
+        cart = request.data.get('cart', None)
+        product = request.data.get('product', None)
+        quantity = request.data.get('quantity', None)
 
-        if not all([cart_id, product_id, amount]):
+        if not all([cart, product, quantity]):
             return Response(
                 {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        serializer = CartDataSerializer(data={'cart': cart_id,
-            'product': product_id,
-            'amount': amount
+        serializer = CartDataSerializer(data={'cart': cart,
+            'product': product,
+            'quantity': quantity
             })
 
         if not serializer.is_valid():
@@ -84,20 +84,28 @@ class CartView(APIView):
             )
         try:
             with transaction.atomic():
-                created, cart_data = CartData.objects.create_or_update(serializer.validated_data)
+                
+                product = Product.objects.get(pk=product)
+                cart = Cart.objects.get(pk=cart)
+                
+                created, cart_data = CartData.objects.update_or_create(product=product,
+                        cart=cart,
+                        defaults={'quantity':
+                            quantity}
+                        )
 
                 # Update cache
                 cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
                 if created:
                     cart_in_cache.append({
                         'product_id': product_id,
-                        'amount': amount
+                        'quantity': quantity
                     })
                 
                 else:
                     for item in cart_in_cache:
-                        if item.get('product_id') == product_id:
-                            item['amount'] = amount
+                        if item.get('product') == product:
+                            item['quantity'] = quantity
                             break
                 
                 cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache))
@@ -106,7 +114,7 @@ class CartView(APIView):
                     'message': 'Cart item updated successfully',
                     'cart_item': {
                         'product_id': product_id,
-                        'amount': amount
+                        'quantity': quantity
                     }
                 }, status=status.HTTP_200_OK)
 
