@@ -26,6 +26,7 @@ urlpatterns = [
     path('timeline/', include('post.timeline_url')),
     path('post/', include('post.urls')),
     path('product/', include('product.urls')),
+    path('cart/', include('cart.urls')),
     path('popular/', include('product.popular_urls')),
     path('order/', include('order.urls')),
     path('subcategory/', include('product.subcat_urls')),

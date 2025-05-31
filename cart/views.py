@@ -74,18 +74,16 @@ class CartView(APIView):
 
         try:
             with transaction.atomic():
-                # Lock the cart for update
-                cart = Cart.objects.select_for_update().get(
-                    id=cart_id,
-                    user=request.user
-                )
-                
-                # Update or create the cart item
-                cart_item, created = CartData.objects.update_or_create(
-                    cart=cart,
+                # Lock the CartData row for update
+                cart_data = CartData.objects.select_for_update().get(
+                    cart_id=cart_id,
                     product_id=product_id,
                     defaults={'amount': amount}
                 )
+                
+                # Update the amount
+                cart_data.amount = amount
+                cart_data.save()
 
                 # Update cache
                 cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}') or '[]')
@@ -103,16 +101,15 @@ class CartView(APIView):
 
                 return Response({
                     'message': 'Cart item updated successfully',
-                    'created': created,
                     'cart_item': {
                         'product_id': product_id,
                         'amount': amount
                     }
                 }, status=status.HTTP_200_OK)
 
-        except Cart.DoesNotExist:
+        except CartData.DoesNotExist:
             return Response(
-                {'error': 'Cart not found'},
+                {'error': 'Cart item not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
