@@ -35,11 +35,8 @@ class CartView(APIView):
                 # Create new cart
                 cart = Cart.objects.create(user=request.user)
                 
-                # Prepare cart data with cart ID
-                cart_data = [{**item, 'cart': cart.id} for item in request.data]
-                
                 # Validate and save cart items
-                serializer = CartDataSerializer(data=cart_data, many=True)
+                serializer = CartDataSerializer(data=request.data, many=True)
                 if serializer.is_valid():
                     serializer.save()
                     # Set initial cache
@@ -64,6 +61,7 @@ class CartView(APIView):
             )
 
     def put(self, request, *args, **kwargs):
+        
         cart_id = request.data.get('cart_id')
         product_id = request.data.get('product_id')
         amount = request.data.get('amount')
@@ -73,31 +71,37 @@ class CartView(APIView):
                 {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        serializer = CartDataSerializer(data={'cart': cart_id,
+            'product': product_id,
+            'amount': amount
+            })
+
+        if not serializer.is_valid():
+            return Response(
+                {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
         try:
             with transaction.atomic():
-                # Lock the CartData row for update
-                cart_data = CartData.objects.select_for_update().get(
-                    cart_id=cart_id,
-                    product_id=product_id,
-                    defaults={'amount': amount}
-                )
                 
-                # Update the amount
-                cart_data.amount = amount
-                cart_data.save()
+                created, cart_data = CartData.objects.create_or_update(serializer.validated_data)
 
                 # Update cache
-                cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}') or '[]')
-                for item in cart_in_cache:
-                    if item.get('product_id') == product_id:
-                        item['amount'] = amount
-                        break
-                else:
+                cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
+                if created:
                     cart_in_cache.append({
                         'product_id': product_id,
                         'amount': amount
                     })
+                
+                else:
+                    for item in cart_in_cache:
+                        if item.get('product_id') == product_id:
+                            item['amount'] = amount
+                            break
                 
                 cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache))
 
