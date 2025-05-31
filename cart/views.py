@@ -47,7 +47,7 @@ class CartView(APIView):
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                     # Set initial cache
-                    cache.set(f'cart:{request.user.username}', json.dumps(cart_data))
+                    cache.set(f'cart:{request.user.username}', json.dumps(serializer.validated_data))
                     return Response({
                         'cart_id': cart.id,
                         'message': 'Cart created successfully with products',
@@ -96,6 +96,7 @@ class CartView(APIView):
 
                 # Update cache
                 cart_in_cache = json.loads(cache.get(f'cart:{request.user.username}'))
+                print(cart_in_cache)
                 if created:
                     cart_in_cache.append({
                         'product_id': product_id,
