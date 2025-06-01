@@ -1,5 +1,6 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import (get_object_or_404, get_list_or_404)
 from django.db import transaction
+from django.db.models import Q
 from django.core.cache import cache
 from product.models import Product
 from rest_framework.response import Response
@@ -22,11 +23,13 @@ class CartView(APIView):
          
         if cart:
             cart = json.loads(cart)
-            print(json)
             return Response(cart, status=status.HTTP_200_OK)
         
-        cart = get_list_or_404(CartData, cart__user__in=request.user)
-        serialized_cart = CartDataSerializer(cart)
+        cart = get_list_or_404(CartData,
+                Q(cart__user=request.user) &
+                    Q(cart__status='active')
+                )
+        serialized_cart = CartDataSerializer(cart, many=True)
         cache.set(f'cart:{request.user.username}', json.dumps(serialized_cart.data), timeout=345600)
         return Response(serialized_cart.data, status=status.HTTP_200_OK)
 
@@ -46,6 +49,7 @@ class CartView(APIView):
                 # Validate and save cart items
                 cart_data = [{**prod, 'cart': cart.id} for prod in request.data]
                 serializer = CartDataSerializer(data=cart_data, many=True)
+                
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
                     # Set initial cache
@@ -72,14 +76,29 @@ class CartView(APIView):
         cart = request.data.get('cart', None)
         product = request.data.get('product', None)
         quantity = request.data.get('quantity', None)
+        
+        data_type_validation = all([isinstance(cart, int), isinstance(product, int), isinstance(quantity, int))
 
-        if not all([cart, product, quantity]):
+        if not all([cart, product, quantity]) and isinstance(cart, int) and data_type_vaidation:
             return Response(
-                {'error': 'Missing required fields: cart_id, product_id, and amount are required'},
+                {'error': 'Missing required fields: cart_id, product_id, and amount are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        cart = get_object_or_404(Cart, pk=cart)
+        
+        if cart.status is not 'active':
+            return Response(
+                {'error': 'Cart not active.'},
+                status=status.HTTP_404_PAGE_NOT_FOUND
+            )
+
+        try:
+            cart_data, created = CartData.objects.get(cart=cart, product__pk=product), False
+        except CartData.DoesNotExist:
+            cart_data, created = None, True
             
-        serializer = CartDataSerializer(data={'cart': cart,
+        serializer = CartDataSerializer(instance=cart_data, data={'cart': cart,
             'product': product,
             'quantity': quantity
             })
@@ -92,8 +111,8 @@ class CartView(APIView):
         
         cart_in_cache_old = cache.get(f'cart:{request.user.username}')
 
-        if not cart_in_cache:
-            all_cart_data = Cart.objects.filter(pk=cart).cart_data_for.all()
+        if not cart_in_cache_old:
+            all_cart_data = cart.cart_data_for.all()
             cart_in_cache_old = CartDataSerializer(all_cart_data, many=True).data
 
         else:
@@ -102,13 +121,7 @@ class CartView(APIView):
         try:
             with transaction.atomic():
                 
-                created, cart_data = CartData.objects.update_or_create(
-                        product=Product.objects.get(pk=product),
-                        cart=Cart.objects.get(pk=cart),
-                        defaults={'quantity':
-                            quantity}
-                        )
-
+                serializer.save()
                 # Update cache
                 
                 if created:
@@ -126,7 +139,7 @@ class CartView(APIView):
                             item['quantity'] = quantity
                             break
                 
-                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
+                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache_new), timeout=345600)
 
                 return Response({
                     'message': 'Cart item updated successfully',
@@ -136,11 +149,6 @@ class CartView(APIView):
                     }
                 }, status=status.HTTP_200_OK)
 
-        except CartData.DoesNotExist:
-            return Response(
-                {'error': 'Cart item not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
             cache.set(f'cart:{request.user.username}', cart_in_cache_old)
             return Response(
