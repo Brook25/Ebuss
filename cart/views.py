@@ -114,7 +114,6 @@ class CartView(APIView):
         if not cart_in_cache_old:
             all_cart_data = cart.cart_data_for.all()
             cart_in_cache_old = CartDataSerializer(all_cart_data, many=True).data
-
         else:
             cart_in_cache_old = json.loads(cart_in_cache_old)
         
@@ -123,18 +122,16 @@ class CartView(APIView):
                 
                 serializer.save()
                 # Update cache
+                cart_in_cache_new = cart_in_cache_old.copy()
                 
                 if created:
-
-                    cart_in_cache_new = cart_in_cache_old.copy()
                     cart_in_cache_new.append({
                         'product': product,
                         'quantity': quantity,
                         'cart': cart
                     })
-                
                 else:
-                    for item in cart_in_cach_new:
+                    for item in cart_in_cache_new:
                         if item.get('product') == product:
                             item['quantity'] = quantity
                             break
@@ -150,7 +147,8 @@ class CartView(APIView):
                 }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            cache.set(f'cart:{request.user.username}', cart_in_cache_old)
+            # Restore old cache state if transaction fails
+            cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache_old), timeout=345600)
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
