@@ -128,14 +128,13 @@ class CartView(APIView):
                     cart_in_cache_new.append({
                         'product': product,
                         'quantity': quantity,
-                        'cart': cart
+                        'cart': cart.pk
                     })
                 else:
                     for item in cart_in_cache_new:
                         if item.get('product') == product:
                             item['quantity'] = quantity
                             break
-                
                 cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache_new), timeout=345600)
 
                 return Response({
@@ -158,13 +157,11 @@ class CartView(APIView):
         
         product = request.GET.get('p', None)
         cart = request.GET.get('c', None)
-            
         if not product or not cart:
             return Response(
                 {'error': 'Both product_id and cart_id are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
             
         cart = get_object_or_404(Cart, pk=cart)
         if cart.user != request.user:
@@ -176,14 +173,16 @@ class CartView(APIView):
         # Store original cache state before any changes
         original_cache = cache.get(f'cart:{request.user.username}')
         try:
+            product, cart = int(product), cart
             with transaction.atomic():
-                cart_data = get_object_or_404(CartData, cart=cart, product=product)
+                cart_data = get_object_or_404(CartData, cart=cart, product__pk=product)
                 cart_data.delete()
                 
                 # Update cache
                 cart_in_cache = cache.get(f'cart:{request.user.username}')
                 if cart_in_cache:
                     cart_in_cache = json.loads(cart_in_cache)
+                    print('cart')
                     cart_in_cache = [item for item in cart_in_cache if item.get('product') != product]
                     cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
                 
@@ -195,6 +194,7 @@ class CartView(APIView):
         except Exception as e:
             # Restore original cache state if anything fails
             if original_cache:
+                print('here')
                 cache.set(f'cart:{request.user.username}', original_cache, timeout=345600)
             return Response(
                 {'error': f'An error occurred while removing the product: {str(e)}'},
