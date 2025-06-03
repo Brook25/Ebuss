@@ -156,8 +156,8 @@ class CartView(APIView):
 
     def delete(self, request, *args,**kwargs):
         
-        product = request.GET.get('product', None)
-        cart = request.GET.get('cart', None)
+        product = request.GET.get('p', None)
+        cart = request.GET.get('c', None)
             
         if not product or not cart:
             return Response(
