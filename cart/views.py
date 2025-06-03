@@ -85,11 +85,11 @@ class CartView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        cart = get_object_or_404(Cart, pk=cart)
+        cart = get_object_or_404(Cart, pk=cart, user=request.user)
         
         if cart.status != 'active':
             return Response(
-                {'error': 'Cart not active.'},
+                {'error': 'Cart not active or unauthorized user for specifid cart.'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
