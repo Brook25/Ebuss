@@ -166,7 +166,7 @@ class CartView(APIView):
             )
             
             
-        cart = get_object_or_404(Cart, pk=cart_data_id)
+        cart = get_object_or_404(Cart, pk=cart)
         if cart.user != request.user:
             return Response(
                 {'error': 'Unauthorized access to this cart.'},
@@ -177,7 +177,7 @@ class CartView(APIView):
         original_cache = cache.get(f'cart:{request.user.username}')
         try:
             with transaction.atomic():
-                cart_data = get_object_or_404(CartData, cart=cart, product__id=product_id)
+                cart_data = get_object_or_404(CartData, cart=cart, product=product)
                 cart_data.delete()
                 
                 # Update cache
