@@ -157,10 +157,46 @@ class CartView(APIView):
     def delete(self, request, *args,**kwargs):
         
         product_id = request.GET.get('product_id', None)
-        if product_id and isinstance(product_id, int):
-            cart = request.user.carts.filter(status='active').first()
-            CartData.objects.filter(cart=cart, product__id=product_id).delete()
-            return Response({'message': 'product successfully removed from cart.'},
-                    status=status.HTTP_200_OK)
-        return Response({'message': 'product data not sufficient.'},
-                status=status.HTTP_400_BAD_REQUEST)
+        cart_data_id = request.GET.get('cart_id', None)
+            
+        if not product_id or not cart_data_id:
+            return Response(
+                {'error': 'Both product_id and cart_id are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+            
+        cart = get_object_or_404(Cart, pk=cart_data_id)
+        if cart.user != request.user:
+            return Response(
+                {'error': 'Unauthorized access to this cart.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Store original cache state before any changes
+        original_cache = cache.get(f'cart:{request.user.username}')
+        
+        with transaction.atomic():
+            cart_data = get_object_or_404(CartData, cart=cart, product__id=product_id)
+            cart_data.delete()
+            
+            # Update cache
+            cart_in_cache = cache.get(f'cart:{request.user.username}')
+            if cart_in_cache:
+                cart_in_cache = json.loads(cart_in_cache)
+                cart_in_cache = [item for item in cart_in_cache if item.get('product') != product_id]
+                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
+            
+            return Response(
+                {'message': 'Product successfully removed from cart.'}, 
+                status=status.HTTP_204_NO_CONTENT
+            )
+            
+    except Exception as e:
+        # Restore original cache state if anything fails
+        if original_cache:
+            cache.set(f'cart:{request.user.username}', original_cache, timeout=345600)
+        return Response(
+            {'error': f'An error occurred while removing the product: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
