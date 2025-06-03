@@ -98,7 +98,7 @@ class CartView(APIView):
         except CartData.DoesNotExist:
             cart_data, created = None, True
             
-        serializer = CartDataSerializer(instance=cart_data, data={'cart': cart,
+        serializer = CartDataSerializer(instance=cart_data, data={'cart': cart.pk,
             'product': product,
             'quantity': quantity
             })
