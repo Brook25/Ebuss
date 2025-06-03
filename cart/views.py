@@ -175,22 +175,22 @@ class CartView(APIView):
         
         # Store original cache state before any changes
         original_cache = cache.get(f'cart:{request.user.username}')
-        
-        with transaction.atomic():
-            cart_data = get_object_or_404(CartData, cart=cart, product__id=product_id)
-            cart_data.delete()
-            
-            # Update cache
-            cart_in_cache = cache.get(f'cart:{request.user.username}')
-            if cart_in_cache:
-                cart_in_cache = json.loads(cart_in_cache)
-                cart_in_cache = [item for item in cart_in_cache if item.get('product') != product_id]
-                cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
-            
-            return Response(
-                {'message': 'Product successfully removed from cart.'}, 
-                status=status.HTTP_204_NO_CONTENT
-            )
+        try:
+            with transaction.atomic():
+                cart_data = get_object_or_404(CartData, cart=cart, product__id=product_id)
+                cart_data.delete()
+                
+                # Update cache
+                cart_in_cache = cache.get(f'cart:{request.user.username}')
+                if cart_in_cache:
+                    cart_in_cache = json.loads(cart_in_cache)
+                    cart_in_cache = [item for item in cart_in_cache if item.get('product') != product_id]
+                    cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
+                
+                return Response(
+                    {'message': 'Product successfully removed from cart.'}, 
+                    status=status.HTTP_204_NO_CONTENT
+                )
             
     except Exception as e:
         # Restore original cache state if anything fails
