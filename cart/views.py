@@ -156,10 +156,10 @@ class CartView(APIView):
 
     def delete(self, request, *args,**kwargs):
         
-        product_id = request.GET.get('product_id', None)
-        cart_data_id = request.GET.get('cart_id', None)
+        product = request.GET.get('product', None)
+        cart = request.GET.get('cart', None)
             
-        if not product_id or not cart_data_id:
+        if not product or not cart:
             return Response(
                 {'error': 'Both product_id and cart_id are required.'},
                 status=status.HTTP_400_BAD_REQUEST
