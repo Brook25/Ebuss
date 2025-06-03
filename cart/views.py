@@ -77,7 +77,7 @@ class CartView(APIView):
         product = request.data.get('product', None)
         quantity = request.data.get('quantity', None)
         
-        data_type_validation = all([isinstance(cart, int), isinstance(product, int), isinstance(quantity, int))
+        data_type_validation = all([isinstance(cart, int), isinstance(product, int), isinstance(quantity, int)])
 
         if not all([cart, product, quantity]) and isinstance(cart, int) and data_type_vaidation:
             return Response(
