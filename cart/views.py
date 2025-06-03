@@ -90,7 +90,7 @@ class CartView(APIView):
         if cart.status != 'active':
             return Response(
                 {'error': 'Cart not active.'},
-                status=status.HTTP_404_PAGE_NOT_FOUND
+                status=status.HTTP_404_NOT_FOUND
             )
 
         try:
