@@ -184,7 +184,7 @@ class CartView(APIView):
                 cart_in_cache = cache.get(f'cart:{request.user.username}')
                 if cart_in_cache:
                     cart_in_cache = json.loads(cart_in_cache)
-                    cart_in_cache = [item for item in cart_in_cache if item.get('product') != product_id]
+                    cart_in_cache = [item for item in cart_in_cache if item.get('product') != product]
                     cache.set(f'cart:{request.user.username}', json.dumps(cart_in_cache), timeout=345600)
                 
                 return Response(
