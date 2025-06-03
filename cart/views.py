@@ -192,11 +192,11 @@ class CartView(APIView):
                     status=status.HTTP_204_NO_CONTENT
                 )
             
-    except Exception as e:
-        # Restore original cache state if anything fails
-        if original_cache:
-            cache.set(f'cart:{request.user.username}', original_cache, timeout=345600)
-        return Response(
-            {'error': f'An error occurred while removing the product: {str(e)}'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        except Exception as e:
+            # Restore original cache state if anything fails
+            if original_cache:
+                cache.set(f'cart:{request.user.username}', original_cache, timeout=345600)
+            return Response(
+                {'error': f'An error occurred while removing the product: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
