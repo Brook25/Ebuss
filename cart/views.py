@@ -77,9 +77,9 @@ class CartView(APIView):
         product = request.data.get('product', None)
         quantity = request.data.get('quantity', None)
         
-        data_type_validation = all([isinstance(cart, int), isinstance(product, int), isinstance(quantity, int))
+        data_type_validation = all([isinstance(cart, int), isinstance(product, int), isinstance(quantity, int)])
 
-        if not all([cart, product, quantity]) and isinstance(cart, int) and data_type_vaidation:
+        if not all([cart, product, quantity]) and isinstance(cart, int) and data_type_validation:
             return Response(
                 {'error': 'Missing required fields: cart_id, product_id, and amount are required.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -87,7 +87,7 @@ class CartView(APIView):
         
         cart = get_object_or_404(Cart, pk=cart)
         
-        if cart.status is not 'active':
+        if cart.status != 'active':
             return Response(
                 {'error': 'Cart not active.'},
                 status=status.HTTP_404_PAGE_NOT_FOUND
