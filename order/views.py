@@ -69,8 +69,6 @@ class OrderView(APIView):
         except (json.JsonDecoderError, ValueError, TypeError) as e:
             message = "Error: couldn't parse values recieved. " + str(e)
             return Response("Order successfully placed.", status=501)
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
         
         except (IntegrityError, Order.DoesNotExist) as e:
             return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -106,6 +104,7 @@ class OrderView(APIView):
         return Response('Order successfuly deleted.', status=status.HTTP_200_OK)
             
 
+
 class CheckOut(APIView):
     permission_classes = [IsAuthenticated()]
     
@@ -126,17 +125,24 @@ class CheckOut(APIView):
             "last_name": request.user.last_name,
             "phone_number": phone_number,
             "tx_ref": tx_ref,
-            "callback_url": "https://webhook.site/077164d6-29cb-40df-ba29-8a00e59a7e60",
-            "return_url": "https://www.google.com/",
+            "callback_url": "https://sterling-primarily-lionfish.ngrok-free.app/webhook/tsx",
+            "return_url": "https://sterling-primarily-lionfish.ngrok-free.app/home",
             "customization": {
-                "title": "Payment for my favourite merc",
-                "description": "I love online payments"
+                "title": "Payment for cart: {cart_id}",
+                "description": "user {request.user.username} has completed order for cart {cart_id}."
             }
         }
         headers = {
-            'Authorization': 'Bearer CHASECK-xxxxxxxxxxxxxxxx',
+            'Authorization': 'Bearer CHAPUBK_TEST-pjtmtdVDKoz81ExGys2m5BsprDlk18Ds',
             'Content-Type': 'application/json'
         }
       
         response = requests.post(url, json=payload, headers=headers)
-        data = response.text
+        redirect_url = response.json.get('redirect_url', None)
+
+        return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
+
+class TransactionWebhook(APIView):
+    permission_classes = [IsChapa]
+    
+
