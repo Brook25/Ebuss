@@ -2,6 +2,7 @@ from django.views import View
 from django.db import (transaction, IntegrityError)
 from django.db.models import Prefetch
 import json
+import os
 from cart.models import (Cart, CartData)
 from product.models import Product
 from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
@@ -13,6 +14,7 @@ from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           SerializeShipment)
 from shared.utils import paginate_queryset
+from .utils import verify_hash_key
 import requests
 import uuid
 import time
@@ -143,6 +145,24 @@ class CheckOut(APIView):
         return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
 
 class TransactionWebhook(APIView):
-    permission_classes = [IsChapa]
+
+   def post(self, request, *args, **kwargs):
+       
+        chapa_hash = request.headers.get('Chapa-Signature', None)
+
+        if not chapa_hash:
+            return Response('User not Authorzied to access this endpoint.', status=status.HTTP_401_UNAUTHORIZED)
+
+        if not request.data:
+            return Response('No payload data provided.', status=status.HTTP_400_BAD_REQUEST)
     
+        secret_key = os.env.get('CHAPA_SECRET_KEY', None)
+
+        if not secret_key:
+            return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
+
+        if not verify_hash_key(secret_key.encode('utf-8'), request.body, chapa_hash):
+            return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
+        
+        
 
