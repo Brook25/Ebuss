@@ -5,7 +5,7 @@ import json
 import os
 from cart.models import (Cart, CartData)
 from product.models import Product
-from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder)
+from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder, PaymentTransaction)
 from rest_framework.views import APIView
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
@@ -146,8 +146,8 @@ class CheckOut(APIView):
 
 class TransactionWebhook(APIView):
 
-   def post(self, request, *args, **kwargs):
-       
+    def post(self, request, *args, **kwargs):
+        
         chapa_hash = request.headers.get('Chapa-Signature', None)
 
         if not chapa_hash:
@@ -164,5 +164,10 @@ class TransactionWebhook(APIView):
         if not verify_hash_key(secret_key.encode('utf-8'), request.body, chapa_hash):
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
+        transaction_status = request.data.get('status', None)
         
+        if transaction_status == 'success':
+            
+            
+
 
