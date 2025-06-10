@@ -11,12 +11,12 @@ from django.db.models import (
 STATUS_TYPES = (
         ('in_progress', 'In Progress'),
         ('aborted', 'Aborted'),
-        ('completed', 'Completed'),
-        ('suspended', 'Suspended')
+        ('success', 'Success'),
+        ('failed', 'Failed')
         )
 
 PAYMENT_GATEWAYS = (
-    ('chapa', 'Chapa')
+    ('chapa', 'Chapa'),
 )
 
 # Create your models here.
@@ -99,6 +99,7 @@ class PaymentTransaction(models.Model):
     trx_ref = CharField(unique=True)
     ref_id = CharField(null=False)
     created_at = DateTimeField(auto_now=True)
+    updated_at = DateTimeField(auto_now_add=True)
     status = CharField(max_length=30, choices=STATUS_TYPES)
 
     class Meta:
