@@ -15,6 +15,10 @@ STATUS_TYPES = (
         ('suspended', 'Suspended')
         )
 
+PAYMENT_GATEWAYS = (
+    ('chapa', 'Chapa')
+)
+
 # Create your models here.
 
 
@@ -88,8 +92,14 @@ class ShipmentInfo(Shipment):
     def get_or_create_shipment_info(self, payment_data):
         return super.get_or_create_payment_data(payment_data)
 
-class Payment(models.Model):
+class PaymentTransaction(models.Model):
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='payments')
     amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
+    gateway = CharField(choices=PAYMENT_GATEWAYS)
+    trx_ref = CharField(unique=True)
+    ref_id = CharField(null=False)
     created_at = DateTimeField(auto_now=True)
     status = CharField(max_length=30, choices=STATUS_TYPES)
+
+    class Meta:
+        unique_together = ('ref_id', 'gateway')
