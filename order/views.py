@@ -13,6 +13,10 @@ from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           SerializeShipment)
 from shared.utils import paginate_queryset
+import requests
+import uuid
+import time
+from django.conf import settings
 # Create your views here.
 
 class OrderView(APIView):
@@ -26,9 +30,7 @@ class OrderView(APIView):
 
         carts = Cart.objects.get(user=request.user, status='active').cart_data_for.all()
         cartOrders = CartOrder.objects.filter(user=request.user).select_related('cart').prefetch_related('cart__cart_data_for')
-        print(cartOrders)
         cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer)
-        print('cart', '==>', cartOrders.data, '\n', 'single', '==>', singleProductOrders.data)
         
         return Response({'cart_orders': cartOrders.data,
                             'single_product_orders': singleProductOrders.data}, status=status.HTTP_200_OK)
@@ -50,6 +52,7 @@ class OrderView(APIView):
                     new_shipment_info = SerializeShipment(data=shipment_info_data)
                     if new_billing_info.is_valid() and new_shipment_info.is_valid():
                         with transaction.atomic():
+                            product = Product.objects.select_for_update().get(pk=product_id)
                             new_billing_info = new_billing_info.create()
                             new_shipment_info = new_shipment_info.create()
                             order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
@@ -64,8 +67,6 @@ class OrderView(APIView):
                 return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
 
         except (json.JsonDecoderError, ValueError, TypeError) as e:
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
             message = "Error: couldn't parse values recieved. " + str(e)
             return Response("Order successfully placed.", status=501)
         
@@ -103,7 +104,45 @@ class OrderView(APIView):
         return Response('Order successfuly deleted.', status=status.HTTP_200_OK)
             
 
-class Pay(View):
+
+class CheckOut(APIView):
     permission_classes = [IsAuthenticated()]
+    
     def post(request, *args, **kwargs):
-        pass
+        
+        phone_number = request.data.get('phone_no', None)
+        if not phone_number:
+            phone_number = request.user.phone_no
+        
+        tx_ref = 'chapa-test-' + uuid.uuid4()
+
+        url = "https://api.chapa.co/v1/transaction/initialize"
+        payload = {
+            "amount": "10",
+            "currency": "ETB",
+            "email": request.user.email,
+            "first_name": request.user.first_name,
+            "last_name": request.user.last_name,
+            "phone_number": phone_number,
+            "tx_ref": tx_ref,
+            "callback_url": "https://sterling-primarily-lionfish.ngrok-free.app/webhook/tsx",
+            "return_url": "https://sterling-primarily-lionfish.ngrok-free.app/home",
+            "customization": {
+                "title": "Payment for cart: {cart_id}",
+                "description": "user {request.user.username} has completed order for cart {cart_id}."
+            }
+        }
+        headers = {
+            'Authorization': 'Bearer CHAPUBK_TEST-pjtmtdVDKoz81ExGys2m5BsprDlk18Ds',
+            'Content-Type': 'application/json'
+        }
+      
+        response = requests.post(url, json=payload, headers=headers)
+        redirect_url = response.json.get('redirect_url', None)
+
+        return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
+
+class TransactionWebhook(APIView):
+    permission_classes = [IsChapa]
+    
+
