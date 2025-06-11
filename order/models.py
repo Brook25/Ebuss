@@ -95,11 +95,9 @@ class ShipmentInfo(Shipment):
 class PaymentTransaction(models.Model):
     user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='payments')
     amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
-    gateway = CharField(choices=PAYMENT_GATEWAYS)
+    gateway = CharField(choices=PAYMENT_GATEWAYS, default='chapa')
     trx_ref = CharField(unique=True)
     created_at = DateTimeField(auto_now=True)
     updated_at = DateTimeField(auto_now_add=True)
-    status = CharField(max_length=30, choices=STATUS_TYPES)
+    status = CharField(max_length=30, choices=STATUS_TYPES, default='pending')
 
-    class Meta:
-        unique_together = ('ref_id', 'gateway')

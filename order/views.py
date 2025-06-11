@@ -141,6 +141,7 @@ class CheckOut(APIView):
       
         response = requests.post(url, json=payload, headers=headers)
         redirect_url = response.json.get('redirect_url', None)
+        transaction_obj = PaymentTransaction(user=request.user, amount=amount, trx_ref=tx_ref)
 
         return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
 
@@ -167,6 +168,7 @@ class TransactionWebhook(APIView):
         transaction_status = request.data.get('status', None)
         
         if transaction_status == 'success':
+            pass
             
             
 
