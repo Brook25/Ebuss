@@ -113,6 +113,7 @@ class CheckOut(APIView):
     def post(request, *args, **kwargs):
         
         phone_number = request.data.get('phone_no', None)
+        amount = request.data.get('amount', None)
         if not phone_number:
             phone_number = request.user.phone_no
         
@@ -141,6 +142,8 @@ class CheckOut(APIView):
       
         response = requests.post(url, json=payload, headers=headers)
         redirect_url = response.json.get('redirect_url', None)
+        
+        transaction_obj = PaymentTransaction(user=request.user, amount=amount, trx_ref=tx_ref)
 
         return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
 
