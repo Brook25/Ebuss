@@ -9,7 +9,7 @@ from django.db.models import (
         )
 
 STATUS_TYPES = (
-        ('in_progress', 'In Progress'),
+        ('pending', 'Pending'),
         ('aborted', 'Aborted'),
         ('success', 'Success'),
         ('failed', 'Failed')
@@ -97,7 +97,6 @@ class PaymentTransaction(models.Model):
     amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
     gateway = CharField(choices=PAYMENT_GATEWAYS)
     trx_ref = CharField(unique=True)
-    ref_id = CharField(null=False)
     created_at = DateTimeField(auto_now=True)
     updated_at = DateTimeField(auto_now_add=True)
     status = CharField(max_length=30, choices=STATUS_TYPES)
