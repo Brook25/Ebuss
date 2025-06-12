@@ -1,6 +1,8 @@
+from decimal import Decimal
 from django.views import View
 from django.db import (transaction, IntegrityError)
 from django.db.models import Prefetch
+from functools import reduce
 import json
 import os
 from cart.models import (Cart, CartData)
@@ -37,32 +39,36 @@ class OrderView(APIView):
         return Response({'cart_orders': cartOrders.data,
                             'single_product_orders': singleProductOrders.data}, status=status.HTTP_200_OK)
 
-    def post(self, request, type, *args, **kwargs):
-
-        phone_number = request.data.get('phone_no', None)
-        cart_id = request.data.get('cart_id', None)
-
-        if not (cart_id and phone_number):
-            return Response({'error': 'cart id and phone number required.'}, status=status.HTTP_400_BAD_REQUEST)
+    def calc_total_amount(self, accumulator, cart_item):
         
-        tx_ref = 'chapa-test-' + uuid.uuid4()
+        quantity = cart_item.get('quantity', 0)
+        price = cart_item.get('price', 0)
 
+        total = quantity * price
+        
+        return accumulator + total
+    
+    
+    def post(self, request, type, *args, **kwargs):
+        
         try:
             order_data = request.data.get('order_data')
             if order_data:
+                phone_number = order_data.get('phone_number', None)
+                tx_ref = 'chapa-test-' + uuid.uuid4()
+                cart_id = order_data.get('cart_id', None)
+                cart = Cart.objects.get(pk=cart_id)
+                all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
+                amount = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
+                product_quantity_in_cart = {product: quantity for product, quantity in all_cart_data.items()}
+                # call transaction request func
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
-                cart_id = order_data.get('cart_id', None)
-                product_id = order_data.get('product_id', None)
-                parent = Cart.objects.get(pk=cart_id) if type == 'cart' else Product.objects.get(pk=product_id)
-                if all([billing_info_data, shipment_info_data, parent]):
+                if all([billing_info_data, shipment_info_data]):
                     new_billing_info = SerializeShipment(data=billing_info_data)
                     new_shipment_info = SerializeShipment(data=shipment_info_data)
                     if new_billing_info.is_valid() and new_shipment_info.is_valid():
                         with transaction.atomic():
-                            cart = Cart.objects.get('cart_id')
-                            all_cart_data = CartData.objects.filter(cart=cart).values('product', 'quantity')
-                            product_quantity_in_cart = {product: quantity for product, quantity in all_cart_data.items()}
                             product_ids = [cart_data.get('product') for cart_data in all_cart_data]
                             products = Product.objects.select_for_update().filter(pk__in=product_ids)
 
