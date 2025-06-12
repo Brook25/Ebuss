@@ -39,10 +39,16 @@ class OrderView(APIView):
 
     def post(self, request, type, *args, **kwargs):
 
+        phone_number = request.data.get('phone_no', None)
+        cart_id = request.data.get('cart_id', None)
+
+        if not (cart_id and phone_number):
+            return Response({'error': 'cart id and phone number required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        tx_ref = 'chapa-test-' + uuid.uuid4()
+
         try:
-            order_data = request.data
-            order_model = CartOrder if type == 'cart' else SingleProductOrder
-            parent_field = 'product' if type == 'single' else 'cart'
+            order_data = request.data.get('order_data')
             if order_data:
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
@@ -54,14 +60,29 @@ class OrderView(APIView):
                     new_shipment_info = SerializeShipment(data=shipment_info_data)
                     if new_billing_info.is_valid() and new_shipment_info.is_valid():
                         with transaction.atomic():
-                            product = Product.objects.select_for_update().get(pk=product_id)
+                            cart = Cart.objects.get('cart_id')
+                            all_cart_data = CartData.objects.filter(cart=cart).values('product', 'quantity')
+                            product_quantity_in_cart = {product: quantity for product, quantity in all_cart_data.items()}
+                            product_ids = [cart_data.get('product') for cart_data in all_cart_data]
+                            products = Product.objects.select_for_update().filter(pk__in=product_ids)
+
+                            for product in products:
+                                product.quantity -= product_quantity_in_cart[product.pk]
+                                product.save()
+
                             new_billing_info = new_billing_info.create()
                             new_shipment_info = new_shipment_info.create()
-                            order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
+                            order = CartOrder(user=request.user, cart=cart, amount=amount, parent_field=parent, billing_info=new_billing_info,
+                                           shipment_info=new_shipment_info, tx_ref=tx_ref)
                             order.save()
-                            post_save.send(Order, order, request.user)
-                            clear_cart.send(Order)
-                        return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
+                            cart.status = 'inactive'
+                            cart.save()
+                            response = requests.post(url, json=payload, headers=headers)
+                            redirect_url = response.json.get('redirect_url', None)
+                        
+                        return Response({'message': "Order succesfully placed.",
+                                          'redirect_url': redirect_url},
+                                            status=status.HTTP_200_OK)
                     
                 message = 'Error: order failed, Please check order details.'
                 return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)

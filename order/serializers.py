@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from .models import CartOrder, SingleProductOrder, Shipment
-from cart.models import CartData
+from rest_framework.relations import PrimaryKeyRelatedField
+from .models import (Cart, CartOrder, SingleProductOrder, Shipment)
+from cart.models import (CartData, Cart)
+from user.models import User
 from cart.serializers import CartSerializer
 from product.serializers import ProductSerializer
 from shared.serializers import BaseSerializer
@@ -22,18 +24,7 @@ class SingleProductOrderSerializer(BaseSerializer):
         
         return None
     
-
-
-class CartOrderSerializer(SingleProductOrderSerializer):
-    cart = CartSerializer()
-
-    class Meta:
-        model = CartOrder
-        fields = '__all__'
-
-
-
-class SerializeShipment(serializers.ModelSerializer):
+class ShipmentSerializer(serializers.ModelSerializer):
     payment_method = serializers.SerializerMethodField()
     tracking_info = serializers.SerializerMethodField()
 
@@ -52,3 +43,14 @@ class SerializeShipment(serializers.ModelSerializer):
             return { 'tracking_info': obj.tracking_info }
         else:
             return None
+
+
+class CartOrderSerializer(SingleProductOrderSerializer):
+    cart = CartSerializer()
+    user = PrimaryKeyRelatedField(queryset=User.objects.all())
+    billing = ShipmentSerializer()
+    shipment = ShipmentSerializer()
+
+    class Meta:
+        model = CartOrder
+        fields = '__all__'

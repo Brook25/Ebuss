@@ -8,7 +8,13 @@ from django.db.models import (
         ManyToManyField, TextField, IntegerField
         )
 
-STATUS_TYPES = (
+PAYMENT_STATUS_TYPES = (
+    ('success', 'Success'),
+    ('reversed','Reversed'),
+    ('refunded', 'Refunded'),
+    ('failed', 'Failed')
+)
+ORDER_STATUS_TYPES = (
         ('pending', 'Pending'),
         ('aborted', 'Aborted'),
         ('success', 'Success'),
@@ -40,6 +46,13 @@ class CartOrder(Order):
     cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING, related_name='cartorder_in')
     billing = ForeignKey('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
+    amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
+    payment_gateway = CharField(choices=PAYMENT_GATEWAYS, default='chapa')
+    trx_ref = CharField(unique=True)
+    created_at = DateTimeField(auto_now=True)
+    updated_at = DateTimeField(auto_now_add=True)
+    status = CharField(max_length=30, choices=ORDER_STATUS_TYPES, default='pending')
+    payment_status = CharField(choices=PAYMENT_STATUS_TYPES, default='pending')
 
     class Meta:
         abstract = False
@@ -91,13 +104,4 @@ class ShipmentInfo(Shipment):
 
     def get_or_create_shipment_info(self, payment_data):
         return super.get_or_create_payment_data(payment_data)
-
-class PaymentTransaction(models.Model):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='payments')
-    amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
-    gateway = CharField(choices=PAYMENT_GATEWAYS, default='chapa')
-    trx_ref = CharField(unique=True)
-    created_at = DateTimeField(auto_now=True)
-    updated_at = DateTimeField(auto_now_add=True)
-    status = CharField(max_length=30, choices=STATUS_TYPES, default='pending')
 
