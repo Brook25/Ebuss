@@ -1,7 +1,7 @@
 from django.http import HttpRequest
 import hashlib
 import hmac
-
+import os
 
 def get_payment_payload(request, tx_ref, amount, phone_number, **kwargs):
 
@@ -13,6 +13,12 @@ def get_payment_payload(request, tx_ref, amount, phone_number, **kwargs):
     
     if not (amount.is_digit() and phone_number.is_digit()):
         raise TypeError("Amount and phone_number must be of type string.")
+
+    secret_key = os.getenv('CHAPA_SECRET_KEY')
+
+    if not secret_key:
+        raise ValueError("Secret key not set.")
+    
 
     payload = {
         "amount": amount,
@@ -29,8 +35,10 @@ def get_payment_payload(request, tx_ref, amount, phone_number, **kwargs):
             "description": "user {request.user.username} has completed order for cart {cart_id}."
         }
     }
+
+       
     headers = {
-        'Authorization': 'Bearer CHAPUBK_TEST-pjtmtdVDKoz81ExGys2m5BsprDlk18Ds',
+        'Authorization': f'Bearer {secret_key}',
         'Content-Type': 'application/json'
     }
 

@@ -16,7 +16,7 @@ from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           SerializeShipment)
 from shared.utils import paginate_queryset
-from .utils import verify_hash_key
+from .utils import (get_payment_payload, verify_hash_key)
 import requests
 import uuid
 import time
@@ -25,6 +25,9 @@ from django.conf import settings
 
 class OrderView(APIView):
     permission_classes = [IsAuthenticated]
+    PAYMENT_TRANASCTION_URLS = {
+        'chapa': "https://api.chapa.co/v1/transaction/initialize"
+    }
 
     def get(self, request, *args, **kwargs):
          
@@ -61,7 +64,9 @@ class OrderView(APIView):
                 all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
                 amount = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
                 product_quantity_in_cart = {product: quantity for product, quantity in all_cart_data.items()}
-                # call transaction request func
+                
+                payment_payload, headers = get_payment_payload(request, tx_ref, amount, phone_number)
+
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
                 if all([billing_info_data, shipment_info_data]):
@@ -83,10 +88,14 @@ class OrderView(APIView):
                             order.save()
                             cart.status = 'inactive'
                             cart.save()
-                            response = requests.post(url, json=payload, headers=headers)
-                            redirect_url = response.json.get('redirect_url', None)
-                        
-                        return Response({'message': "Order succesfully placed.",
+
+                            response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
+                            
+                            if response.status_code == 200:
+                                redirect_url = response.json.get('redirect_url', None)
+                                
+                                if redirect_url:
+                                    return Response({'message': "Order succesfully placed.",
                                           'redirect_url': redirect_url},
                                             status=status.HTTP_200_OK)
                     
@@ -100,8 +109,10 @@ class OrderView(APIView):
             return Response("Order successfully placed.", status=501)
         
         except (IntegrityError, Order.DoesNotExist) as e:
-            return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'Error': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_501_SERVER_ERROR)
 
     def delete(self, request, type, id, *args, **kwargs):
         
