@@ -57,9 +57,9 @@ class OrderView(APIView):
         try:
             order_data = request.data.get('order_data')
             if order_data:
-                phone_number = order_data.get('phone_number', None)
+                phone_number = request.data.get('phone_number', None)
                 tx_ref = 'chapa-test-' + uuid.uuid4()
-                cart_id = order_data.get('cart_id', None)
+                cart_id = order_data.get('cart', None)
                 cart = Cart.objects.get(pk=cart_id)
                 all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
                 amount = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
@@ -70,9 +70,10 @@ class OrderView(APIView):
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
                 if all([billing_info_data, shipment_info_data]):
-                    new_billing_info = SerializeShipment(data=billing_info_data)
-                    new_shipment_info = SerializeShipment(data=shipment_info_data)
-                    if new_billing_info.is_valid() and new_shipment_info.is_valid():
+                    new_billing_serializer = SerializeShipment(data=billing_info_data)
+                    new_shipment_serializer = SerializeShipment(data=shipment_info_data)
+                    cart_order = CartOrderSerializer(data=order_data)
+                    if all([new_billing_serializer.is_valid(), new_shipment_serializer.is_valid(), cart_order.is_valid()]):
                         with transaction.atomic():
                             product_ids = [cart_data.get('product') for cart_data in all_cart_data]
                             products = Product.objects.select_for_update().filter(pk__in=product_ids)
@@ -81,13 +82,12 @@ class OrderView(APIView):
                                 product.quantity -= product_quantity_in_cart[product.pk]
                                 product.save()
 
-                            new_billing_info = new_billing_info.create()
-                            new_shipment_info = new_shipment_info.create()
-                            order = CartOrder(user=request.user, cart=cart, amount=amount, parent_field=parent, billing_info=new_billing_info,
-                                           shipment_info=new_shipment_info, tx_ref=tx_ref)
-                            order.save()
+                            new_billing_serializer.save()
+                            new_shipment_serializer.save()
+                            cart_order.save()
                             cart.status = 'inactive'
                             cart.save()
+
 
                             response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                             
