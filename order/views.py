@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
-                          SerializeShipment)
+                          ShipmentSerializer)
 from shared.utils import paginate_queryset
 from .utils import (get_payment_payload, verify_hash_key)
 import requests
@@ -70,10 +70,10 @@ class OrderView(APIView):
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
                 if all([billing_info_data, shipment_info_data]):
-                    new_billing_serializer = SerializeShipment(data=billing_info_data)
-                    new_shipment_serializer = SerializeShipment(data=shipment_info_data)
+                    new_billing_serializer = ShipmentSerializer(data=billing_info_data)
+                    new_shipment_serializer = ShipmentSerializer(data=shipment_info_data)
                     cart_order = CartOrderSerializer(data=order_data)
-                    if all([new_billing_serializer.is_valid(), new_shipment_serializer.is_valid(), cart_order.is_valid()]):
+                    if all([new_billing_serializer.is_valid(raise_exception=True), new_shipment_serializer.is_valid(raise_exception=True), cart_order.is_valid(raise_exception=True)]):
                         with transaction.atomic():
                             product_ids = [cart_data.get('product') for cart_data in all_cart_data]
                             products = Product.objects.select_for_update().filter(pk__in=product_ids)
@@ -87,33 +87,29 @@ class OrderView(APIView):
                             cart_order.save()
                             cart.status = 'inactive'
                             cart.save()
-
-
+                            
                             response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                             
-                            if response.status_code == 200:
+                            if response.json.get('status', '') == 'success':
                                 redirect_url = response.json.get('redirect_url', None)
                                 
                                 if redirect_url:
-                                    return Response({'message': "Order succesfully placed.",
+                                    return Response({'message': "Order succesfully placed and pending.",
                                           'redirect_url': redirect_url},
                                             status=status.HTTP_200_OK)
-                    
-                message = 'Error: order failed, Please check order details.'
-                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
+                                return Response({'error': 'return url not retreived. Please try again.'},
+                                                        status=status.HTTP_501_SERVER_ERROR)
+                
+            return Response({'error': 'Order data not properly provided.'},
+                             status=status.HTTP_400_BAD_REQUEST)
 
-        except (json.JsonDecoderError, ValueError, TypeError) as e:
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
-        
-        except (IntegrityError, Order.DoesNotExist) as e:
-            return Response({'Error': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
-
+        except (IntegrityError, CartOrder.DoesNotExist, Cart.DoesNotExist, Product.DoesNotExist) as e:
+            return Response({'Error': 'Unique constrains not provided for payment info.'},
+                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_501_SERVER_ERROR)
 
+    
     def delete(self, request, type, id, *args, **kwargs):
         
         if type == 'single':
