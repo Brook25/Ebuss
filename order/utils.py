@@ -1,7 +1,8 @@
 from django.http import HttpRequest
 from appstore import celery_app as app
 from .models import CartOrder
-from user.models import Notification
+from user.serializers import NotificationSerializer
+from user.models import User
 import hashlib
 import hmac
 import os
@@ -78,11 +79,35 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                 return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': 'success'}
             return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': None}
         
-        if response.status_code == 401:
+        if response.status_code in [400, 401]:
             # get admin users and send them an alarming notification
-            pass
-    
+            admins = User.objects.filter(is_superuser=True)
+            message = response.data['message'] if response.data.get('message', None) else ''
+            
+            notification_data = {
+                'note': f'Transaction error has been recieved from {payment_gateway} on tx_ref {tx_ref} with status code {response.status_code}.\
+                reponse message: {message}. Please check and fix it.',
+                'type': 'order_status',
+                'uri': 'http://localhost/nots/1',
+                'priority': 'high'
+            }
+            
+            notification = NotificationSerializer(data=notification_data)
+            
+            if notification.is_valid():
+                notification.save()            
+            else:
+                return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': str(response.status_code),
+                            'transaction_status': None, 'admin_notification': 'not_sent'}
+            for admin in admins:
+                admin.notification_for.append(notification)
+                admin.save()
+            return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '401',
+                            'transaction_status': None, 'admin_notification': 'sent',
+                              'message': message}
+                    
     except CartOrder.DoesNotExist as e:
+        
         return {'http_request': 'Not sent.', 'response_status_code': None,
                  'transaction_status': 'failed',
                    'reason': 'No cart order object found for the given tx_ref.'}
