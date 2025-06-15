@@ -9,6 +9,7 @@ import os
 import requests
 from django.utils import timezone
 from .serializers import TransactionSerializer
+from celery import shared_task
 
 SECRET_KEY = os.getenv('CHAPA_SECRET_KEY')
 
@@ -17,42 +18,24 @@ HEADERS = {
         'Content-Type': 'application/json'
     }
 
-def get_payment_payload(request, tx_ref, amount, phone_number, **kwargs):
-
-    if not isinstance(request, HttpRequest):
-        raise TypeError("request must be an instance of HTTPRequest")
+@shared_task
+def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=60):
+    """Schedule a transaction verification with countdown"""
+    result = check_transaction_status.delay(tx_ref, payment_gateway)
     
-    if not any(isinstance(arg, str) for arg in [tx_ref, amount, phone_number]):
-        raise TypeError("All of tx_ref, amount and phone_number must be of type string.")
-    
-    if not (amount.is_digit() and phone_number.is_digit()):
-        raise TypeError("Amount and phone_number must be of type string.")
+    # If transaction is still pending, schedule next verification
+    transaction = Transaction.objects.get(tx_ref=tx_ref)
+    if transaction.status in ['pending', 'in_progress']:
+        # Double the countdown for next attempt (exponential backoff)
+        next_countdown = countdown * 2
+        # Maximum 5 attempts (about 30 minutes total)
+        if next_countdown <= 960:  # 16 minutes
+            schedule_transaction_verification.apply_async(
+                args=[tx_ref, payment_gateway],
+                countdown=next_countdown
+            )
 
-
-    if not SECRET_KEY:
-        raise ValueError("Secret key not set.")
-    
-
-    payload = {
-        "amount": amount,
-        "currency": "ETB",
-        "email": request.user.email,
-        "first_name": request.user.first_name,
-        "last_name": request.user.last_name,
-        "phone_number": phone_number,
-        "tx_ref": tx_ref,
-        "callback_url": "https://sterling-primarily-lionfish.ngrok-free.app/webhook/tsx",
-        "return_url": "https://sterling-primarily-lionfish.ngrok-free.app/home",
-        "customization": {
-            "title": "Payment for cart: {cart_id}",
-            "description": "user {request.user.username} has completed order for cart {cart_id}."
-        }
-    }       
-
-    return (payload, HEADERS)
-
-
-@app.task()
+@shared_task
 def check_transaction_status(tx_ref, payment_gateway='chapa'):
     
     try:
@@ -87,8 +70,7 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                 if serializer.is_valid():
                     serializer.save()
                 return serializer.data
-             
-        
+              
         else:
             update_data['status'] = 'failed'
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
@@ -116,14 +98,6 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                     
     except Transaction.DoesNotExist as e:
         return {'error': str(e)}
-
-
-
-
-
-
-
-
 
 def verify_hash_key(secret_key, payload, hash):
         
