@@ -1,12 +1,14 @@
 from django.http import HttpRequest
 from appstore import celery_app as app
-from .models import CartOrder
+from .models import CartOrder, Transaction
 from user.serializers import NotificationSerializer
-from user.models import User
+from user.models import User, Notification
 import hashlib
 import hmac
 import os
 import requests
+from django.utils import timezone
+from .serializers import TransactionSerializer
 
 SECRET_KEY = os.getenv('CHAPA_SECRET_KEY')
 
@@ -54,35 +56,48 @@ def get_payment_payload(request, tx_ref, amount, phone_number, **kwargs):
 def check_transaction_status(tx_ref, payment_gateway='chapa'):
     
     try:
-        order = CartOrder.objects.get(tx_ref)
+        transaction = Transaction.objects.get(tx_ref=tx_ref)
+
         PG_VERIFICATION_URLS = {
             'chapa': f'https://api.chapa.co/v1/transaction/verify/{tx_ref}',
-        
         }
 
         PG_PAYMENT_STATUS = {
-            'chapa_success': ('success', 'in_progress'),
-            'chapa_failed': ('failed', 'failed'),
-            'chapa_pending': ('pending', 'pending')
+            'chapa_success': 'success',
+            'chapa_failed': 'failed',
+            'chapa_pending': 'pending'
         }
 
         url = PG_VERIFICATION_URLS.get(payment_gateway)
-
         response = requests.get(url=url, headers=HEADERS)
+        response_data = response.json()
+
+        # Common update data
+        update_data = {
+            'payment_gateway_response': response_data,
+            'verification_attempts': transaction.verification_attempts + 1,
+            'last_verification_time': timezone.now()
+        }
 
         if response.status_code == 200: 
-            payment_status = response.data.get('data', {}).get('status', None)
+            payment_status = response_data.get('data', {}).get('status', None)
             if payment_status:
-                pg_payment_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
-                order.status, order.payment_status = pg_payment_status
-                order.save()
-                return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': 'success'}
-            return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': None}
+                update_data['status'] = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                serializer = TransactionSerializer(transaction, data=update_data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                return serializer.data
+             
         
-        if response.status_code in [400, 401]:
+        else:
+            update_data['status'] = 'failed'
+            serializer = TransactionSerializer(transaction, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+            
             # get admin users and send them an alarming notification
             admins = User.objects.filter(is_superuser=True)
-            message = response.data['message'] if response.data.get('message', None) else ''
+            message = response_data.get('message', '')
             
             notification_data = {
                 'note': f'Transaction error has been recieved from {payment_gateway} on tx_ref {tx_ref} with status code {response.status_code}.\
@@ -92,25 +107,15 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                 'priority': 'high'
             }
             
-            notification = NotificationSerializer(data=notification_data)
+            notification = Notification.objects.create(**notification_data)
             
-            if notification.is_valid():
-                notification.save()            
-            else:
-                return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': str(response.status_code),
-                            'transaction_status': None, 'admin_notification': 'not_sent'}
             for admin in admins:
                 admin.notification_for.append(notification)
                 admin.save()
-            return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '401',
-                            'transaction_status': None, 'admin_notification': 'sent',
-                              'message': message}
+            return serializer.data
                     
-    except CartOrder.DoesNotExist as e:
-        
-        return {'http_request': 'Not sent.', 'response_status_code': None,
-                 'transaction_status': 'failed',
-                   'reason': 'No cart order object found for the given tx_ref.'}
+    except Transaction.DoesNotExist as e:
+        return {'error': str(e)}
 
 
 

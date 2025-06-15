@@ -7,6 +7,10 @@ from django.db.models import (
         PositiveIntegerField, DecimalField, 
         ManyToManyField, TextField, IntegerField
         )
+from django.utils import timezone
+from shared.models import BaseModel
+from user.models import User
+from cart.models import Cart
 
 PAYMENT_STATUS_TYPES = (
     ('success', 'Success'),
@@ -104,4 +108,40 @@ class ShipmentInfo(Shipment):
 
     def get_or_create_shipment_info(self, payment_data):
         return super.get_or_create_payment_data(payment_data)
+
+class Transaction(BaseModel):
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('in_progress', 'In Progress'),
+    )
+
+    PAYMENT_GATEWAY_CHOICES = (
+        ('chapa', 'Chapa'),
+        # Add more payment gateways as needed
+    )
+
+    tx_ref = models.CharField(max_length=100, unique=True)
+    order = models.ForeignKey(CartOrder, on_delete=models.CASCADE, related_name='transactions')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default='ETB')
+    payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    verification_attempts = models.PositiveIntegerField(default=0)
+    last_verification_time = models.DateTimeField(null=True, blank=True)
+    payment_gateway_response = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['tx_ref']),
+            models.Index(fields=['status']),
+            models.Index(fields=['payment_gateway']),
+        ]
+
+    def __str__(self):
+        return f"Transaction {self.tx_ref} - {self.status}"
+
+
 

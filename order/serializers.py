@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
-from .models import (Cart, CartOrder, SingleProductOrder, BillingInfo, ShipmentInfo, Shipment)
+from .models import (Cart, CartOrder, SingleProductOrder, BillingInfo, ShipmentInfo, Shipment, Transaction)
 from cart.models import (CartData, Cart)
 from user.models import User
 from cart.serializers import CartSerializer
@@ -54,4 +54,11 @@ class CartOrderSerializer(SingleProductOrderSerializer):
 
     class Meta:
         model = CartOrder
+        fields = '__all__'
+
+class TransactionSerializer(BaseSerializer):
+    order = PrimaryKeyRelatedField(queryset=CartOrder.objects.all())
+    
+    class Meta:
+        model = Transaction
         fields = '__all__'
