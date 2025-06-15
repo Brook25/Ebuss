@@ -1,6 +1,7 @@
 from django.http import HttpRequest
 from appstore import celery_app as app
 from .models import CartOrder
+from user.models import Notification
 import hashlib
 import hmac
 import os
@@ -61,6 +62,7 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
         PG_PAYMENT_STATUS = {
             'chapa_success': ('success', 'in_progress'),
             'chapa_failed': ('failed', 'failed'),
+            'chapa_pending': ('pending', 'pending')
         }
 
         url = PG_VERIFICATION_URLS.get(payment_gateway)
@@ -69,12 +71,16 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
 
         if response.status_code == 200: 
             payment_status = response.data.get('data', {}).get('status', None)
-            if payment_status == 'success':
-                order.status = 'in_progress'
-                order.payment_status = 'success'
+            if payment_status:
+                pg_payment_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                order.status, order.payment_status = pg_payment_status
                 order.save()
-                return {'http_request': 'sent', 'response_status_code': '200', 'transaction_status': 'success'}
-            if data.staus
+                return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': 'success'}
+            return {'tx_ref': tx_ref, 'http_request': 'sent', 'response_status_code': '200', 'transaction_status': None}
+        
+        if response.status_code == 401:
+            # get admin users and send them an alarming notification
+            pass
     
     except CartOrder.DoesNotExist as e:
         return {'http_request': 'Not sent.', 'response_status_code': None,

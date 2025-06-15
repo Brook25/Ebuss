@@ -60,7 +60,6 @@ class Wishlist(models.Model):
     created_at = DateTimeField(auto_now=True)
     modified_at = DateTimeField(auto_now_add=True)
     product = ManyToManyField('product.Product', related_name='wishlists_in', blank=False)
-    priority = CharField(choices=PRIORITY_CHOICES, default='LOW')
 
 
 class Notification(models.Model):
@@ -69,4 +68,5 @@ class Notification(models.Model):
     note = TextField(blank=False, null=False)
     type = CharField(choices=NOTIFICATION_TYPES, null=False)
     uri = URLField(max_length=200, null=False)
+    priority = CharField(choices=PRIORITY_CHOICES, default='LOW')
 
