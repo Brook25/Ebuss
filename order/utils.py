@@ -19,20 +19,16 @@ HEADERS = {
     }
 
 @shared_task
-def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=60):
+def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=30):
     """Schedule a transaction verification with countdown"""
-    result = check_transaction_status.delay(tx_ref, payment_gateway)
     
-    # If transaction is still pending, schedule next verification
     transaction = Transaction.objects.get(tx_ref=tx_ref)
     if transaction.status in ['pending', 'in_progress']:
-        # Double the countdown for next attempt (exponential backoff)
-        next_countdown = countdown * 2
-        # Maximum 5 attempts (about 30 minutes total)
-        if next_countdown <= 960:  # 16 minutes
+    
+        if countdown <= 960:  # 16 minutes
             schedule_transaction_verification.apply_async(
                 args=[tx_ref, payment_gateway],
-                countdown=next_countdown
+                countdown=countdown * 2
             )
 
 @shared_task
@@ -98,6 +94,7 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                     
     except Transaction.DoesNotExist as e:
         return {'error': str(e)}
+
 
 def verify_hash_key(secret_key, payload, hash):
         
