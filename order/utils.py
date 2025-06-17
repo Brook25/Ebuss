@@ -23,7 +23,7 @@ def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown
     """Schedule a transaction verification with countdown"""
     
     transaction = Transaction.objects.get(tx_ref=tx_ref)
-    if transaction.status in ['pending', 'in_progress']:
+    if transaction.status != 'success':
     
         if countdown <= 960:  # 16 minutes
             schedule_transaction_verification.apply_async(
@@ -36,15 +36,15 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
     
     try:
         transaction = Transaction.objects.get(tx_ref=tx_ref)
+        cart_order = CartOrder.objects.get(tx_ref=tx_ref)
 
         PG_VERIFICATION_URLS = {
             'chapa': f'https://api.chapa.co/v1/transaction/verify/{tx_ref}',
         }
 
         PG_PAYMENT_STATUS = {
-            'chapa_success': 'success',
-            'chapa_failed': 'failed',
-            'chapa_pending': 'pending'
+            'chapa_success': ('success', 'in_progress'),
+            'chapa_failed': ('failed', 'failed'),
         }
 
         url = PG_VERIFICATION_URLS.get(payment_gateway)
@@ -61,10 +61,12 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
         if response.status_code == 200: 
             payment_status = response_data.get('data', {}).get('status', None)
             if payment_status:
-                update_data['status'] = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                update_data['status'], cart_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
                 serializer = TransactionSerializer(transaction, data=update_data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
+                cart_order.status = cart_status
+                cart_order.save()
                 return serializer.data
               
         else:
@@ -92,7 +94,7 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                 admin.save()
             return serializer.data
                     
-    except Transaction.DoesNotExist as e:
+    except (Transaction.DoesNotExist, CartOrder.DoesNotExist) as e:
         return {'error': str(e)}
 
 
