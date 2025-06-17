@@ -19,7 +19,7 @@ HEADERS = {
     }
 
 @shared_task
-def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=30):
+def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=60):
     """Schedule a transaction verification with countdown"""
     
     transaction = Transaction.objects.get(tx_ref=tx_ref)
