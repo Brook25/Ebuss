@@ -172,5 +172,87 @@ class SupplierPayment(BaseModel):
     def __str__(self):
         return f"Earning for {self.supplier.username}: {self.amount}"
 
+class SupplierWallet(BaseModel):
+    supplier = models.OneToOneField('user.User', on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_earned = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_withdrawn = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    last_withdrawal = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['supplier']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.supplier.username}'s Wallet"
+
+    def add_earning(self, amount):
+        """Add earnings to the wallet"""
+        self.balance += amount
+        self.total_earned += amount
+        self.save()
+
+    def withdraw(self, amount):
+        """Withdraw amount from wallet"""
+        if amount > self.balance:
+            raise ValueError("Insufficient balance")
+        
+        self.balance -= amount
+        self.total_withdrawn += amount
+        self.last_withdrawal = timezone.now()
+        self.save()
+
+class SupplierWithdrawal(BaseModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+
+    wallet = models.ForeignKey(SupplierWallet, on_delete=models.CASCADE, related_name='withdrawals')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    bank_account = models.CharField(max_length=100)  # Or use a separate BankAccount model
+    processed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['wallet']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Withdrawal of {self.amount} by {self.wallet.supplier.username}"
+
+    def approve(self):
+        """Approve the withdrawal request"""
+        if self.status != 'pending':
+            raise ValueError("Can only approve pending withdrawals")
+        
+        self.status = 'approved'
+        self.processed_at = timezone.now()
+        self.save()
+        
+        # Process the actual withdrawal
+        self.wallet.withdraw(self.amount)
+        
+        # Update status to completed
+        self.status = 'completed'
+        self.save()
+
+    def reject(self, notes=''):
+        """Reject the withdrawal request"""
+        if self.status != 'pending':
+            raise ValueError("Can only reject pending withdrawals")
+        
+        self.status = 'rejected'
+        self.notes = notes
+        self.save()
+
 
 

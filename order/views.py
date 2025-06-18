@@ -7,7 +7,7 @@ import json
 import os
 from cart.models import (Cart, CartData)
 from product.models import Product
-from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder, PaymentTransaction)
+from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder, PaymentTransaction, SupplierWallet, SupplierWithdrawal)
 from rest_framework.views import APIView
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
@@ -206,5 +206,94 @@ class TransactionWebhook(APIView):
         if transaction_status == 'success':
             pass            
             
+
+class SupplierWalletView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get supplier wallet details"""
+        if request.user.role != 'supplier':
+            return Response(
+                {'error': 'Only suppliers can access wallet details'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        wallet, created = SupplierWallet.objects.get_or_create(
+            supplier=request.user,
+            defaults={
+                'balance': Decimal('0'),
+                'total_earned': Decimal('0'),
+                'total_withdrawn': Decimal('0')
+            }
+        )
+
+        # Get recent withdrawals
+        recent_withdrawals = SupplierWithdrawal.objects.filter(
+            wallet=wallet
+        ).order_by('-created_at')[:5]
+
+        return Response({
+            'wallet': {
+                'balance': wallet.balance,
+                'total_earned': wallet.total_earned,
+                'total_withdrawn': wallet.total_withdrawn,
+                'last_withdrawal': wallet.last_withdrawal
+            },
+            'recent_withdrawals': [
+                {
+                    'amount': w.amount,
+                    'status': w.status,
+                    'created_at': w.created_at,
+                    'processed_at': w.processed_at
+                } for w in recent_withdrawals
+            ]
+        })
+
+    def post(self, request):
+        """Request a withdrawal"""
+        if request.user.role != 'supplier':
+            return Response(
+                {'error': 'Only suppliers can request withdrawals'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        amount = request.data.get('amount')
+        bank_account = request.data.get('bank_account')
+
+        if not amount or not bank_account:
+            return Response(
+                {'error': 'Amount and bank account are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            amount = Decimal(amount)
+        except (TypeError, ValueError):
+            return Response(
+                {'error': 'Invalid amount'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        wallet = SupplierWallet.objects.get(supplier=request.user)
+        
+        if amount > wallet.balance:
+            return Response(
+                {'error': 'Insufficient balance'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create withdrawal request
+        withdrawal = SupplierWithdrawal.objects.create(
+            wallet=wallet,
+            amount=amount,
+            bank_account=bank_account
+        )
+
+        return Response({
+            'message': 'Withdrawal request submitted successfully',
+            'withdrawal_id': withdrawal.id,
+            'status': withdrawal.status
+        }, status=status.HTTP_201_CREATED)
+
 
 

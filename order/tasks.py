@@ -1,7 +1,7 @@
 from appstore import celery_app
 from django.db import transaction
 from cart.models import Cart
-from .models import ( Order, PaymentTransaction, Transaction, SupplierPayment, Notification )
+from .models import ( Order, PaymentTransaction, Transaction, SupplierPayment, Notification, SupplierWallet )
 from decimal import Decimal
 from django.db.models import Sum, F
 from celery import shared_task
@@ -76,24 +76,45 @@ def record_supplier_earnings(self, transaction_id):
                     supplier_earnings[supplier] = Decimal('0')
                 supplier_earnings[supplier] += item_total
             
-            # Record earnings and notify suppliers
+            # Prepare lists for bulk creation
+            supplier_payments = []
+            notifications = []
+            
+            # Create objects for bulk creation
             for supplier, amount in supplier_earnings.items():
-                # Create earning record
-                SupplierPayment.objects.create(
+                # Get or create supplier wallet
+                wallet, created = SupplierWallet.objects.get_or_create(
                     supplier=supplier,
-                    transaction=transaction,
-                    amount=amount,
-                    status='pending'
+                    defaults={'balance': 0, 'total_earned': 0, 'total_withdrawn': 0}
+                )
+                
+                # Add earning to wallet
+                wallet.add_earning(amount)
+                
+                # Create earning record
+                supplier_payments.append(
+                    SupplierPayment(
+                        supplier=supplier,
+                        transaction=transaction,
+                        amount=amount,
+                        status='pending'
+                    )
                 )
                 
                 # Create notification for supplier
-                Notification.objects.create(
-                    user=supplier,
-                    title='New Earnings Available',
-                    message=f'You have earned {amount} from transaction {transaction.tx_ref}. You can withdraw this amount whenever you want.',
-                    type='earnings',
-                    priority='medium'
+                notifications.append(
+                    Notification(
+                        user=supplier,
+                        title='New Earnings Available',
+                        message=f'You have earned {amount} from transaction {transaction.tx_ref}. You can withdraw this amount whenever you want.',
+                        type='earnings',
+                        priority='medium'
+                    )
                 )
+            
+            # Bulk create all records
+            SupplierPayment.objects.bulk_create(supplier_payments)
+            Notification.objects.bulk_create(notifications)
                 
     except Exception as exc:
         # Retry the task with exponential backoff
