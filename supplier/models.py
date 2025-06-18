@@ -2,7 +2,7 @@ from django.core.validators import (MinValueValidator)
 from django.db.models import (ForeignKey, DateField, DecimalField, PositiveIntegerField,
                         IntegerField, CharField)
 from django.db import models
-# Create your models here.
+from decimal import Decimal
 
 class Metrics(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='product_metrics')
@@ -28,6 +28,6 @@ class SupplierWallet(models.Model):
     )
     
     user = ForeignKey('user.User', on_delet=models.CASCADE, related_name='supplier_obj')
-    balance = DecimalField(max_digits=11, decimal_places=2, validators=[MinValueValidator(0)])
+    balance = DecimalField(max_digits=11, decimal_places=2, validators=[MinValueValidator(0)], default=Decimal('0.00'))
     status = CharField(choices=STATUS_CHOICES, null=False)
-    last_withdrawal_data = DateField()
+    last_withdrawal_data = DateField(default=None)

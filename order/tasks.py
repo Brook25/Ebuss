@@ -85,11 +85,13 @@ def record_supplier_earnings(self, transaction_id):
                 # Get or create supplier wallet
                 wallet, created = SupplierWallet.objects.get_or_create(
                     supplier=supplier,
-                    defaults={'balance': 0, 'total_earned': 0, 'total_withdrawn': 0}
+                    defaults={'balance': amount}
                 )
                 
                 # Add earning to wallet
-                wallet.add_earning(amount)
+                if created:
+                    wallet.balance += amount
+                    wallet.save()
                 
                 # Create earning record
                 supplier_payments.append(
