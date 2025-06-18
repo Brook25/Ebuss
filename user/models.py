@@ -22,6 +22,7 @@ PRIORITY_CHOICES = (
 NOTIFICATION_TYPES = (
         ('order_status', 'Order status'),
         ('post_update', 'Post update'),
+        ('earnings', 'Earnings'),
         ('new_subscription', 'New subscrition'),
         ('product_update', 'Product update'),
         ('stock_related', 'stock related')

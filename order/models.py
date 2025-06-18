@@ -124,7 +124,9 @@ class Transaction(BaseModel):
 
     tx_ref = models.CharField(max_length=100, unique=True)
     order = models.ForeignKey(CartOrder, on_delete=models.CASCADE, related_name='transactions')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    ebuss_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    supplier_amount = models.DecimalField(max_digits=10, decimal_place=2)
     currency = models.CharField(max_length=3, default='ETB')
     payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -140,8 +142,35 @@ class Transaction(BaseModel):
             models.Index(fields=['payment_gateway']),
         ]
 
+    def save(self, *args, **kwargs):
+        self.supplier_amount = self.total_amount * 0.8 
+        self.ebuss_amount = self.total_amount * 0.2
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Transaction {self.tx_ref} - {self.status}"
+
+class SupplierPayment(BaseModel):
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('withdrawn', 'Withdrawn'),
+    )
+
+    supplier = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_earnings')
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='supplier_earnings')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['supplier']),
+            models.Index(fields=['transaction']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Earning for {self.supplier.username}: {self.amount}"
 
 
 
