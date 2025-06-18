@@ -55,6 +55,14 @@ class CartOrderSerializer(SingleProductOrderSerializer):
     class Meta:
         model = CartOrder
         fields = '__all__'
+        extra_kwargs = {
+            'supplier_amount': {
+                'read_only': True
+            },
+            'ebuss_amount': {
+                'read_only': True
+            }
+        }
 
 class TransactionSerializer(BaseSerializer):
     order = PrimaryKeyRelatedField(queryset=CartOrder.objects.all())
