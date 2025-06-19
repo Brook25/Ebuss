@@ -91,15 +91,15 @@ class OrderView(APIView):
                             response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                             
                             if response.json.get('status', '') == 'success':
-                                redirect_url = response.json.get('redirect_url', None)
+                                checkout_url = response.json.get('checkout_url', None)
                                 
-                                if redirect_url:
+                                if checkout_url:
                                     return Response({'message': "Order succesfully placed and pending.",
-                                          'redirect_url': redirect_url},
+                                          'checkout_url': checkout_url},
                                             status=status.HTTP_200_OK)
-                                return Response({'error': 'return url not retreived. Please try again.'},
-                                                        status=status.HTTP_501_SERVER_ERROR)
-                
+                                
+                                raise ValueError('checkout_url nor provided from payment gateway.')
+                                
             return Response({'error': 'Order data not properly provided.'},
                              status=status.HTTP_400_BAD_REQUEST)
 
@@ -185,6 +185,12 @@ class TransactionWebhook(APIView):
 
     def post(self, request, *args, **kwargs):
         
+        PG_PAYMENT_STATUS = {
+            'success': ('success', 'in_progress'),
+            'failed': ('failed', 'failed'),
+            'refunded': ('refunded', 'failed'),
+            'reversed': ('reversed', 'failed')
+        }
         chapa_hash = request.headers.get('Chapa-Signature', None)
 
         if not chapa_hash:
@@ -202,9 +208,32 @@ class TransactionWebhook(APIView):
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
         transaction_status = request.data.get('status', None)
+        tx_ref = request.data.get('tx_ref', None)
         
-        if transaction_status == 'success':
-            pass            
+        if transaction_status and tx_ref:
+            payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
+            with transaction.atomic():
+                transaction = PaymentTransaction.objects.get(tx_ref=tx_ref).select_related('order',
+                                     'order__cart').prefetch_related('cart_data_for')                                             queryset=cart_data))
+                
+                transaction.status = payment_status
+                transaction.response = json.loads(request.data)
+                transaction.save()
+                transaction.order.status = order_status
+                transaction.order.save()
+
+                if transaction_status != 'success':
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
+                    products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
+                    
+                    for product in products:
+                        product.quantity += cart_product_data[product.pk]
+                        product.save()
+
+                                
+                
+
+        
             
 
 class SupplierWalletView(APIView):

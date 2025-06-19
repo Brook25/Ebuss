@@ -23,7 +23,7 @@ def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown
     """Schedule a transaction verification with countdown"""
     
     transaction = Transaction.objects.get(tx_ref=tx_ref)
-    if transaction.status != 'success':
+    if transaction.status == 'pending':
     
         if countdown <= 960:  # 16 minutes
             schedule_transaction_verification.apply_async(
@@ -70,7 +70,6 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                 return serializer.data
               
         else:
-            update_data['status'] = 'failed'
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
             if serializer.is_valid():
                 serializer.save()
