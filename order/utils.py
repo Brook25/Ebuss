@@ -1,6 +1,7 @@
 from django.http import HttpRequest
 from appstore import celery_app as app
 from .models import CartOrder, Transaction
+from product.models import Product
 from user.serializers import NotificationSerializer
 from user.models import User, Notification
 import hashlib
@@ -25,7 +26,8 @@ def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown
     transaction = Transaction.objects.get(tx_ref=tx_ref)
     if transaction.status == 'pending':
     
-        if countdown <= 960:  # 16 minutes
+        if countdown <= 960:
+            check_transaction_status.delay(tx_ref=tx_ref)  # 16 minutes
             schedule_transaction_verification.apply_async(
                 args=[tx_ref, payment_gateway],
                 countdown=countdown * 2
@@ -35,8 +37,7 @@ def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown
 def check_transaction_status(tx_ref, payment_gateway='chapa'):
     
     try:
-        transaction = Transaction.objects.get(tx_ref=tx_ref)
-        cart_order = CartOrder.objects.get(tx_ref=tx_ref)
+        transaction = Transaction.objects.get(tx_ref=tx_ref).select_related('order').prefetch_related('order__cart__cart_data_for')
 
         PG_VERIFICATION_URLS = {
             'chapa': f'https://api.chapa.co/v1/transaction/verify/{tx_ref}',
@@ -63,10 +64,19 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
             if payment_status:
                 update_data['status'], cart_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
                 serializer = TransactionSerializer(transaction, data=update_data, partial=True)
-                if serializer.is_valid():
+                if serializer.is_valid(raise_exception=True):
                     serializer.save()
-                cart_order.status = cart_status
-                cart_order.save()
+                transaction.order.status = cart_status
+                transaction.order.save()
+                if payment_status != 'success':
+                    
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
+                    products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
+                    
+                    for product in products:
+                        product.quantity += cart_product_data[product.pk]
+                        product.save()
+
                 return serializer.data
               
         else:

@@ -16,7 +16,7 @@ from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
                           ShipmentSerializer)
 from shared.utils import paginate_queryset
-from .utils import (get_payment_payload, verify_hash_key)
+from .utils import (get_payment_payload, schedule_transaction_verification ,verify_hash_key)
 import requests
 import uuid
 import time
@@ -28,6 +28,8 @@ class OrderView(APIView):
     PAYMENT_TRANASCTION_URLS = {
         'chapa': "https://api.chapa.co/v1/transaction/initialize"
     }
+
+    ASYNC_COUNTDOWN = 40
 
     def get(self, request, *args, **kwargs):
          
@@ -94,11 +96,14 @@ class OrderView(APIView):
                                 checkout_url = response.json.get('checkout_url', None)
                                 
                                 if checkout_url:
+                                    # call the celery task to start payment verification
+                                    schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
+                                                                                   countdown=self.ASYNC_COUNTDOWN)
                                     return Response({'message': "Order succesfully placed and pending.",
                                           'checkout_url': checkout_url},
                                             status=status.HTTP_200_OK)
                                 
-                                raise ValueError('checkout_url nor provided from payment gateway.')
+                                raise ValueError('checkout_url not provided from payment gateway.')
                                 
             return Response({'error': 'Order data not properly provided.'},
                              status=status.HTTP_400_BAD_REQUEST)
