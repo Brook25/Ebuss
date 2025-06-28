@@ -65,9 +65,15 @@ class OrderView(APIView):
                 cart = Cart.objects.get(pk=cart_id)
                 all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
                 amount = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
-                product_quantity_in_cart = {product: quantity for product, quantity in all_cart_data.items()}
+                product_quantity_in_cart = {item['product']: item['quantity'] for item in all_cart_data}
                 
-                payment_payload, headers = get_payment_payload(request, tx_ref, amount, phone_number)
+                payment_data = {
+                    "tx_ref": tx_ref,
+                    "amount": amount,
+                    "phone_number": phone_number,
+                }
+
+                payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
 
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
@@ -218,8 +224,9 @@ class TransactionWebhook(APIView):
         if transaction_status and tx_ref:
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
-                transaction = PaymentTransaction.objects.get(tx_ref=tx_ref).select_related('order',
-                                     'order__cart').prefetch_related('cart_data_for')                                             queryset=cart_data))
+                transaction = PaymentTransaction.objects.get(tx_ref=tx_ref).select_related(
+                    'order', 'order__cart'
+                ).prefetch_related('order__cart__cart_data_for')
                 
                 transaction.status = payment_status
                 transaction.response = json.loads(request.data)

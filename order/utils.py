@@ -1,4 +1,5 @@
 from django.http import HttpRequest
+from django.urls import reverse
 from appstore import celery_app as app
 from .models import CartOrder, Transaction
 from product.models import Product
@@ -20,16 +21,16 @@ HEADERS = {
     }
 
 @shared_task
-def schedule_transaction_verification(tx_ref, payment_gateway='chapa', countdown=60):
+def schedule_transaction_verification(tx_ref, countdown, payment_gateway='chapa'):
     """Schedule a transaction verification with countdown"""
     
     transaction = Transaction.objects.get(tx_ref=tx_ref)
     if transaction.status == 'pending':
     
-        if countdown <= 960:
-            check_transaction_status.delay(tx_ref=tx_ref)  # 16 minutes
+        if countdown <= 1200:
+            check_transaction_status.delay(tx_ref=tx_ref)
             schedule_transaction_verification.apply_async(
-                args=[tx_ref, payment_gateway],
+                args=[tx_ref, countdown],
                 countdown=countdown * 2
             )
 
@@ -62,11 +63,11 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
         if response.status_code == 200: 
             payment_status = response_data.get('data', {}).get('status', None)
             if payment_status:
-                update_data['status'], cart_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                update_data['status'], order_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
                 serializer = TransactionSerializer(transaction, data=update_data, partial=True)
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
-                transaction.order.status = cart_status
+                transaction.order.status = order_status
                 transaction.order.save()
                 if payment_status != 'success':
                     
@@ -105,6 +106,58 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                     
     except (Transaction.DoesNotExist, CartOrder.DoesNotExist) as e:
         return {'error': str(e)}
+
+
+def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
+    """
+    Validates payment information from a dictionary and returns a payload for Chapa API.
+    """
+    # Extract data
+    amount = str(data.get('amount', ''))
+    phone_number = data.get('phone_number')
+    tx_ref = data.get('tx_ref')
+    callback_url = f'https://sterling-primarily-lionfish.ngrok-free.app/webhook/tsx'
+    return_url = f'https://sterling-primarily-lionfish.ngrok-free.app/home'
+
+
+    # Validate data
+    if not all([amount, phone_number, tx_ref]):
+        raise ValueError("Missing required payment data.")
+
+    if not amount.replace('.', '', 1).isdigit():
+        raise ValueError("Amount must be a numeric string.")
+
+    if not phone_number.isnumeric():
+        raise ValueError("Phone number must be a numeric string.")
+
+    # Get secret key and create headers
+    secret_key = os.getenv('CHAPA_SECRET_KEY')
+    if not secret_key:
+        raise ValueError("Chapa secret key not configured.")
+
+    headers = {
+        'Authorization': f'Bearer {secret_key}',
+        'Content-Type': 'application/json'
+    }
+
+    # Create payload
+    user = request.user
+    payload = {
+        'amount': amount,
+        'currency': 'ETB',
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'phone_number': phone_number,
+        'tx_ref': tx_ref,
+        'callback_url': callback_url,
+        'return_url': return_url,
+        'customization': {
+            'title': f'Payment for cart: {cart_id}',
+            'description': f'user {request.user.username} has completed order for cart {cart_id}.'
+        }
+    }
+    return payload, headers
 
 
 def verify_hash_key(secret_key, payload, hash):
