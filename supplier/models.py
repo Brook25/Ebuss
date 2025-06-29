@@ -1,7 +1,8 @@
-from django.db.models import (ForeignKey, DateField, PositiveIntegerField,
+from django.core.validators import (MinValueValidator)
+from django.db.models import (ForeignKey, DateField, DecimalField, PositiveIntegerField,
                         IntegerField, CharField)
 from django.db import models
-# Create your models here.
+from decimal import Decimal
 
 class Metrics(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='product_metrics')
@@ -19,3 +20,14 @@ class Inventory(models.Model):
     quantity_before = PositiveIntegerField(null=False, blank=False)
     quantity_after = PositiveIntegerField(null=False, blank=False)
     reason = CharField(max_length=255, null=True)
+
+class SupplierWallet(models.Model):
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('suspended', 'Suspended'),
+    )
+    
+    user = ForeignKey('user.User', on_delet=models.CASCADE, related_name='supplier_obj')
+    balance = DecimalField(max_digits=11, decimal_places=2, validators=[MinValueValidator(0)], default=Decimal('0.00'))
+    status = CharField(choices=STATUS_CHOICES, null=False)
+    last_withdrawal_data = DateField(default=None)

@@ -1,20 +1,22 @@
+from decimal import Decimal
 from django.views import View
 from django.db import (transaction, IntegrityError)
 from django.db.models import Prefetch
+from functools import reduce
 import json
 import os
 from cart.models import (Cart, CartData)
 from product.models import Product
-from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder, PaymentTransaction)
+from .models import (BillingInfo, ShipmentInfo, SingleProductOrder, CartOrder, PaymentTransaction, SupplierWallet, SupplierWithdrawal)
 from rest_framework.views import APIView
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
 from rest_framework import status
 from .signals import (post_order, clear_cart)
 from .serializers import (CartOrderSerializer, SingleProductOrderSerializer,
-                          SerializeShipment)
+                          ShipmentSerializer)
 from shared.utils import paginate_queryset
-from .utils import verify_hash_key
+from .utils import (get_payment_payload, schedule_transaction_verification ,verify_hash_key)
 import requests
 import uuid
 import time
@@ -23,6 +25,11 @@ from django.conf import settings
 
 class OrderView(APIView):
     permission_classes = [IsAuthenticated]
+    PAYMENT_TRANASCTION_URLS = {
+        'chapa': "https://api.chapa.co/v1/transaction/initialize"
+    }
+
+    ASYNC_COUNTDOWN = 40
 
     def get(self, request, *args, **kwargs):
          
@@ -37,45 +44,83 @@ class OrderView(APIView):
         return Response({'cart_orders': cartOrders.data,
                             'single_product_orders': singleProductOrders.data}, status=status.HTTP_200_OK)
 
-    def post(self, request, type, *args, **kwargs):
+    def calc_total_amount(self, accumulator, cart_item):
+        
+        quantity = cart_item.get('quantity', 0)
+        price = cart_item.get('price', 0)
 
+        total = quantity * price
+        
+        return accumulator + total
+    
+    
+    def post(self, request, type, *args, **kwargs):
+        
         try:
-            order_data = request.data
-            order_model = CartOrder if type == 'cart' else SingleProductOrder
-            parent_field = 'product' if type == 'single' else 'cart'
+            order_data = request.data.get('order_data')
             if order_data:
+                phone_number = request.data.get('phone_number', None)
+                tx_ref = 'chapa-test-' + uuid.uuid4()
+                cart_id = order_data.get('cart', None)
+                cart = Cart.objects.get(pk=cart_id)
+                all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
+                amount = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
+                product_quantity_in_cart = {item['product']: item['quantity'] for item in all_cart_data}
+                
+                payment_data = {
+                    "tx_ref": tx_ref,
+                    "amount": amount,
+                    "phone_number": phone_number,
+                }
+
+                payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
+
                 billing_info_data = order_data.get('billing_info', None)
                 shipment_info_data = order_data.get('shipment_info', None)
-                cart_id = order_data.get('cart_id', None)
-                product_id = order_data.get('product_id', None)
-                parent = Cart.objects.get(pk=cart_id) if type == 'cart' else Product.objects.get(pk=product_id)
-                if all([billing_info_data, shipment_info_data, parent]):
-                    new_billing_info = SerializeShipment(data=billing_info_data)
-                    new_shipment_info = SerializeShipment(data=shipment_info_data)
-                    if new_billing_info.is_valid() and new_shipment_info.is_valid():
+                if all([billing_info_data, shipment_info_data]):
+                    new_billing_serializer = ShipmentSerializer(data=billing_info_data)
+                    new_shipment_serializer = ShipmentSerializer(data=shipment_info_data)
+                    cart_order = CartOrderSerializer(data=order_data)
+                    if all([new_billing_serializer.is_valid(raise_exception=True), new_shipment_serializer.is_valid(raise_exception=True), cart_order.is_valid(raise_exception=True)]):
                         with transaction.atomic():
-                            product = Product.objects.select_for_update().get(pk=product_id)
-                            new_billing_info = new_billing_info.create()
-                            new_shipment_info = new_shipment_info.create()
-                            order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
-                            order.save()
-                            post_save.send(Order, order, request.user)
-                            clear_cart.send(Order)
-                        return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
-                    
-                message = 'Error: order failed, Please check order details.'
-                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
+                            product_ids = [cart_data.get('product') for cart_data in all_cart_data]
+                            products = Product.objects.select_for_update().filter(pk__in=product_ids)
 
-        except (json.JsonDecoderError, ValueError, TypeError) as e:
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
-        
-        except (IntegrityError, Order.DoesNotExist) as e:
-            return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
+                            for product in products:
+                                product.quantity -= product_quantity_in_cart[product.pk]
+                                product.save()
 
+                            new_billing_serializer.save()
+                            new_shipment_serializer.save()
+                            cart_order.save()
+                            cart.status = 'inactive'
+                            cart.save()
+                            
+                            response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
+                            
+                            if response.json.get('status', '') == 'success':
+                                checkout_url = response.json.get('checkout_url', None)
+                                
+                                if checkout_url:
+                                    # call the celery task to start payment verification
+                                    schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
+                                                                                   countdown=self.ASYNC_COUNTDOWN)
+                                    return Response({'message': "Order succesfully placed and pending.",
+                                          'checkout_url': checkout_url},
+                                            status=status.HTTP_200_OK)
+                                
+                                raise ValueError('checkout_url not provided from payment gateway.')
+                                
+            return Response({'error': 'Order data not properly provided.'},
+                             status=status.HTTP_400_BAD_REQUEST)
 
+        except (IntegrityError, CartOrder.DoesNotExist, Cart.DoesNotExist, Product.DoesNotExist) as e:
+            return Response({'Error': 'Unique constrains not provided for payment info.'},
+                             status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_501_SERVER_ERROR)
+
+    
     def delete(self, request, type, id, *args, **kwargs):
         
         if type == 'single':
@@ -151,6 +196,12 @@ class TransactionWebhook(APIView):
 
     def post(self, request, *args, **kwargs):
         
+        PG_PAYMENT_STATUS = {
+            'success': ('success', 'in_progress'),
+            'failed': ('failed', 'failed'),
+            'refunded': ('refunded', 'failed'),
+            'reversed': ('reversed', 'failed')
+        }
         chapa_hash = request.headers.get('Chapa-Signature', None)
 
         if not chapa_hash:
@@ -168,14 +219,119 @@ class TransactionWebhook(APIView):
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
         transaction_status = request.data.get('status', None)
+        tx_ref = request.data.get('tx_ref', None)
         
-        if transaction_status == 'success':
-<<<<<<< HEAD
-            pass
-            
-=======
-            pass            
->>>>>>> 77e7f317f07a493258cd865ee6bd1d5015506e11
-            
+        if transaction_status and tx_ref:
+            payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
+            with transaction.atomic():
+                transaction = PaymentTransaction.objects.get(tx_ref=tx_ref).select_related(
+                    'order', 'order__cart'
+                ).prefetch_related('order__cart__cart_data_for')
+                
+                transaction.status = payment_status
+                transaction.response = json.loads(request.data)
+                transaction.save()
+                transaction.order.status = order_status
+                transaction.order.save()
+
+                if transaction_status != 'success':
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
+                    products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
+                    
+                    for product in products:
+                        product.quantity += cart_product_data[product.pk]
+                        product.save()
+                    
+                    # log events here 
+
+
+class SupplierWalletView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get supplier wallet details"""
+        if request.user.role != 'supplier':
+            return Response(
+                {'error': 'Only suppliers can access wallet details'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        wallet, created = SupplierWallet.objects.get_or_create(
+            supplier=request.user,
+            defaults={
+                'balance': Decimal('0'),
+                'total_earned': Decimal('0'),
+                'total_withdrawn': Decimal('0')
+            }
+        )
+
+        # Get recent withdrawals
+        recent_withdrawals = SupplierWithdrawal.objects.filter(
+            wallet=wallet
+        ).order_by('-created_at')[:5]
+
+        return Response({
+            'wallet': {
+                'balance': wallet.balance,
+                'total_earned': wallet.total_earned,
+                'total_withdrawn': wallet.total_withdrawn,
+                'last_withdrawal': wallet.last_withdrawal
+            },
+            'recent_withdrawals': [
+                {
+                    'amount': w.amount,
+                    'status': w.status,
+                    'created_at': w.created_at,
+                    'processed_at': w.processed_at
+                } for w in recent_withdrawals
+            ]
+        })
+
+    def post(self, request):
+        """Request a withdrawal"""
+        if request.user.role != 'supplier':
+            return Response(
+                {'error': 'Only suppliers can request withdrawals'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        amount = request.data.get('amount')
+        bank_account = request.data.get('bank_account')
+
+        if not amount or not bank_account:
+            return Response(
+                {'error': 'Amount and bank account are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            amount = Decimal(amount)
+        except (TypeError, ValueError):
+            return Response(
+                {'error': 'Invalid amount'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        wallet = SupplierWallet.objects.get(supplier=request.user)
+        
+        if amount > wallet.balance:
+            return Response(
+                {'error': 'Insufficient balance'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create withdrawal request
+        withdrawal = SupplierWithdrawal.objects.create(
+            wallet=wallet,
+            amount=amount,
+            bank_account=bank_account
+        )
+
+        return Response({
+            'message': 'Withdrawal request submitted successfully',
+            'withdrawal_id': withdrawal.id,
+            'status': withdrawal.status
+        }, status=status.HTTP_201_CREATED)
+
 
 

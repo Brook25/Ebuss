@@ -7,8 +7,18 @@ from django.db.models import (
         PositiveIntegerField, DecimalField, 
         ManyToManyField, TextField, IntegerField
         )
+from django.utils import timezone
+from shared.models import BaseModel
+from user.models import User
+from cart.models import Cart
 
-STATUS_TYPES = (
+PAYMENT_STATUS_TYPES = (
+    ('success', 'Success'),
+    ('reversed','Reversed'),
+    ('refunded', 'Refunded'),
+    ('failed', 'Failed')
+)
+ORDER_STATUS_TYPES = (
         ('pending', 'Pending'),
         ('aborted', 'Aborted'),
         ('success', 'Success'),
@@ -40,6 +50,13 @@ class CartOrder(Order):
     cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING, related_name='cartorder_in')
     billing = ForeignKey('BillingInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
+    amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
+    payment_gateway = CharField(choices=PAYMENT_GATEWAYS, default='chapa')
+    trx_ref = CharField(unique=True)
+    created_at = DateTimeField(auto_now=True)
+    updated_at = DateTimeField(auto_now_add=True)
+    status = CharField(max_length=30, choices=ORDER_STATUS_TYPES, default='pending')
+    payment_status = CharField(choices=PAYMENT_STATUS_TYPES, default='pending')
 
     class Meta:
         abstract = False
@@ -92,12 +109,150 @@ class ShipmentInfo(Shipment):
     def get_or_create_shipment_info(self, payment_data):
         return super.get_or_create_payment_data(payment_data)
 
-class PaymentTransaction(models.Model):
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='payments')
-    amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
-    gateway = CharField(choices=PAYMENT_GATEWAYS, default='chapa')
-    trx_ref = CharField(unique=True)
-    created_at = DateTimeField(auto_now=True)
-    updated_at = DateTimeField(auto_now_add=True)
-    status = CharField(max_length=30, choices=STATUS_TYPES, default='pending')
+class Transaction(BaseModel):
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('in_progress', 'In Progress'),
+    )
+
+    PAYMENT_GATEWAY_CHOICES = (
+        ('chapa', 'Chapa'),
+        # Add more payment gateways as needed
+    )
+
+    tx_ref = models.CharField(max_length=100, unique=True)
+    order = models.ForeignKey(CartOrder, on_delete=models.CASCADE, related_name='transactions')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    ebuss_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    supplier_amount = models.DecimalField(max_digits=10, decimal_place=2)
+    currency = models.CharField(max_length=3, default='ETB')
+    payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    verification_attempts = models.PositiveIntegerField(default=0)
+    last_verification_time = models.DateTimeField(null=True, blank=True)
+    payment_gateway_response = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['tx_ref']),
+            models.Index(fields=['status']),
+            models.Index(fields=['payment_gateway']),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.supplier_amount = self.total_amount * 0.8 
+        self.ebuss_amount = self.total_amount * 0.2
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Transaction {self.tx_ref} - {self.status}"
+
+class SupplierPayment(BaseModel):
+    PAYMENT_STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('withdrawn', 'Withdrawn'),
+    )
+
+    supplier = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_earnings')
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='supplier_earnings')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['supplier']),
+            models.Index(fields=['transaction']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Earning for {self.supplier.username}: {self.amount}"
+
+class SupplierWallet(BaseModel):
+    supplier = models.OneToOneField('user.User', on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_earned = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_withdrawn = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    last_withdrawal = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['supplier']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.supplier.username}'s Wallet"
+
+    def add_earning(self, amount):
+        """Add earnings to the wallet"""
+        self.balance += amount
+        self.total_earned += amount
+        self.save()
+
+    def withdraw(self, amount):
+        """Withdraw amount from wallet"""
+        if amount > self.balance:
+            raise ValueError("Insufficient balance")
+        
+        self.balance -= amount
+        self.total_withdrawn += amount
+        self.last_withdrawal = timezone.now()
+        self.save()
+
+class SupplierWithdrawal(BaseModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+
+    wallet = models.ForeignKey(SupplierWallet, on_delete=models.CASCADE, related_name='withdrawals')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    bank_account = models.CharField(max_length=100)  # Or use a separate BankAccount model
+    processed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['wallet']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Withdrawal of {self.amount} by {self.wallet.supplier.username}"
+
+    def approve(self):
+        """Approve the withdrawal request"""
+        if self.status != 'pending':
+            raise ValueError("Can only approve pending withdrawals")
+        
+        self.status = 'approved'
+        self.processed_at = timezone.now()
+        self.save()
+        
+        # Process the actual withdrawal
+        self.wallet.withdraw(self.amount)
+        
+        # Update status to completed
+        self.status = 'completed'
+        self.save()
+
+    def reject(self, notes=''):
+        """Reject the withdrawal request"""
+        if self.status != 'pending':
+            raise ValueError("Can only reject pending withdrawals")
+        
+        self.status = 'rejected'
+        self.notes = notes
+        self.save()
+
+
 
