@@ -242,10 +242,6 @@ class TransactionWebhook(APIView):
                         product.quantity += cart_product_data[product.pk]
                         product.save()
 
-                                
-                
-
-        
             
 
 class SupplierWalletView(APIView):

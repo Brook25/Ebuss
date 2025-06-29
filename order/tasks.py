@@ -89,7 +89,7 @@ def record_supplier_earnings(self, transaction_id):
                 )
                 
                 # Add earning to wallet
-                if created:
+                if not created:
                     wallet.balance += amount
                     wallet.save()
                 
