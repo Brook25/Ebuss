@@ -327,6 +327,9 @@ class SupplierWalletView(APIView):
             bank_account=bank_account
         )
 
+        # deduct amount from wallet
+        #+ uses atomic transactions to also transfer the money via pg
+
         return Response({
             'message': 'Withdrawal request submitted successfully',
             'withdrawal_id': withdrawal.id,

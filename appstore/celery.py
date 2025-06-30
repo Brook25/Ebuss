@@ -5,7 +5,7 @@ import os
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'appstore.settings')
-django.setup()
+# django.setup()
 
 app = Celery('appstore')
 

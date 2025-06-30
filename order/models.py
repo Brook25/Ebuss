@@ -8,7 +8,6 @@ from django.db.models import (
         ManyToManyField, TextField, IntegerField
         )
 from django.utils import timezone
-from shared.models import BaseModel
 from user.models import User
 from cart.models import Cart
 
@@ -109,7 +108,7 @@ class ShipmentInfo(Shipment):
     def get_or_create_shipment_info(self, payment_data):
         return super.get_or_create_payment_data(payment_data)
 
-class Transaction(BaseModel):
+class Transaction(models.Model):
     PAYMENT_STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('success', 'Success'),
@@ -126,7 +125,7 @@ class Transaction(BaseModel):
     order = models.ForeignKey(CartOrder, on_delete=models.CASCADE, related_name='transactions')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     ebuss_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    supplier_amount = models.DecimalField(max_digits=10, decimal_place=2)
+    supplier_amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='ETB')
     payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
@@ -150,7 +149,7 @@ class Transaction(BaseModel):
     def __str__(self):
         return f"Transaction {self.tx_ref} - {self.status}"
 
-class SupplierPayment(BaseModel):
+class SupplierPayment(models.Model):
     PAYMENT_STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('withdrawn', 'Withdrawn'),
@@ -172,7 +171,7 @@ class SupplierPayment(BaseModel):
     def __str__(self):
         return f"Earning for {self.supplier.username}: {self.amount}"
 
-class SupplierWallet(BaseModel):
+class SupplierWallet(models.Model):
     supplier = models.OneToOneField('user.User', on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_earned = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -205,7 +204,7 @@ class SupplierWallet(BaseModel):
         self.last_withdrawal = timezone.now()
         self.save()
 
-class SupplierWithdrawal(BaseModel):
+class SupplierWithdrawal(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('approved', 'Approved'),

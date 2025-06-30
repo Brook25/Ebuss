@@ -1,4 +1,4 @@
-from appstore import celery_app
+from appstore import celery_app as app
 from django.db import transaction
 from cart.models import Cart
 from .models import ( Order, PaymentTransaction, Transaction, SupplierPayment, Notification, SupplierWallet )
@@ -52,7 +52,64 @@ def do_transaction_check(tx_ref, request):
             return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@shared_task(bind=True, max_retries=3)
+@app.task(bind=True, max_retries=3)
+def schedule_transaction_verification(tx_ref, countdown):
+    """Schedule a transaction verification with countdown"""
+    
+    transaction = Transaction.objects.get(tx_ref=tx_ref)
+    if transaction.status == 'pending':
+    
+        if countdown <= 1200:
+            check_transaction_status.delay(tx_ref=tx_ref)
+            schedule_transaction_verification.apply_async(
+                args=[tx_ref, countdown],
+                countdown=countdown * 2
+            )
+
+
+@app.task(bind=True, max_retries=3)
+def check_transaction_status(tx_ref, payment_gateway='chapa'):
+    
+    try:
+        transaction = Transaction.objects.get(tx_ref=tx_ref).select_related('order').prefetch_related('order__cart__cart_data_for')
+
+        PG_VERIFICATION_URLS = {
+            'chapa': f'https://api.chapa.co/v1/transaction/verify/{tx_ref}',
+        }
+
+        PG_PAYMENT_STATUS = {
+            'chapa_success': ('success', 'in_progress'),
+            'chapa_failed': ('failed', 'failed'),
+        }
+
+        url = PG_VERIFICATION_URLS.get(payment_gateway)
+        response = requests.get(url=url, headers=HEADERS)
+        response_data = response.json()
+
+        # Common update data
+        update_data = {
+            'payment_gateway_response': response_data,
+            'verification_attempts': transaction.verification_attempts + 1,
+            'last_verification_time': timezone.now()
+        }
+
+        if response.status_code == 200: 
+            payment_status = response_data.get('data', {}).get('status', None)
+            if payment_status:
+                update_data['status'], order_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                serializer = TransactionSerializer(transaction, data=update_data, partial=True)
+                if serializer.is_valid(raise_exception=True):
+                    serializer.save()
+                transaction.order.status = order_status
+                transaction.order.save()
+
+    except Exception as exc:
+        
+        return {'error': str(exc)}
+
+
+
+@app.task(bind=True, max_retries=3)
 def record_supplier_earnings(self, transaction_id):
     """
     Record earnings for suppliers after successful transaction and notify them
@@ -108,7 +165,8 @@ def record_supplier_earnings(self, transaction_id):
                     Notification(
                         user=supplier,
                         title='New Earnings Available',
-                        message=f'You have earned {amount} from transaction {transaction.tx_ref}. You can withdraw this amount whenever you want.',
+                        message=f'You have earned {amount} from transaction {transaction.tx_ref}.\
+                                You can withdraw this amount whenever you want.',
                         type='earnings',
                         priority='medium'
                     )

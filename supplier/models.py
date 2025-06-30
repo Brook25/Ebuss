@@ -27,7 +27,7 @@ class SupplierWallet(models.Model):
         ('suspended', 'Suspended'),
     )
     
-    user = ForeignKey('user.User', on_delet=models.CASCADE, related_name='supplier_obj')
+    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_obj')
     balance = DecimalField(max_digits=11, decimal_places=2, validators=[MinValueValidator(0)], default=Decimal('0.00'))
     status = CharField(choices=STATUS_CHOICES, null=False)
     last_withdrawal_data = DateField(default=None)

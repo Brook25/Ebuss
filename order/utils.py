@@ -11,7 +11,6 @@ import os
 import requests
 from django.utils import timezone
 from .serializers import TransactionSerializer
-from celery import shared_task
 
 SECRET_KEY = os.getenv('CHAPA_SECRET_KEY')
 
@@ -20,7 +19,7 @@ HEADERS = {
         'Content-Type': 'application/json'
     }
 
-@shared_task
+@app.task()
 def schedule_transaction_verification(tx_ref, countdown):
     """Schedule a transaction verification with countdown"""
     
@@ -34,7 +33,8 @@ def schedule_transaction_verification(tx_ref, countdown):
                 countdown=countdown * 2
             )
 
-@shared_task
+
+@app.task()
 def check_transaction_status(tx_ref, payment_gateway='chapa'):
     
     try:
