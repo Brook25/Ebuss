@@ -1,55 +1,21 @@
 from appstore import celery_app as app
 from django.db import transaction
 from cart.models import Cart
-from .models import ( Order, PaymentTransaction, Transaction, SupplierPayment, Notification, SupplierWallet )
+from user.models import Notification
+from .models import ( CartOrder, Transaction)
+from supplier.models import SupplierWallet
+from datetime import datetime
 from decimal import Decimal
 from django.db.models import Sum, F
 from celery import shared_task
+import os
 
-def do_transaction_check(tx_ref, request):
+SECRET_KEY = os.getenv('CHAPA_SECRET_KEY')
 
-    try:
-        transaction = PaymentTransaction.objects.get(tsx_ref=tx_ref)
-    except PaymentTransaction.DoesNotExist as e:
-        return {'error': str(e)}
-    
-    if transaction.status == 'success':
-        
-        try:
-            order_data = request.data
-            order_model = CartOrder if type == 'cart' else SingleProductOrder
-            parent_field = 'product' if type == 'single' else 'cart'
-            if order_data:
-                billing_info_data = order_data.get('billing_info', None)
-                shipment_info_data = order_data.get('shipment_info', None)
-                cart_id = order_data.get('cart_id', None)
-                product_id = order_data.get('product_id', None)
-                parent = Cart.objects.get(pk=cart_id) if type == 'cart' else Product.objects.get(pk=product_id)
-                if all([billing_info_data, shipment_info_data, parent]):
-                    new_billing_info = SerializeShipment(data=billing_info_data)
-                    new_shipment_info = SerializeShipment(data=shipment_info_data)
-                    if new_billing_info.is_valid() and new_shipment_info.is_valid():
-                        with transaction.atomic():
-                            product = Product.objects.select_for_update().get(pk=product_id)
-                            new_billing_info = new_billing_info.create()
-                            new_shipment_info = new_shipment_info.create()
-                            order = model(parent_field=parent, billing_info=new_billing_info, shipment_info=new_shipment_info)
-                            order.save()
-                            post_save.send(Order, order, request.user)
-                            clear_cart.send(Order)
-                        return Response({'message': "Order succesfully placed."}, status=status.HTTP_200_OK)
-                    
-                message = 'Error: order failed, Please check order details.'
-                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({'message': 'Order data not sufficient.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        except (json.JsonDecoderError, ValueError, TypeError) as e:
-            message = "Error: couldn't parse values recieved. " + str(e)
-            return Response("Order successfully placed.", status=501)
-        
-        except (IntegrityError, Order.DoesNotExist) as e:
-            return Response({'message': 'Unique constrains not provided for payment info.'}, status=status.HTTP_400_BAD_REQUEST)
+HEADERS = {
+        'Authorization': f'Bearer {SECRET_KEY}',
+        'Content-Type': 'application/json'
+    }
 
 
 @app.task(bind=True, max_retries=3)
@@ -65,7 +31,6 @@ def schedule_transaction_verification(tx_ref, countdown):
                 args=[tx_ref, countdown],
                 countdown=countdown * 2
             )
-
 
 @app.task(bind=True, max_retries=3)
 def check_transaction_status(tx_ref, payment_gateway='chapa'):
@@ -90,7 +55,7 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
         update_data = {
             'payment_gateway_response': response_data,
             'verification_attempts': transaction.verification_attempts + 1,
-            'last_verification_time': timezone.now()
+            'last_verification_time': datetime.now()
         }
 
         if response.status_code == 200: 
@@ -102,12 +67,43 @@ def check_transaction_status(tx_ref, payment_gateway='chapa'):
                     serializer.save()
                 transaction.order.status = order_status
                 transaction.order.save()
+                if payment_status == 'failed':
+                    
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
+                    products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
+                    
+                    for product in products:
+                        product.quantity += cart_product_data[product.pk]
+                        product.save()
 
-    except Exception as exc:
-        
-        return {'error': str(exc)}
-
-
+                return serializer.data
+              
+        else:
+            serializer = TransactionSerializer(transaction, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+            
+            # get admin users and send them an alarming notification
+            admins = User.objects.filter(is_superuser=True)
+            message = response_data.get('message', '')
+            
+            notification_data = {
+                'note': f'Transaction error has been recieved from {payment_gateway} on tx_ref {tx_ref} with status code {response.status_code}.\
+                reponse message: {message}. Please check and fix it.',
+                'type': 'order_status',
+                'uri': 'http://localhost/nots/1',
+                'priority': 'high'
+            }
+            
+            notification = Notification.objects.create(**notification_data)
+            
+            for admin in admins:
+                admin.notification_for.append(notification)
+                admin.save()
+            return serializer.data
+                    
+    except (Transaction.DoesNotExist, CartOrder.DoesNotExist) as e:
+        return {'error': str(e)}
 
 @app.task(bind=True, max_retries=3)
 def record_supplier_earnings(self, transaction_id):
@@ -131,10 +127,9 @@ def record_supplier_earnings(self, transaction_id):
                 
                 if supplier not in supplier_earnings:
                     supplier_earnings[supplier] = Decimal('0')
-                supplier_earnings[supplier] += item_total
+                supplier_earnings[supplier] += item_total * 0.8
             
             # Prepare lists for bulk creation
-            supplier_payments = []
             notifications = []
             
             # Create objects for bulk creation
@@ -150,16 +145,6 @@ def record_supplier_earnings(self, transaction_id):
                     wallet.balance += amount
                     wallet.save()
                 
-                # Create earning record
-                supplier_payments.append(
-                    SupplierPayment(
-                        supplier=supplier,
-                        transaction=transaction,
-                        amount=amount,
-                        status='pending'
-                    )
-                )
-                
                 # Create notification for supplier
                 notifications.append(
                     Notification(
@@ -173,7 +158,6 @@ def record_supplier_earnings(self, transaction_id):
                 )
             
             # Bulk create all records
-            SupplierPayment.objects.bulk_create(supplier_payments)
             Notification.objects.bulk_create(notifications)
                 
     except Exception as exc:

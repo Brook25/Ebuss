@@ -1,7 +1,7 @@
 import json
 from user.models import (User, Wishlist) 
 from product.models import (Product, Category, SubCategory, Review)
-from order.models import (CartOrder, SingleProductOrder, ShipmentInfo, BillingInfo)
+from order.models import (CartOrder, ShipmentInfo)
 from cart.models import Cart
 from post.models import (Post, Comment)
 import uuid
@@ -84,12 +84,11 @@ class SetupObjects:
                         'amount': 2,
                         'status': 'in_progress'
                         }
-        test_billing = BillingInfo.objects.create(**billing_info_data)
+        #test_billing = BillingInfo.objects.create(**billing_info_data)
         test_shipment = ShipmentInfo.objects.create(**shipment_info_data)
         test_cart_1 = Cart.objects.create(name='mycart', customer=test_user_2, quantity=5)
         test_cart_1.product.set([test_product_1])
-        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_1, billing=test_billing, shipment=test_shipment)
-        test_singleproduct_order = SingleProductOrder.objects.create(user=test_user_2, product=test_product_1, billing=test_billing, shipment=test_shipment)
+        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_1, shipment=test_shipment)
         
         wish_list_1_data = { 'created_by': test_user_2 }
         test_wishlist_1 = Wishlist.objects.create(**wish_list_1_data)

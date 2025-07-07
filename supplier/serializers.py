@@ -1,6 +1,9 @@
-from .models import (Inventory, Metrics)
+from .models import (Inventory, Metrics, SupplierWallet, WithdrawalAcct)
 from shared.serializers import BaseSerializer
 from rest_framework import serializers
+from rest_framework.relations import PrimaryKeyRelatedField
+from user.models import User
+
 
 class MetricSerializer(BaseSerializer):
     product = serializers.SerializerMethodField()
@@ -43,3 +46,27 @@ class InventorySerializer(BaseSerializer):
         return { 'product_name': obj.product.name,
                  'product_id': obj.product.id
                }
+
+class WalletSerializer(BaseSerializer):
+    supplier = PrimaryKeyRelatedField(queryset=User.objects.filter(is_supplier=True))
+
+    class Meta:
+        fields = '__all__'
+        model = SupplierWallet
+
+class WithdrawalAcctSerializer(BaseSerializer):
+    wallet = PrimaryKeyRelatedField(queryset=SupplierWaller.objects.all())
+
+    class Meta:
+        fields = '__all__'
+        model = WithdrawalAcct
+
+    def validate(self, attrs):
+       wallet = SupplierWallet.objects.filter(wallet=attrs.get('wallet', None)).first()
+       if attrs['amount'] > wallet.balance:
+            rasie serializers.ValidationError('withdrawal amount can\'t be less than wallet balance.')
+
+        if wallet.status == 'suspended':
+            raise serializers.ValidationError('Can\'t withdraw from a suspended supplier wallet.')
+
+        return attrs

@@ -11,7 +11,7 @@ from django.db.models import Prefetch
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from cart.models import CartData
-from order.models import (CartOrder, SingleProductOrder)
+from order.models import (CartOrder)
 from product.models import Product
 from user.models import Wishlist
 from shared.permissions import IsAdmin
@@ -19,7 +19,7 @@ from shared.utils import (paginate_queryset)
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
 from user.serializers import (UserSerializer, WishListSerializer)
-from order.serializers import (CartOrderSerializer, SingleProductOrderSerializer)
+from order.serializers import (CartOrderSerializer)
 from datetime import datetime, timedelta
 import json
 import jwt
@@ -60,18 +60,12 @@ class HistoryView(APIView):
 
     def get(self, request, index, *args, **kwargs):
         
-        products = Product.objects.only('id', 'name')
         cartOrders = get_list_or_404(CartOrder.objects.filter(
                 user=request.user, cart__status='active').order_by('-created_at').prefetch_related(
                     Prefetch('cart__cart_data_for', queryset=CartData.objects.prefetch_related('cart__cart_data_for__product'))))
         cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer, 20)
         
-        singleProductOrders = get_list_or_404(SingleProductOrder.objects.filter(
-            user=request.user).order_by('-created_at').select_related('product'))
-        singleProductOrders = paginate_queryset(singleProductOrders, request, SingleProductOrderSerializer, 20)
-        
-        return Response({ 'singleProductOrders': singleProductOrders.data,
-                                'Cartorders': cartOrders.data },
+        return Response({ 'Cartorders': cartOrders.data },
                                 status=status.HTTP_200_OK)
 
 

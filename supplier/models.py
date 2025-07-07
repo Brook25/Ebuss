@@ -21,13 +21,63 @@ class Inventory(models.Model):
     quantity_after = PositiveIntegerField(null=False, blank=False)
     reason = CharField(max_length=255, null=True)
 
+
 class SupplierWallet(models.Model):
+    
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('suspended', 'Suspended'),
     )
     
-    user = ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_obj')
-    balance = DecimalField(max_digits=11, decimal_places=2, validators=[MinValueValidator(0)], default=Decimal('0.00'))
-    status = CharField(choices=STATUS_CHOICES, null=False)
-    last_withdrawal_data = DateField(default=None)
+    supplier = models.OneToOneField('user.User', on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    status = CharField(choices=STATUS_CHOICES, null=False, default='active')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['supplier']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.supplier.username}'s Wallet"
+
+
+class SupplierWithdrawal(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+
+    withdrawal_account = models.ForeignKey('WithdrawalAcct', on_delete=models.DO_NOTHING, related_name='withdrawals')
+    status = models.CharField(choices=STATUS_CHOICES, default='pending')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    reference = models.CharField(max_length=100)
+    processed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['wallet']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Withdrawal of {self.amount} by {self.wallet.supplier.username}"
+
+
+class WithdrawalAcct(models.Model):
+    ACCT_NAMES = (
+            ('telebirr', 'Telebirr'),
+            ('cbe', 'CBE'),
+            ('awash', 'Awash Birr'),
+    )
+
+    wallet = models.ForeingKey(SupplierWallet, on_delete=models.CASCADE, unique=False, related_name='withdrawal_accounts')
+    name = models.CharField(choices=ACCT_NAMES)
+    holder_name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f'<withdrawal account>: {self.__dict__}'

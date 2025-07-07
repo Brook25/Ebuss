@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from shared.utils import paginate_queryset
 from .metrics import ProductMetrics
-from order.models import (SingleProductOrder, CartOrder)
-from order.serializers import (SingleProductOrderSerializer, CartOrderSerializer)
+from order.models import ( CartOrder)
+from order.serializers import (CartOrderSerializer)
 from user.serializers import UserSerializer
 from .permissions.supplier_permissions import IsSupplier
 from product.models import Product
@@ -29,9 +29,7 @@ class DashBoardHome(APIView):
         metrics =  ProductMetrics(request.user, date, products).prefetch_related(Prefetch('user', queryset=users), Prefetch('product', queryset=products))
         quarterly_revenue = metrics.quarterly_metrics()
         quarterly_metrics =  metrics.yearly_metrics(request.user, date, quarterly=True)
-        single_orders = SingleProductOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
         cart_orders = CartOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
-        single_order_data = paginate_queryset(single_orders, request, SingleProductOrderSerializer).data
         cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer).data
         inventory_obj = Inventory.objects.filter(product__supplier=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
         inventory_data = paginate_queryset(inventory_obj, request, InventorySerializer).data
@@ -39,7 +37,6 @@ class DashBoardHome(APIView):
         subscriber_data = paginate_queryset(subscribers, request, UserSerializer, 50).data
 
         data = {
-               'single_orders': single_order_data,
                'cart_orders': cart_order_data,
                'inventory_data': inventory_data,
                 'quarterly_revenue': quarterly_revenue,
