@@ -27,7 +27,7 @@ def post_product_save(sender, instance, reason, quantity_before, quantity_after,
             Inventory.objects.create(**inventory_data)
 
 @receiver(post_save, sender=Withdrawal)
-def post_withdrawal_success(sender, instance, created, **kwargs):
+def post_withdrawal_attempt(sender, instance, created, **kwargs):
     
     if created == False and instance.status != 'pending':
        

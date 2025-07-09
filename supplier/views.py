@@ -95,10 +95,8 @@ class Inventory(APIView):
         return Response(paginated_inventory, status=status.HTTP_200_OK)
 
 
-
-
 class SupplierWalletView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request):
         """Get supplier wallet details"""
@@ -147,10 +145,9 @@ class SupplierWalletView(APIView):
         reference = uuid.uuid4()
         
         if not (wallet and  wallet.withdrawal_account and secret_key):
-                    raise ValueError('Wallet and withdrawal account not configured.')
+            raise ValueError('Wallet and withdrawal account not configured.')
 
-        bank_data = cache.get('bank_data', {}).get(bank_slug, None)
-        bank_code = bank_data['id']
+        bank_data = cache.get('bank_data', {})
 
         if not bank_data:
 
@@ -164,14 +161,15 @@ class SupplierWalletView(APIView):
             response = requests.get(banks_url, headers=headers)
 
             data = response.data
-
             if (response.status_code != 200 and data.get('message', None) != 'Banks retreived' and data.get('data', None):
                 raise ValueError('bank not identified. Try again.')
 
             bank_data = {bank['bank_slug']: bank for bank in bank_data}
-            bank_code = bank_data[bank_slug]['id']
-            
             cache.set('bank_data', bank_data)
+        
+        bank_code = bank_data.get('bank_slug', {}).get('id', None)
+        if not bank_code:
+            raise ValueError('Bank not recognized.')
 
         payload = {
             "account_name": wallet.withdrawal_account.holder_name,
@@ -181,15 +179,13 @@ class SupplierWalletView(APIView):
             "reference": , reference
             "bank_code": bank_code
         }
-      
+
         response = requests.post(transfer_url, json=payload, headers=headers)
 
         if response.status_code != 200 and response.data.get('status', None) != 'success':
             raise ValueError('Transfer failed. Server Error')
 
-        try:
-            withdrawal = SupplierWithdrawal(reference=reference, withdrawal_account=SupplierAccount, amount=amount)
-            schedule_withdrawal_verification.apply_aync(args=[reference, 10], countdowon=10)
+        schedule_withdrawal_verification.apply_aync(args=[reference, 10], countdowon=10)
 
 
     def post(self, request):
@@ -234,7 +230,7 @@ class SupplierWalletView(APIView):
             )
 
         except Exception as err:
-            return Resonse(
+            return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )

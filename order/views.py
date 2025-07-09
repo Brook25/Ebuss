@@ -72,7 +72,7 @@ class OrderView(APIView):
                 payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
 
                 shipment_info_data = order_data.get('shipment_info', None)
-                if all([billing_info_data, shipment_info_data]):
+                if shipment_info_data:
                     new_shipment_serializer = ShipmentSerializer(data=shipment_info_data)
                     cart_order = CartOrderSerializer(data=order_data)
                     if all([new_shipment_serializer.is_valid(raise_exception=True), cart_order.is_valid(raise_exception=True)]):
@@ -81,6 +81,10 @@ class OrderView(APIView):
                             products = Product.objects.select_for_update().filter(pk__in=product_ids)
 
                             for product in products:
+
+                                if product.quantity < product_quantity_in_cart[product.pk]:
+                                    return Response({f'Error: Not enough amount in stock for product {product.name}'},
+                                            status=status.HTTP_400_BAD_REQUEST)
                                 product.quantity -= product_quantity_in_cart[product.pk]
                                 product.save()
 
@@ -102,7 +106,9 @@ class OrderView(APIView):
                                           'checkout_url': checkout_url},
                                             status=status.HTTP_200_OK)
                                 
-                                raise ValueError('checkout_url not provided from payment gateway.')
+                                return Response({'Error': 'checkout_url not provided from payment gateway.\
+                                            Please try again.'},
+                                        status=status.HTTP_501_NOT_IMPLEMENTED)
                                 
             return Response({'error': 'Order data not properly provided.'},
                              status=status.HTTP_400_BAD_REQUEST)
