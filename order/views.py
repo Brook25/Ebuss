@@ -92,8 +92,7 @@ class OrderView(APIView):
 
         for product in products:
             if product.quantity < product_quantity_in_cart[product.pk]:
-                return Response({f'Error: Not enough amount in stock for product {product.name}'},
-                        status=status.HTTP_400_BAD_REQUEST)
+                raise ValueError(f'Error: Not enough amount in stock for product {product.name}')
             product.quantity -= product_quantity_in_cart[product.pk]
             product.save()
         
@@ -146,33 +145,21 @@ class OrderView(APIView):
         except (IntegrityError, CartOrder.DoesNotExist, Cart.DoesNotExist, Product.DoesNotExist) as e:
             return Response({'Error': f'Unique constrains not provided for payment info. {str(e)}'},
                              status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, type, id, *args, **kwargs):
         
-        if type == 'single':
-
-            with transaction.atomic():
-                single_order = SingleProductOrder.objects.get(pk=id).select_related('product')
-                if single_order:
-                    quantity = single_order.quantity
-                    single_order.product.quantity += quantity
-                    single_order.product.save()
-                    single_order.delete()
-                else:
-                    return Response('Order not found', status=status.HTTP_400_BAD_REQUEST)
-                
-        elif type == 'cart':
-
-            with transaction.atomic():
-                cart_order = CartData.objects.filter(cart__pk=id).prefetch_related('cart', 'product', 'quantity')
-                if cart_order:
-                    for cart_data in cart_order:
-                        cart_data.product.quantity += cart_data.quantity
-                        cart_data.product.save()
-                    cart_order.delete()
-                    cart_order.cart.delete()
-                else:
-                    return Response('Order not found', status=400)
+        with transaction.atomic():
+            cart_order = CartData.objects.filter(cart__pk=id).prefetch_related('cart', 'product', 'quantity')
+            if cart_order:
+                for cart_data in cart_order:
+                    cart_data.product.quantity += cart_data.quantity
+                    cart_data.product.save()
+                cart_order.delete()
+                cart_order.cart.delete()
+            else:
+                return Response('Order not found', status=400)
 
         return Response('Order successfuly deleted.', status=status.HTTP_200_OK)
             
@@ -250,7 +237,7 @@ class TransactionWebhook(APIView):
         if transaction_status and tx_ref:
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
-                transaction = PaymentTransaction.objects.get(tx_ref=tx_ref).select_related(
+                transaction = Transaction.objects.get(tx_ref=tx_ref).select_related(
                     'order', 'order__cart'
                 ).prefetch_related('order__cart__cart_data_for')
                 
