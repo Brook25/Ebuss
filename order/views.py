@@ -9,6 +9,7 @@ import os
 from cart.models import (Cart, CartData)
 from product.models import Product
 from .models import ( ShipmentInfo, CartOrder, Transaction, SupplierWallet, SupplierWithdrawal)
+from rest_framework.exception import ValidationError
 from rest_framework.views import APIView
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
@@ -50,7 +51,7 @@ class OrderView(APIView):
         return accumulator + total
     
     def get_cart_data(self, cart_id):
-        cart = Cart.objects.get(pk=cart_id)
+        cart = Cart.objects.select_for_update().get(pk=cart_id)
         all_cart_data = CartData.objects.select_for_update().filter(cart=cart).values('product', 'product__price', 'quantity')
         return cart, all_cart_data
     
@@ -106,14 +107,10 @@ class OrderView(APIView):
                 cart, all_cart_data = self.get_cart_data(cart_id)
                 order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
                 product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
-                
-                payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
-
-                payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
 
                 shipment_serializer = self.get_shipment_info_data(order_data)
-
                 cart_order_serializer = self.get_cart_order_data(order_data)
+
                 if all([shipment_serializer.is_valid(raise_exception=True), cart_order_serializer.is_valid(raise_exception=True)]):
                     with transaction.atomic():
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
@@ -125,6 +122,8 @@ class OrderView(APIView):
                         response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                         
                         if response.json.get('status', '') == 'success':
+                            payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
+                            payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
                             checkout_url = response.json.get('checkout_url', None)
                             
                             if checkout_url:
@@ -147,6 +146,10 @@ class OrderView(APIView):
                              status=status.HTTP_400_BAD_REQUEST)
         except ValueError as e:
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except ValidationError as e:
+            return Response({'Error': 'Error occured while validating your order. Check order data.'},
+                            status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, type, id, *args, **kwargs):
         
