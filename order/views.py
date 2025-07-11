@@ -26,7 +26,7 @@ from django.conf import settings
 
 class OrderView(APIView):
     permission_classes = [IsAuthenticated]
-    PAYMENT_TRANASCTION_URLS = {
+    PAYMENT_TRANSACTION_URLS = {
         'chapa': "https://api.chapa.co/v1/transaction/initialize"
     }
 
@@ -49,66 +49,96 @@ class OrderView(APIView):
         
         return accumulator + total
     
+    def get_cart_data(self, cart_id):
+        cart = Cart.objects.get(pk=cart_id)
+        all_cart_data = CartData.objects.select_for_update().filter(cart=cart).values('product', 'product__price', 'quantity')
+        return cart, all_cart_data
     
-    def post(self, request, type, *args, **kwargs):
+    def get_product_quantity_in_cart(self, all_cart_data):
+        return {item['product']: item['quantity'] for item in all_cart_data}
+    
+    def get_order_data(self, request):
+        order_data = request.data.get('order_data')
+        if order_data:
+            phone_number = order_data.get('phone_number', None)
+            tx_ref = 'chapa-test-' + uuid.uuid4()
+            cart_id = order_data.get('cart', None)
+            return order_data, phone_number, tx_ref, cart_id
+    
+    
+    def get_payment_data(self, order_data, tx_ref, phone_number):
+        payment_data = {
+            "tx_ref": tx_ref,
+            "amount": order_data['amount'],
+            "phone_number": phone_number,
+        }
+        return payment_data
+
+    def get_shipment_info_data(self, order_data):
+        shipment_info_data = order_data.get('shipment_info', None)
+        if shipment_info_data:
+            return ShipmentSerializer(data=shipment_info_data)
+        return None
+
+    def get_cart_order_data(self, order_data):
+        cart_order_data = order_data.get('cart_order', None)
+        if cart_order_data:
+            return CartOrderSerializer(data=cart_order_data)
+        return None
+    
+    def update_product_data(self, all_cart_data, product_quantity_in_cart):
+        product_ids = [cart_data.get('product') for cart_data in all_cart_data]
+        products = Product.objects.select_for_update().filter(pk__in=product_ids)
+
+        for product in products:
+            if product.quantity < product_quantity_in_cart[product.pk]:
+                return Response({f'Error: Not enough amount in stock for product {product.name}'},
+                        status=status.HTTP_400_BAD_REQUEST)
+            product.quantity -= product_quantity_in_cart[product.pk]
+            product.save()
+        
+
+
+    def post(self, request, *args, **kwargs):
         
         try:
-            order_data = request.data.get('order_data')
+            order_data, phone_number, tx_ref, cart_id = self.get_order_data(request)
             if order_data:
-                phone_number = cart_data.get('phone_number', None)
-                tx_ref = 'chapa-test-' + uuid.uuid4()
-                cart_id = order_data.get('cart', None)
-                cart = Cart.objects.get(pk=cart_id)
-                all_cart_data = CartData.objects.filter(cart=cart).values('product', 'product__price', 'quantity')
+                cart, all_cart_data = self.get_cart_data(cart_id)
                 order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
-                product_quantity_in_cart = {item['product']: item['quantity'] for item in all_cart_data}
+                product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
                 
-                payment_data = {
-                    "tx_ref": tx_ref,
-                    "amount": order_data['amount'],
-                    "phone_number": phone_number,
-                }
+                payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
 
                 payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
 
-                shipment_info_data = order_data.get('shipment_info', None)
-                if shipment_info_data:
-                    new_shipment_serializer = ShipmentSerializer(data=shipment_info_data)
-                    cart_order = CartOrderSerializer(data=order_data)
-                    if all([new_shipment_serializer.is_valid(raise_exception=True), cart_order.is_valid(raise_exception=True)]):
-                        with transaction.atomic():
-                            product_ids = [cart_data.get('product') for cart_data in all_cart_data]
-                            products = Product.objects.select_for_update().filter(pk__in=product_ids)
+                shipment_serializer = self.get_shipment_info_data(order_data)
 
-                            for product in products:
-
-                                if product.quantity < product_quantity_in_cart[product.pk]:
-                                    return Response({f'Error: Not enough amount in stock for product {product.name}'},
-                                            status=status.HTTP_400_BAD_REQUEST)
-                                product.quantity -= product_quantity_in_cart[product.pk]
-                                product.save()
-
-                            new_shipment_serializer.save()
-                            cart_order.save()
-                            cart.status = 'inactive'
-                            cart.save()
+                cart_order_serializer = self.get_cart_order_data(order_data)
+                if all([shipment_serializer.is_valid(raise_exception=True), cart_order_serializer.is_valid(raise_exception=True)]):
+                    with transaction.atomic():
+                        self.update_product_data(all_cart_data, product_quantity_in_cart)
+                        shipment_serializer.save()
+                        cart_order_serializer.save()
+                        cart.status = 'inactive'
+                        cart.save()
+                        
+                        response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
+                        
+                        if response.json.get('status', '') == 'success':
+                            checkout_url = response.json.get('checkout_url', None)
                             
-                            response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
+                            if checkout_url:
+                                # call the celery task to start payment verification
+                                schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
+                                                                                countdown=self.ASYNC_COUNTDOWN)
+                                return Response({'message': "Order succesfully placed and pending.",
+                                        'checkout_url': checkout_url},
+                                        status=status.HTTP_200_OK)
                             
-                            if response.json.get('status', '') == 'success':
-                                checkout_url = response.json.get('checkout_url', None)
-                                
-                                if checkout_url:
-                                    # call the celery task to start payment verification
-                                    schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
-                                                                                   countdown=self.ASYNC_COUNTDOWN)
-                                    return Response({'message': "Order succesfully placed and pending.",
-                                          'checkout_url': checkout_url},
-                                            status=status.HTTP_200_OK)
-                                
-                                return Response({'Error': 'checkout_url not provided from payment gateway.\
-                                            Please try again.'},
-                                        status=status.HTTP_501_NOT_IMPLEMENTED)
+                            return Response({'Error': 'checkout_url not provided from payment gateway.\
+                                        Please try again.'},
+                                    status=status.HTTP_501_NOT_IMPLEMENTED)
                                 
             return Response({'error': 'Order data not properly provided.'},
                              status=status.HTTP_400_BAD_REQUEST)
@@ -116,9 +146,6 @@ class OrderView(APIView):
         except (IntegrityError, CartOrder.DoesNotExist, Cart.DoesNotExist, Product.DoesNotExist) as e:
             return Response({'Error': f'Unique constrains not provided for payment info. {str(e)}'},
                              status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'Error': str(e)}, status=status.HTTP_501_SERVER_ERROR)
-
     
     def delete(self, request, type, id, *args, **kwargs):
         
