@@ -94,6 +94,7 @@ class OrderView(APIView):
         for product in products:
             if product.quantity < product_quantity_in_cart[product.pk]:
                 raise ValueError(f'Error: Not enough amount in stock for product {product.name}')
+            #change this inot a bulk update
             product.quantity -= product_quantity_in_cart[product.pk]
             product.save()
         
