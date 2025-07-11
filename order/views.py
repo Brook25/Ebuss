@@ -96,7 +96,7 @@ class OrderView(APIView):
                 raise ValueError(f'Error: Not enough amount in stock for product {product.name}')
             #change this inot a bulk update
             product.quantity -= product_quantity_in_cart[product.pk]
-            product.save()
+        Product.objects.bulk_update(products, ['quantity'])
         
 
 
