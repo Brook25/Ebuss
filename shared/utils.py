@@ -141,24 +141,19 @@ class SetupObjects:
         billing_info_data = {'contact_name': 'John',
                     'city': 'Addis Ababa',
                     'state': None,
-                    'email_address': 'johnnyboy24@gmail.com',
                     'address': 'Mexico square',
-                    'phone_no': '0967101001',
-                    'payment_method': 'TeleBirr'
                     }
         shipment_info_data = {k: v for k, v in billing_info_data.items()}
-        shipment_info_data.pop('payment_method')
         shipment_info_data['tracking_info'] = uuid.uuid4()
-        print(shipment_info_data)
         payment_info_data = {'user': test_user_2,
                         'amount': 2,
                         'status': 'in_progress'
                         }
         # test_billing = BillingInfo.objects.create(**billing_info_data)
         test_shipment = ShipmentInfo.objects.create(**shipment_info_data)
-        test_cart_1 = Cart.objects.create(name='mycart', user=test_user_2)
+        test_cart_1 = Cart.objects.create(user=test_user_2)
         test_cart_data_11 = CartData.objects.create(cart=test_cart_1, product=test_product_1, quantity=1)
-        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_data_11, shipment=test_shipment)
+        test_cartorder = CartOrder.objects.create(user=test_user_2, cart=test_cart_1, shipment=test_shipment, amount=600)
         
         wish_list_1_data = { 'created_by': test_user_2 }
         test_wishlist_1 = Wishlist.objects.create(**wish_list_1_data)
@@ -344,8 +339,6 @@ class SetupObjects:
         Post.objects.all().delete()
         Comment.objects.all().delete()
         CartOrder.objects.all().delete()
-        SingleProductOrder.objects.all().delete()
-        BillingInfo.objects.all().delete()
         ShipmentInfo.objects.all().delete()
         print('...................objects succefully deleted...............')
 

@@ -59,7 +59,7 @@ class SupplierWithdrawal(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['wallet']),
+            models.Index(fields=['withdrawal_account']),
             models.Index(fields=['status']),
         ]
 
@@ -74,7 +74,7 @@ class WithdrawalAcct(models.Model):
             ('awash', 'Awash Birr'),
     )
 
-    wallet = models.ForeingKey(SupplierWallet, on_delete=models.CASCADE, unique=False, related_name='withdrawal_accounts')
+    wallet = models.ForeignKey(SupplierWallet, on_delete=models.CASCADE, unique=False, related_name='withdrawal_accounts')
     name = models.CharField(choices=ACCT_NAMES)
     holder_name = models.CharField(max_length=100)
     account_number = models.CharField(max_length=100)

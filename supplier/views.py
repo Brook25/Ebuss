@@ -3,12 +3,13 @@ from django.db.models import (Q, F)
 from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import APIException
 from rest_framework import status
 from shared.utils import paginate_queryset
 from .metrics import ProductMetrics
 from order.models import ( CartOrder)
 from order.serializers import (CartOrderSerializer)
-from .tasks import check_withdrawal_verification
+from .tasks import schedule_withdrawal_verification
 from user.serializers import UserSerializer
 from .permissions.supplier_permissions import IsSupplier
 from product.models import Product
@@ -161,8 +162,8 @@ class SupplierWalletView(APIView):
             response = requests.get(banks_url, headers=headers)
 
             data = response.data
-            if (response.status_code != 200 and data.get('message', None) != 'Banks retreived' and data.get('data', None):
-                raise ValueError('bank not identified. Try again.')
+            if response.status_code != 200 and data.get('message', None) != 'Banks retreived' and data.get('data', None):
+                raise APIException('Bank not identified on payment gateway. Try again.')
 
             bank_data = {bank['bank_slug']: bank for bank in bank_data}
             cache.set('bank_data', bank_data)
@@ -176,14 +177,14 @@ class SupplierWalletView(APIView):
             "account_number": wallet.withdrawal_account.account_number,
             "amount": amount,
             "currency": "ETB",
-            "reference": , reference
+            "reference": reference,
             "bank_code": bank_code
         }
 
         response = requests.post(transfer_url, json=payload, headers=headers)
 
-        if response.status_code != 200 and response.data.get('status', None) != 'success':
-            raise ValueError('Transfer failed. Server Error')
+        if response.status_code != 200 or response.data.get('status', None) != 'success':
+            raise APIException('Transfer failed. Payment gateway returned failed response.')
 
         schedule_withdrawal_verification.apply_aync(args=[reference, 10], countdowon=10)
 

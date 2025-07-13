@@ -5,7 +5,7 @@ from user.models import (User, Notification, Wishlist)
 from product.models import (Product, SubCategory, Category, Tag, Review)
 from cart.models import (Cart, CartData)
 from post.models import (Post, Comment)
-from order.models import (CartOrder, SingleProductOrder, BillingInfo, ShipmentInfo)
+from order.models import (CartOrder, ShipmentInfo)
 from supplier.models import (Metrics, Inventory)
 
 class Command(BaseCommand):
@@ -24,8 +24,6 @@ class Command(BaseCommand):
             'post': Post,
             'comment': Comment,
             'cart_order': CartOrder,
-            'sigle_order': SingleProductOrder,
-            'billing_info': BillingInfo,
             'shipment_info': ShipmentInfo,
             'metrics': Metrics,
             'inventory': Inventory,

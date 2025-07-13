@@ -1,5 +1,7 @@
 import requests
-import .models import SupplierWithdrawal
+from appstore import celery_app as app
+from rest_framework.exceptions import APIException
+from .models import SupplierWithdrawal
 
 @app.task(bind=True, max_retries=6)
 def schedule_withdrawal_verification(reference, countdown):
@@ -27,8 +29,8 @@ def check_supplier_withdrawal(withdrawal):
             }
 
     response = requests.get(url=verification_url, headers=headers)
-    if not all([response.status_code == 200, response.data.get('status', None) == 'success', response.data.get('data', []):
-        raise ValueError('Withdrawal verification request or response invalid.')
+    if not all([response.status_code == 200, response.data.get('status', None) == 'success', response.data.get('data', [])]):
+        raise APIException('Withdrawal verification request or response invalid.')
 
     try:
         withdrawal = withdrawal.select_related('withdrawal_account', 'withdrawal_account__wallet')

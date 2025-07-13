@@ -8,8 +8,8 @@ import json
 import os
 from cart.models import (Cart, CartData)
 from product.models import Product
-from .models import ( ShipmentInfo, CartOrder, Transaction, SupplierWallet, SupplierWithdrawal)
-from rest_framework.exception import ValidationError
+from .models import ( ShipmentInfo, CartOrder, Transaction)
+from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.permissions import (IsAuthenticated)
 from rest_framework.response import Response
@@ -59,12 +59,12 @@ class OrderView(APIView):
         return {item['product']: item['quantity'] for item in all_cart_data}
     
     def get_order_data(self, request):
-        order_data = request.data.get('order_data')
+        order_data = request.data.get('order_data', None)
         if order_data:
             phone_number = order_data.get('phone_number', None)
-            tx_ref = 'chapa-test-' + uuid.uuid4()
+            tx_ref = 'chapa-test-' + str(uuid.uuid4())
             cart_id = order_data.get('cart', None)
-            return order_data, phone_number, tx_ref, cart_id
+            return  order_data, phone_number, tx_ref, cart_id
     
     
     def get_payment_data(self, order_data, tx_ref, phone_number):
@@ -82,9 +82,9 @@ class OrderView(APIView):
         return None
 
     def get_cart_order_data(self, order_data):
-        cart_order_data = order_data.get('cart_order', None)
-        if cart_order_data:
-            return CartOrderSerializer(data=cart_order_data)
+        print('here')
+        if order_data:
+            return CartOrderSerializer(data=order_data)
         return None
     
     def update_product_data(self, all_cart_data, product_quantity_in_cart):
@@ -98,7 +98,6 @@ class OrderView(APIView):
             product.quantity -= product_quantity_in_cart[product.pk]
         Product.objects.bulk_update(products, ['quantity'])
         
-
 
     def post(self, request, *args, **kwargs):
         
@@ -135,9 +134,9 @@ class OrderView(APIView):
                                         'checkout_url': checkout_url},
                                         status=status.HTTP_200_OK)
                             
-                            return Response({'Error': 'checkout_url not provided from payment gateway.\
-                                        Please try again.'},
-                                    status=status.HTTP_501_NOT_IMPLEMENTED)
+                        return Response({'Error': 'checkout_url not provided from payment gateway.\
+                                    Please try again.'},
+                                status=status.HTTP_501_NOT_IMPLEMENTED)
                                 
             return Response({'error': 'Order data not properly provided.'},
                              status=status.HTTP_400_BAD_REQUEST)

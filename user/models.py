@@ -9,7 +9,7 @@ from django.db.models import (
         CharField, DateField, EmailField,
         DateTimeField, ForeignKey, URLField,
         PositiveIntegerField, DecimalField, OneToOneField,
-        ManyToManyField, TextField, IntegerField
+        ManyToManyField, TextField, IntegerField, BooleanField
         )
 # Create your models here.
 
@@ -48,6 +48,7 @@ class User(AbstractUser):
     last_modified = DateField(auto_now=True)
     subscriptions = ManyToManyField('User', symmetrical=False, related_name='subscribers')
     recommendations = ManyToManyField('product.Product', related_name='recommended_to') 
+    is_supplier = BooleanField(default=False)
 
     REQUIRED_FIELDS = ['first_name', 'last_name', 'birth_date', 'phone_no']
 

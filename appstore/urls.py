@@ -29,6 +29,7 @@ urlpatterns = [
     path('cart/', include('cart.urls')),
     path('popular/', include('product.popular_urls')),
     path('order/', include('order.urls')),
+    path('order/', include('order.webhook_urls')),
     path('subcategory/', include('product.subcat_urls')),
     path('category/', include('product.cat_urls')),
     path('dashboard/', include('supplier.urls')),

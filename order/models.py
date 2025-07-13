@@ -55,7 +55,7 @@ class ShipmentInfo(models.Model):
     tracking_info = CharField(max_length=100, null=False)
 
     class Meta:
-        unique_together = (('contact_name', 'city', 'state', 'email_address', 'address', 'phone_no'))
+        unique_together = (('contact_name', 'city', 'state', 'address'))
 
     def __repr__(self):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
