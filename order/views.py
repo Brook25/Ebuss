@@ -104,15 +104,15 @@ class OrderView(APIView):
         try:
             order_data, phone_number, tx_ref, cart_id = self.get_order_data(request)
             if order_data:
-                cart, all_cart_data = self.get_cart_data(cart_id)
-                order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
-                product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
+                with transaction.atomic():
+                    cart, all_cart_data = self.get_cart_data(cart_id)
+                    order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
+                    product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
-                shipment_serializer = self.get_shipment_info_data(order_data)
-                cart_order_serializer = self.get_cart_order_data(order_data)
+                    shipment_serializer = self.get_shipment_info_data(order_data)
+                    cart_order_serializer = self.get_cart_order_data(order_data)
 
-                if all([shipment_serializer.is_valid(raise_exception=True), cart_order_serializer.is_valid(raise_exception=True)]):
-                    with transaction.atomic():
+                    if all([shipment_serializer.is_valid(raise_exception=True), cart_order_serializer.is_valid(raise_exception=True)]):
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         shipment_serializer.save()
                         cart_order_serializer.save()
