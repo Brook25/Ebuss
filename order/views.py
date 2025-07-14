@@ -110,7 +110,7 @@ class OrderView(APIView):
                     product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
                     shipment_serializer = self.get_shipment_info_data(order_data)
-                    if all([shipment_serializer.is_valid(raise_exception=True):
+                    if shipment_serializer.is_valid(raise_exception=True):
                         shipment_info = shipment_serializer.save()
                         order_data['shipment'] = shipment_info.pk
                         order_data['user'] = request.user.pk
@@ -118,7 +118,7 @@ class OrderView(APIView):
 
                     cart_order_serializer = self.get_cart_order_data(order_data)
 
-                    if cart_order_serializer.is_valid(raise_exception=True)]):
+                    if cart_order_serializer.is_valid(raise_exception=True):
                         cart_order_serializer.save()
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
