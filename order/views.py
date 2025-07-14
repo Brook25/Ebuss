@@ -44,7 +44,7 @@ class OrderView(APIView):
     def calc_total_amount(self, cart_item, accumulator):
         
         quantity = cart_item.get('quantity', 0)
-        price = cart_item.get('price', 0)
+        price = cart_item.get('product__price', 0)
 
         total = quantity * price
         
