@@ -52,7 +52,6 @@ class ShipmentInfo(models.Model):
     city = CharField(max_length=30, null=False)
     state = CharField(max_length=30, null=True)
     address = CharField(max_length=70, null=False)
-    tracking_info = CharField(max_length=100, null=False)
 
     class Meta:
         unique_together = (('contact_name', 'city', 'state', 'address'))
