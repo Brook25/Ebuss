@@ -36,7 +36,7 @@ class CartOrder(models.Model):
     cart = ForeignKey('cart.Cart', on_delete=models.DO_NOTHING, related_name='cartorder_in')
     shipment = ForeignKey('ShipmentInfo', on_delete=models.CASCADE, related_name = 'cart_order')
     amount = DecimalField(validators=[MinValueValidator(1)], max_digits=11, decimal_places=2, null=False)
-    trx_ref = CharField(unique=True)
+    tx_ref = CharField(unique=True)
     created_at = DateTimeField(auto_now=True)
     updated_at = DateTimeField(auto_now_add=True)
     status = CharField(max_length=30, choices=ORDER_STATUS_TYPES, default='pending')
