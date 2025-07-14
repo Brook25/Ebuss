@@ -41,10 +41,10 @@ class OrderView(APIView):
         
         return Response({'cart_orders': cartOrders.data}, status=status.HTTP_200_OK)
 
-    def calc_total_amount(self, cart_item, accumulator):
+    def calc_total_amount(self, accumulator, cart_item):
         
         quantity = cart_item.get('quantity', 0)
-        price = cart_item.get('product__price', 0)
+        price = cart_item.get('product__price', Decimal('0.00'))
 
         total = quantity * price
         
