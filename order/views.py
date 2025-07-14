@@ -62,7 +62,7 @@ class OrderView(APIView):
         order_data = request.data.get('order_data', None)
         if order_data:
             phone_number = order_data.get('phone_number', None)
-            tx_ref = 'chapa-test-' + str(uuid.uuid4())
+            order_data['tx_ref'] = tx_ref = 'chapa-test-' + str(uuid.uuid4())
             cart_id = order_data.get('cart', None)
             return  order_data, phone_number, tx_ref, cart_id
     
@@ -110,12 +110,17 @@ class OrderView(APIView):
                     product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
                     shipment_serializer = self.get_shipment_info_data(order_data)
+                    if all([shipment_serializer.is_valid(raise_exception=True):
+                        shipment_info = shipment_serializer.save()
+                        order_data['shipment'] = shipment_info.pk
+                        order_data['user'] = request.user.pk
+                        order_data['cart'] = cart.pk
+
                     cart_order_serializer = self.get_cart_order_data(order_data)
 
-                    if all([shipment_serializer.is_valid(raise_exception=True), cart_order_serializer.is_valid(raise_exception=True)]):
-                        self.update_product_data(all_cart_data, product_quantity_in_cart)
-                        shipment_serializer.save()
+                    if cart_order_serializer.is_valid(raise_exception=True)]):
                         cart_order_serializer.save()
+                        self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
                         cart.save()
                         
