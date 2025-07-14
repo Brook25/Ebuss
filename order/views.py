@@ -148,7 +148,7 @@ class OrderView(APIView):
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         except ValidationError as e:
-            return Response({'Error': 'Error occured while validating your order. Check order data.'},
+            return Response({'Error': f'Error occured while validating your order. {str(e)}.'},
                             status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, type, id, *args, **kwargs):
