@@ -58,7 +58,7 @@ def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
         'callback_url': callback_url,
         'return_url': return_url,
         'customization': {
-            'title': f'Payment: {cart_id}',
+            'title': f'Payment for {cart_id}',
             'description': f'user {request.user.username} has completed order for cart {cart_id}.'
         }
     }
