@@ -41,7 +41,7 @@ class OrderView(APIView):
         
         return Response({'cart_orders': cartOrders.data}, status=status.HTTP_200_OK)
 
-    def calc_total_amount(self, accumulator, cart_item):
+    def calc_total_amount(self, cart_item, accumulator):
         
         quantity = cart_item.get('quantity', 0)
         price = cart_item.get('price', 0)
@@ -107,7 +107,7 @@ class OrderView(APIView):
                 with transaction.atomic():
                     cart, all_cart_data = self.get_cart_data(cart_id)
                     print('all_cart_data', all_cart_data)
-                    order_data['amount'] = reduce(self.calc_total_amount, Decimal('0.00'), all_cart_data)
+                    order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
                     print(order_data['amount'])
                     product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
