@@ -107,7 +107,7 @@ class OrderView(APIView):
                 with transaction.atomic():
                     cart, all_cart_data = self.get_cart_data(cart_id)
                     print('all_cart_data', all_cart_data)
-                    order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
+                    order_data['amount'] = reduce(self.calc_total_amount, Decimal('0.00'), all_cart_data)
                     print(order_data['amount'])
                     product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
