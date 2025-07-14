@@ -21,9 +21,6 @@ class CartOrderSerializer(BaseSerializer):
     user = PrimaryKeyRelatedField(queryset=User.objects.all())
     shipment = PrimaryKeyRelatedField(queryset=ShipmentInfo.objects.all())
 
-    def validate_cart(self, value):
-        pass
-
     class Meta:
         model = CartOrder
         fields = '__all__'
