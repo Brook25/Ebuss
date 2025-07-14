@@ -9,7 +9,7 @@ from rest_framework import serializers
 class BaseSerializer(serializers.ModelSerializer):
 
     id = serializers.IntegerField(read_only=True)
-    created_at = serializers.DateTimeField(write_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
 
     def create(self, **kwargs):
         return self.Meta.model.objects.create(**self.validated_data)
