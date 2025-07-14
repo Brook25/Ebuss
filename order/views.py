@@ -126,11 +126,13 @@ class OrderView(APIView):
                         cart.status = 'inactive'
                         cart.save()
                         
+                        payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
+                        payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
+                        
                         response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                         
                         if response.json.get('status', '') == 'success':
-                            payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
-                            payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
+        
                             checkout_url = response.json.get('checkout_url', None)
                             
                             if checkout_url:
