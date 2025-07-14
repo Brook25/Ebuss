@@ -8,7 +8,7 @@ from product.serializers import ProductSerializer
 from shared.serializers import BaseSerializer
 from user.serializers import UserSerializer
 
-class ShipmentSerializer(serializers.ModelSerializer):
+class ShipmentSerializer(BaseSerializer):
 
     class Meta:
         model = ShipmentInfo
