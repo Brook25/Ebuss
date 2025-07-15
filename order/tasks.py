@@ -21,7 +21,7 @@ HEADERS = {
 @app.task(bind=True, max_retries=3)
 def schedule_transaction_verification(self, tx_ref, countdown):
     """Schedule a transaction verification with countdown"""
-    print(tx_ref)
+    return tx_ref
     transaction = Transaction.objects.get(tx_ref=tx_ref)
     if transaction.status == 'pending':
     
