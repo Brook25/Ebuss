@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'cart',
     'user',
     'product',
-    'order',
+    'order.apps.OrderConfig',
     'post',
     'supplier',
     'Auth',
