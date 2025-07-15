@@ -135,8 +135,8 @@ class OrderView(APIView):
                         print('response', response.json())
                         if response.json().get('status', '') == 'success':
         
-                            checkout_url = response.json().get('data', {}).get('checkout_url', None)
-                            
+                            #checkout_url = response.json().get('data', {}).get('checkout_url', None)
+                            checkout_url = True
                             if checkout_url:
                                 # call the celery task to start payment verification
                                 print(f'pre-checkout: {tx_ref}')
