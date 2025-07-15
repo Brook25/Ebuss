@@ -28,12 +28,12 @@ def schedule_transaction_verification(self, tx_ref, countdown):
         if countdown <= 1200:
             check_transaction_status.delay(tx_ref=tx_ref)
             schedule_transaction_verification.apply_async(
-                args=[self, tx_ref, countdown],
+                args=[tx_ref, countdown],
                 countdown=countdown * 2
             )
 
 @app.task(bind=True, max_retries=3)
-def check_transaction_status(tx_ref, payment_gateway='chapa'):
+def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
     
     try:
         transaction = Transaction.objects.get(tx_ref=tx_ref).select_related('order').prefetch_related('order__cart__cart_data_for')
