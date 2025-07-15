@@ -79,7 +79,7 @@ class Transaction(models.Model):
     ebuss_amount = models.DecimalField(max_digits=10, decimal_places=2)
     supplier_amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='ETB')
-    payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
+    payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES, default='chapa')
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
     created_at = DateTimeField(auto_now=True)
     verification_attempts = models.PositiveIntegerField(default=0)

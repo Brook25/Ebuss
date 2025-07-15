@@ -88,6 +88,21 @@ class OrderView(APIView):
             return CartOrderSerializer(data=order_data)
         return None
     
+    def create_transaction_data(self, tx_ref, order, total_amount):
+        if all([tx_ref, order, total_amount]):
+            transaction_data = {
+                'tx_ref': tx_ref,
+                'order': order,
+                'total_amount': total_amount,
+                'currency': 'ETB',
+                'status': 'pending',
+                'last_verification_time': None,
+                'payment_gateway_response': None
+            }
+
+            return TransactionSerializer(data=transaction_data)       
+
+
     def update_product_data(self, all_cart_data, product_quantity_in_cart):
         product_ids = [cart_data.get('product') for cart_data in all_cart_data]
         products = Product.objects.select_for_update().filter(pk__in=product_ids)
@@ -122,33 +137,38 @@ class OrderView(APIView):
                     cart_order_serializer = self.get_cart_order_data(order_data)
 
                     if cart_order_serializer.is_valid(raise_exception=True):
-                        cart_order_serializer.save()
+                        order = cart_order_serializer.save()
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
                         cart.save()
                         print(f'After cart order verification: {tx_ref}')
-                        payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
-                        payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
+                    
+                    transaction_serializer = self.create_transaction_data(tx_ref, order, amount)
+                    if transaction_serializer.is_valid(raise_exception=True):
+                        transaction_serializer.save()
+                    
+                    payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
+                    payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
                         
-                        response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
+                    response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                         
-                        print('response', response.json())
-                        if response.json().get('status', '') == 'success':
+                    print('response', response.json())
+                    if response.json().get('status', '') == 'success':
         
-                            #checkout_url = response.json().get('data', {}).get('checkout_url', None)
-                            checkout_url = True
-                            if checkout_url:
-                                # call the celery task to start payment verification
-                                print(f'pre-checkout: {tx_ref}')
-                                tr = Transaction.objects.filter(tx_ref=tx_ref).first()
-                                print(tr)
-                                schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
-                                                                                countdown=self.ASYNC_COUNTDOWN)
-                                return Response({'message': "Order succesfully placed and pending.",
-                                        'checkout_url': checkout_url},
-                                        status=status.HTTP_200_OK)
+                        #checkout_url = response.json().get('data', {}).get('checkout_url', None)
+                        checkout_url = True
+                        if checkout_url:
+                            # call the celery task to start payment verification
+                            print(f'pre-checkout: {tx_ref}')
+                            tr = Transaction.objects.filter(tx_ref=tx_ref).first()
+                            print(tr)
+                            schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
+                                                                            countdown=self.ASYNC_COUNTDOWN)
+                            return Response({'message': "Order succesfully placed and pending.",
+                                    'checkout_url': checkout_url},
+                                    status=status.HTTP_200_OK)
                             
-                        return Response({'Error': 'checkout_url not provided from payment gateway.\
+                    return Response({'Error': 'checkout_url not provided from payment gateway.\
                                     Please try again.'},
                                 status=status.HTTP_501_NOT_IMPLEMENTED)
                                 
