@@ -6,4 +6,4 @@ class OrderConfig(AppConfig):
     name = 'order'
 
     def ready(self):
-        import order.signals  # Import signals when app is ready
+        import order.signals  # noqa
