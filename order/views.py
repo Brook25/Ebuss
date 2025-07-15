@@ -63,7 +63,7 @@ class OrderView(APIView):
         if order_data:
             phone_number = order_data.get('phone_number', None)
             order_data['tx_ref'] = tx_ref = 'chapa-test-' + str(uuid.uuid4())
-            print(tx_ref)
+            print(f'After creation: {tx_ref}')
             cart_id = order_data.get('cart', None)
             return  order_data, phone_number, tx_ref, cart_id
     
@@ -126,7 +126,7 @@ class OrderView(APIView):
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
                         cart.save()
-                        print(tx_ref)
+                        print(f'After cart order verification: {tx_ref}')
                         payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
                         payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
                         
@@ -139,6 +139,7 @@ class OrderView(APIView):
                             
                             if checkout_url:
                                 # call the celery task to start payment verification
+                                print(f'pre-checkout: {tx_ref}')
                                 schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
                                                                                 countdown=self.ASYNC_COUNTDOWN)
                                 return Response({'message': "Order succesfully placed and pending.",
