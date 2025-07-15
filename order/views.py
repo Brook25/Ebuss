@@ -140,6 +140,8 @@ class OrderView(APIView):
                             if checkout_url:
                                 # call the celery task to start payment verification
                                 print(f'pre-checkout: {tx_ref}')
+                                tr = Transaction.objects.filter(tx_ref=tx_ref).first()
+                                print(tr)
                                 schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
                                                                                 countdown=self.ASYNC_COUNTDOWN)
                                 return Response({'message': "Order succesfully placed and pending.",
