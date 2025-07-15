@@ -63,7 +63,6 @@ class OrderView(APIView):
         if order_data:
             phone_number = order_data.get('phone_number', None)
             order_data['tx_ref'] = tx_ref = 'chapa-test-' + str(uuid.uuid4())
-            print(f'After creation: {tx_ref}')
             cart_id = order_data.get('cart', None)
             return  order_data, phone_number, tx_ref, cart_id
     
@@ -83,7 +82,6 @@ class OrderView(APIView):
         return None
 
     def get_cart_order_data(self, order_data):
-        print('here')
         if order_data:
             return CartOrderSerializer(data=order_data)
         return None
@@ -122,9 +120,7 @@ class OrderView(APIView):
             if order_data:
                 with transaction.atomic():
                     cart, all_cart_data = self.get_cart_data(cart_id)
-                    print('all_cart_data', all_cart_data)
                     order_data['amount'] = reduce(self.calc_total_amount, all_cart_data, Decimal('0.00'))
-                    print(order_data['amount'])
                     product_quantity_in_cart = self.get_product_quantity_in_cart(all_cart_data)
 
                     shipment_serializer = self.get_shipment_info_data(order_data)
@@ -141,7 +137,6 @@ class OrderView(APIView):
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
                         cart.save()
-                        print(f'After cart order verification: {tx_ref}')
                     
                     transaction_serializer = self.create_transaction_data(tx_ref, order, amount)
                     if transaction_serializer.is_valid(raise_exception=True):
@@ -159,9 +154,7 @@ class OrderView(APIView):
                         checkout_url = True
                         if checkout_url:
                             # call the celery task to start payment verification
-                            print(f'pre-checkout: {tx_ref}')
                             tr = Transaction.objects.filter(tx_ref=tx_ref).first()
-                            print(tr)
                             schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
                                                                             countdown=self.ASYNC_COUNTDOWN)
                             return Response({'message': "Order succesfully placed and pending.",
