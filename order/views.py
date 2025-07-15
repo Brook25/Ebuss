@@ -63,6 +63,7 @@ class OrderView(APIView):
         if order_data:
             phone_number = order_data.get('phone_number', None)
             order_data['tx_ref'] = tx_ref = 'chapa-test-' + str(uuid.uuid4())
+            print(tx_ref)
             cart_id = order_data.get('cart', None)
             return  order_data, phone_number, tx_ref, cart_id
     
@@ -125,7 +126,7 @@ class OrderView(APIView):
                         self.update_product_data(all_cart_data, product_quantity_in_cart)
                         cart.status = 'inactive'
                         cart.save()
-                        
+                        print(tx_ref)
                         payment_data = self.get_payment_data(order_data, tx_ref, phone_number)
                         payment_payload, headers = get_payment_payload(request, payment_data, cart_id)
                         
@@ -236,7 +237,7 @@ class TransactionWebhook(APIView):
         if not request.data:
             return Response('No payload data provided.', status=status.HTTP_400_BAD_REQUEST)
     
-        secret_key = os.env.get('CHAPA_SECRET_KEY', None)
+        secret_key = os.env.get('CHAPA_WEBHOOK_SECRET_KEY=', None)
 
         if not secret_key:
             return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
@@ -248,6 +249,7 @@ class TransactionWebhook(APIView):
         tx_ref = request.data.get('tx_ref', None)
         
         if transaction_status and tx_ref:
+            print(tx_ref)
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
                 transaction = Transaction.objects.get(tx_ref=tx_ref).select_related(
