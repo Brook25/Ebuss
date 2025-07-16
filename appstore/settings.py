@@ -241,10 +241,12 @@ MAMONA_BACKENDS_SETTINGS = {
 }
 
 # Email Configuration
+import os
+password = os.getenv('EMAIL_APP_PASSWORD')
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'bekelebrook@gmail.com'
-EMAIL_HOST_PASSWORD = ''  # You'll need to add your app password here
+EMAIL_HOST_PASSWORD = password  # You'll need to add your app password here
 DEFAULT_FROM_EMAIL = 'bekelebrook@gmail.com'
