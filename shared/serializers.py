@@ -11,14 +11,6 @@ class BaseSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     
-    def update(self, instance, **kwargs):
-        
-        for k, v in self.validated_data.items():
-            setattr(instance, k, v)
-        instance.save()
-
-        return instance
-    
     def bulk_create(self, kwargs):
         model = self.Meta.model
         return model.objects.bulk_create(model(**data) for data in self.validated_data)
