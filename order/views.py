@@ -86,12 +86,12 @@ class OrderView(APIView):
             return CartOrderSerializer(data=order_data)
         return None
     
-    def create_transaction_data(self, tx_ref, order, total_amount):
+    def create_transaction_data(self, tx_ref, order):
         if all([tx_ref, order, total_amount]):
             transaction_data = {
                 'tx_ref': tx_ref,
                 'order': order,
-                'total_amount': total_amount,
+                'total_amount': order.amount,
                 'currency': 'ETB',
                 'status': 'pending',
                 'last_verification_time': None,
@@ -138,7 +138,7 @@ class OrderView(APIView):
                         cart.status = 'inactive'
                         cart.save()
                     
-                    transaction_serializer = self.create_transaction_data(tx_ref, order, order['amount'])
+                    transaction_serializer = self.create_transaction_data(tx_ref, order)
                     if transaction_serializer.is_valid(raise_exception=True):
                         transaction_serializer.save()
                     
