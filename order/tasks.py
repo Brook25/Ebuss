@@ -4,6 +4,7 @@ from cart.models import Cart
 from user.models import Notification
 from .models import ( CartOrder, Transaction)
 from supplier.models import SupplierWallet
+from .serializers import TransactionSerializer
 from datetime import datetime
 from decimal import Decimal
 from django.db.models import Sum, F
@@ -19,7 +20,7 @@ HEADERS = {
     }
 
 
-@app.task(bind=True, max_retries=3)
+@app.task(bind=True, max_retries=1)
 def schedule_transaction_verification(self, tx_ref, countdown):
     """Schedule a transaction verification with countdown"""
     transaction = Transaction.objects.get(tx_ref=tx_ref)
