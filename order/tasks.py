@@ -35,7 +35,7 @@ def schedule_transaction_verification(self, tx_ref, countdown):
 def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
     
     try:
-        transaction = Transaction.objects.get(tx_ref=tx_ref).select_related('order').prefetch_related('order__cart__cart_data_for')
+        transaction = Transaction.objects.filter(tx_ref=tx_ref).select_related('order').prefetch_related('order__cart__cart_data_for')
 
         PG_VERIFICATION_URLS = {
             'chapa': f'https://api.chapa.co/v1/transaction/verify/{tx_ref}',

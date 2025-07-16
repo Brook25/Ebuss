@@ -150,7 +150,8 @@ class OrderView(APIView):
                         
                     if response.status_code == 200 and response.json().get('status', '') == 'success':
         
-                        checkout_url = response.json().get('data', {}).get('checkout_url', None)
+                        #checkout_url = response.json().get('data', {}).get('checkout_url', None)
+                        checkout_url = True
                         if checkout_url:
                             # call the celery task to start payment verification
                             schedule_transaction_verification.apply_async(args=[tx_ref, self.ASYNC_COUNTDOWN],
