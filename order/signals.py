@@ -10,6 +10,7 @@ from .tasks import record_supplier_earnings
 def transaction_status_change(sender, instance, created, **kwargs):
     if instance.status == 'success':  # Only for updates, not new instances
         # Send email to customer
+        print('signal sent for success.')
         subject = 'Payment Successful'
         message = f'Your payment for transaction {instance.tx_ref} has been successfully processed.'
         from_email = 'bekelebrook@gmail.com'  # Replace with your email
