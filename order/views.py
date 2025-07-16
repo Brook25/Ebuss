@@ -148,7 +148,7 @@ class OrderView(APIView):
                         
                     response = requests.post(self.PAYMENT_TRANSACTION_URLS.get('chapa'), json=payment_payload, headers=headers)
                         
-                    if response.status == 200 and response.json().get('status', '') == 'success':
+                    if response.status_code == 200 and response.json().get('status', '') == 'success':
         
                         checkout_url = response.json().get('data', {}).get('checkout_url', None)
                         if checkout_url:

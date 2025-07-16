@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from datetime import date
 from django.core.validators import (MinValueValidator, MaxValueValidator, MinLengthValidator)
@@ -17,7 +18,7 @@ class Product(models.Model):
         ])
     description = TextField(validators=[check_vulgarity])
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='products')
-    price = DecimalField(max_digits=11, decimal_places=2, null=False, blank=False, validators=[MinValueValidator(20)])
+    price = DecimalField(max_digits=11, decimal_places=2, null=False, blank=False, validators=[MinValueValidator(Decimal('20.00'))])
     sub_category = ForeignKey('SubCategory', on_delete=models.CASCADE, related_name='products')
     created_at = DateField(auto_now_add=True)
     quantity = PositiveIntegerField(blank=False)
