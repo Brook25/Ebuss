@@ -26,7 +26,7 @@ def schedule_transaction_verification(self, tx_ref, countdown):
     transaction = Transaction.objects.get(tx_ref=tx_ref)
     if transaction.status == '':
     
-        if countdown <= 800:
+        if countdown <= 100:
             check_transaction_status.delay(tx_ref=tx_ref)
             schedule_transaction_verification.apply_async(
                 args=[tx_ref, countdown],
