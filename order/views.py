@@ -87,13 +87,14 @@ class OrderView(APIView):
         return None
     
     def create_transaction_data(self, tx_ref, order):
-        if all([tx_ref, order, total_amount]):
+        if tx_ref and order:
             transaction_data = {
                 'tx_ref': tx_ref,
                 'order': order,
                 'total_amount': order.amount,
                 'currency': 'ETB',
                 'status': 'pending',
+                'verification_attempts': 0,
                 'last_verification_time': None,
                 'payment_gateway_response': None
             }
