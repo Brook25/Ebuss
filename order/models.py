@@ -10,6 +10,8 @@ from django.db.models import (
 from django.utils import timezone
 from user.models import User
 from cart.models import Cart
+from decimal import Decimal
+
 
 PAYMENT_STATUS_TYPES = (
     ('success', 'Success'),
@@ -95,8 +97,8 @@ class Transaction(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        self.supplier_amount = self.total_amount * 0.8 
-        self.ebuss_amount = self.total_amount * 0.2
+        self.supplier_amount = self.total_amount * Decimal('0.8') 
+        self.ebuss_amount = self.total_amount * Decimal('0.2')
         super().save(*args, **kwargs)
 
     def __str__(self):
