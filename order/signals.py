@@ -13,7 +13,7 @@ def transaction_status_change(sender, instance, created, **kwargs):
         subject = 'Payment Successful'
         message = f'Your payment for transaction {instance.tx_ref} has been successfully processed.'
         from_email = 'bekelebrook24@gmail.com'  # Replace with your email
-        recipient_list = [instance.order.user.email]
+        recipient_list = ['brook24bek@gmail.com']
         
         send_mail(
             subject,
