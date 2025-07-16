@@ -138,7 +138,7 @@ class OrderView(APIView):
                         cart.status = 'inactive'
                         cart.save()
                     
-                    transaction_serializer = self.create_transaction_data(tx_ref, order, amount)
+                    transaction_serializer = self.create_transaction_data(tx_ref, order, order['amount'])
                     if transaction_serializer.is_valid(raise_exception=True):
                         transaction_serializer.save()
                     
