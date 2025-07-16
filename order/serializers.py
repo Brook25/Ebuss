@@ -34,11 +34,9 @@ class TransactionSerializer(BaseSerializer):
         extra_kwargs = {
                 'ebuss_amount': {
                     'read_only': True,
-                    'write_only': True
                  },
                 
                 'supplier_amount': {
-                    'write_only': True,
                     'read_only': True
                 }
         }
