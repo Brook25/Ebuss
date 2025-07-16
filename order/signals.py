@@ -8,7 +8,7 @@ from .tasks import record_supplier_earnings
 
 @receiver(post_save, sender=Transaction)
 def transaction_status_change(sender, instance, created, **kwargs):
-    if not created and instance.status == 'success':  # Only for updates, not new instances
+    if instance.status == 'success':  # Only for updates, not new instances
         # Send email to customer
         subject = 'Payment Successful'
         message = f'Your payment for transaction {instance.tx_ref} has been successfully processed.'
