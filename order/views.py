@@ -90,7 +90,7 @@ class OrderView(APIView):
         if tx_ref and order:
             transaction_data = {
                 'tx_ref': tx_ref,
-                'order': order,
+                'order': order.pk,
                 'total_amount': order.amount,
                 'currency': 'ETB',
                 'status': 'pending',
