@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.db.models import Sum, F
 from celery import shared_task
 import os
+import requests
 
 SECRET_KEY = os.getenv('CHAPA_SECRET_KEY')
 
