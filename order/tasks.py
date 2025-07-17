@@ -129,7 +129,7 @@ def record_supplier_earnings(self, transaction_id):
                 
                 if supplier not in supplier_earnings:
                     supplier_earnings[supplier] = Decimal('0')
-                supplier_earnings[supplier] += item_total * 0.8
+                supplier_earnings[supplier] += item_total * Decimal('0.8')
             
             # Prepare lists for bulk creation
             notifications = []
