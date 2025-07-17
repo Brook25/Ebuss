@@ -78,7 +78,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                         product.quantity += cart_product_data[product.pk]
                         product.save()
 
-                return serializer.data, update_data['status'], order_status
+                return serializer.data
               
         else:
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
