@@ -64,6 +64,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
             payment_status = response_data.get('data', {}).get('status', None)
             if payment_status:
                 update_data['status'], order_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
+                print(update_data['status'], order_status)
                 serializer = TransactionSerializer(transaction, data=update_data, partial=True)
                 if serializer.is_valid(raise_exception=True):
                     serializer.save()
