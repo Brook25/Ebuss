@@ -151,11 +151,11 @@ def record_supplier_earnings(self, transaction_id):
                 notifications.append(
                     Notification(
                         user=supplier,
-                        title='New Earnings Available',
-                        message=f'You have earned {amount} from transaction {txn.tx_ref}.\
+                        Note=f'You have earned {amount} from transaction {txn.tx_ref}.\
                                 You can withdraw this amount whenever you want.',
                         type='earnings',
-                        priority='medium'
+                        priority='medium',
+                        uri=' https://sterling-primarily-lionfish.ngrok-free.app/notif/1'
                     )
                 )
             

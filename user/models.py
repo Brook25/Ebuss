@@ -65,7 +65,7 @@ class Wishlist(models.Model):
 
 class Notification(models.Model):
     user = ForeignKey('User', on_delete=models.CASCADE, related_name='notifications')
-    created_at = DateTimeField(auto_now_add=True)
+    created_at = DateTimeField(auto_now=True)
     note = TextField(blank=False, null=False)
     type = CharField(choices=NOTIFICATION_TYPES, null=False)
     uri = URLField(max_length=200, null=False)
