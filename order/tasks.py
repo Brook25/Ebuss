@@ -45,7 +45,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
 
         PG_PAYMENT_STATUS = {
             'chapa_success': ('success', 'in_progress'),
-            'chapa_failed': ('failed', 'failed'),
+            'chapa_failed/cancelled': ('failed', 'failed'),
             'chapa_pending': ('pending', 'pending'),
         }
 
