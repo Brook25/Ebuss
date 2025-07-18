@@ -74,10 +74,11 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                     
                     cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
                     products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
-                    
+                    print(products)
                     for product in products:
                         product.quantity += cart_product_data[product.pk]
                         product.save()
+                    print(products)
 
                 return serializer.data
               
