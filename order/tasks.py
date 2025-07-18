@@ -3,6 +3,7 @@ from django.db import transaction
 from cart.models import Cart
 from user.models import Notification
 from .models import ( CartOrder, Transaction)
+from product.models import Product
 from supplier.models import SupplierWallet
 from .serializers import TransactionSerializer
 from datetime import datetime
