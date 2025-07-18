@@ -80,7 +80,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                         product.save()
                     print(products)
 
-                return serializer.data, product, product.quantity, cart_product_data
+                return serializer.data, payment_status == 'failed/cancelled', product, product.quantity, cart_product_data
               
         else:
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
