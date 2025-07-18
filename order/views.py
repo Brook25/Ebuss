@@ -35,7 +35,6 @@ class OrderView(APIView):
 
     def get(self, request, *args, **kwargs):
          
-        carts = Cart.objects.get(user=request.user, status='active').cart_data_for.all()
         cartOrders = CartOrder.objects.filter(user=request.user).select_related('cart').prefetch_related('cart__cart_data_for')
         cartOrders = paginate_queryset(cartOrders, request, CartOrderSerializer)
         
@@ -194,47 +193,6 @@ class OrderView(APIView):
         return Response('Order successfuly deleted.', status=status.HTTP_200_OK)
             
 
-
-class CheckOut(APIView):
-    permission_classes = [IsAuthenticated()]
-    
-    def post(request, *args, **kwargs):
-        
-        phone_number = request.data.get('phone_no', None)
-        amount = request.data.get('amount', None)
-        if not phone_number:
-            phone_number = request.user.phone_no
-        
-        tx_ref = 'chapa-test-' + uuid.uuid4()
-
-        url = "https://api.chapa.co/v1/transaction/initialize"
-        payload = {
-            "amount": "10",
-            "currency": "ETB",
-            "email": request.user.email,
-            "first_name": request.user.first_name,
-            "last_name": request.user.last_name,
-            "phone_number": phone_number,
-            "tx_ref": tx_ref,
-            "callback_url": "https://sterling-primarily-lionfish.ngrok-free.app/webhook/tsx",
-            "return_url": "https://sterling-primarily-lionfish.ngrok-free.app/home",
-            "customization": {
-                "title": "Payment for cart: {cart_id}",
-                "description": "user {request.user.username} has completed order for cart {cart_id}."
-            }
-        }
-        headers = {
-            'Authorization': 'Bearer CHAPUBK_TEST-pjtmtdVDKoz81ExGys2m5BsprDlk18Ds',
-            'Content-Type': 'application/json'
-        }
-      
-        response = requests.post(url, json=payload, headers=headers)
-        redirect_url = response.json.get('redirect_url', None)
-        
-        transaction_obj = Transaction(user=request.user, amount=amount, trx_ref=tx_ref)
-
-        return Response({'payment_url': redirect_url}, status=status.HTTP_201_OK)
-
 class TransactionWebhook(APIView):
 
     def post(self, request, *args, **kwargs):
@@ -246,19 +204,20 @@ class TransactionWebhook(APIView):
             'reversed': ('reversed', 'failed')
         }
         chapa_hash = request.headers.get('Chapa-Signature', None)
-
+        print(chapa_hash)
         if not chapa_hash:
             return Response('User not Authorzied to access this endpoint.', status=status.HTTP_401_UNAUTHORIZED)
 
         if not request.data:
             return Response('No payload data provided.', status=status.HTTP_400_BAD_REQUEST)
     
-        secret_key = os.env.get('CHAPA_WEBHOOK_SECRET_KEY=', None)
+        secret_key = os.env.get('CHAPA_WEBHOOK_SECRET_KEY', None)
 
         if not secret_key:
             return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
 
         if not verify_hash_key(secret_key.encode('utf-8'), request.body, chapa_hash):
+            print('hash dont match shash.')
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
         transaction_status = request.data.get('status', None)
@@ -280,11 +239,12 @@ class TransactionWebhook(APIView):
 
                 if transaction_status != 'success':
                     cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
-                    products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
-                    
-                    for product in products:
-                        product.quantity += cart_product_data[product.pk]
-                        product.save()
+                    with transaction.atomic():
+                        products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
+                        
+                        for product in products:
+                            product.quantity += cart_product_data[product.pk]
+                            product.save()
                     
                     # log events here 
 

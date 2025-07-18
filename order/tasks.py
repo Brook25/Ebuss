@@ -112,7 +112,7 @@ def record_supplier_earnings(self, transaction_id):
     Record earnings for suppliers after successful transaction and notify them
     """
     try:
-        with transaction.atomic():
+        with txn.atomic():
             # Get the transaction and related cart order
             txn = Transaction.objects.select_related('order', 'order__cart').get(id=transaction_id)
             cart_order = txn.order
