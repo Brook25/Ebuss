@@ -24,7 +24,7 @@ HEADERS = {
 def schedule_transaction_verification(self, tx_ref, countdown):
     """Schedule a transaction verification with countdown"""
     transaction = Transaction.objects.get(tx_ref=tx_ref)
-    if transaction.status == '':
+    if transaction.status == 'pending':
     
         if countdown <= 100:
             check_transaction_status.delay(tx_ref=tx_ref)
