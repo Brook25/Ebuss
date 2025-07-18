@@ -150,7 +150,7 @@ def record_supplier_earnings(self, transaction_id):
                 notifications.append(
                     Notification(
                         user=supplier,
-                        note=f'You have earned {amount} from transaction {txn.tx_ref}.\
+                        note=f'You have earned {amount} from transaction {transaction.tx_ref}.\
                                 You can withdraw this amount whenever you want.',
                         type='earnings',
                         priority='medium',

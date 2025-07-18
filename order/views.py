@@ -11,7 +11,7 @@ from product.models import Product
 from .models import ( ShipmentInfo, CartOrder, Transaction)
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
-from rest_framework.permissions import (IsAuthenticated)
+from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import (CartOrderSerializer, TransactionSerializer,
@@ -194,6 +194,7 @@ class OrderView(APIView):
             
 
 class TransactionWebhook(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         
