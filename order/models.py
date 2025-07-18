@@ -42,8 +42,7 @@ class CartOrder(models.Model):
     created_at = DateTimeField(auto_now=True)
     updated_at = DateTimeField(auto_now_add=True)
     status = CharField(max_length=30, choices=ORDER_STATUS_TYPES, default='pending')
-    payment_status = CharField(choices=PAYMENT_STATUS_TYPES, default='pending')
-
+    
 
     def __repr__(self):
         return '<Order> {}'.format(self.__dict__)
