@@ -114,8 +114,8 @@ def record_supplier_earnings(self, transaction_id):
     try:
         with txn.atomic():
             # Get the transaction and related cart order
-            txn = Transaction.objects.select_related('order', 'order__cart').get(id=transaction_id)
-            cart_order = txn.order
+            transaction = Transaction.objects.select_related('order', 'order__cart').get(id=transaction_id)
+            cart_order = transaction.order
             
             # Get all products in the cart with their quantities and prices
             cart_items = cart_order.cart.cart_data_for.select_related('product', 'product__supplier').all()
