@@ -1,5 +1,5 @@
 from appstore import celery_app as app
-from django.db import transaction
+from django.db import transaction as txn
 from cart.models import Cart
 from user.models import User, Notification
 from .models import ( CartOrder, Transaction)
@@ -71,7 +71,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                 transaction.order.status = order_status
                 transaction.order.save()
                 if payment_status == 'failed/cancelled':
-                    with transaction.atomic():                    
+                    with txn.atomic():
                         cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for.all()}
                         products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
                         print(products)
