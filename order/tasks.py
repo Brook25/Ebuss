@@ -72,8 +72,6 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                 transaction.order.save()
                 if payment_status == 'failed/cancelled':
                     with txn.atomic():
-                        print(transaction.order.cart)
-                        print(transaction.order.cart.cart_data_for.all())
                         cart_product_data = {cart_data.product_id: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for.all()}
                         products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
                         print(products)
@@ -82,8 +80,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                             product.save()
                         print(products)
 
-                return serializer.data, payment_status == 'failed/cancelled', products, cart_product_data
-              
+                return serializer.data                          
         else:
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
             if serializer.is_valid():
