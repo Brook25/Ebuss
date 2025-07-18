@@ -70,7 +70,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                     serializer.save()
                 transaction.order.status = order_status
                 transaction.order.save()
-                if payment_status == 'failed':
+                if payment_status == 'failed/cancelled':
                     
                     cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
                     products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
