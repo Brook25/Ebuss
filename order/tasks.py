@@ -1,7 +1,7 @@
 from appstore import celery_app as app
 from django.db import transaction
 from cart.models import Cart
-from user.models import Notification
+from user.models import User, Notification
 from .models import ( CartOrder, Transaction)
 from product.models import Product
 from supplier.models import SupplierWallet
@@ -71,14 +71,14 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                 transaction.order.status = order_status
                 transaction.order.save()
                 if payment_status == 'failed/cancelled':
-                    
-                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for.all()}
-                    products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
-                    print(products)
-                    for product in products:
-                        product.quantity += cart_product_data[product.pk]
-                        product.save()
-                    print(products)
+                    with transaction.atomic():                    
+                        cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for.all()}
+                        products = Product.objects.select_for_update().filter(pk__in=cart_product_data.values())
+                        print(products)
+                        for product in products:
+                            product.quantity += cart_product_data[product.pk]
+                            product.save()
+                        print(products)
 
                 return serializer.data, payment_status == 'failed/cancelled', products, cart_product_data
               
