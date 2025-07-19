@@ -7,6 +7,7 @@ from user.serializers import NotificationSerializer
 from user.models import User, Notification
 import hashlib
 import hmac
+import json
 import requests
 import os
 from django.utils import timezone
@@ -68,9 +69,10 @@ def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
 
 def verify_hash_key(secret_key, payload, hash):
         
-    hash_obj = hmac.new(secret_key, payload, hashlib.sha256)
+    hash_obj = hmac.new(secret_key, json.dumps(payload), hashlib.sha256)
     generated_hash = hash_obj.hexdigest()
-    
+    print(secret_key)
+    print(payload) 
     print(generated_hash)
     print(hash)
 
