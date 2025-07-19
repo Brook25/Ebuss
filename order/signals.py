@@ -4,7 +4,7 @@ from django.dispatch import receiver
 from django.core.mail import send_mail
 from .models import Transaction
 from .tasks import record_supplier_earnings
-
+from user.models import Notification
 
 @receiver(post_save, sender=Transaction)
 def transaction_status_change(sender, instance, created, **kwargs):
@@ -25,3 +25,14 @@ def transaction_status_change(sender, instance, created, **kwargs):
         
         # Record supplier earnings and notify them
         record_supplier_earnings.delay(instance.id)
+
+    if instance.status == 'failed':
+       notification_data = {
+                'user': instance.order.user,
+                'note': f'Transaction with id {instance.pk} has failed. Please try again',
+                'type': 'order_status',
+                'uri': 'http://localhost/nots/1',
+                'priority': 'high'
+            }
+
+       return Notification.objects.create(**notification_data)

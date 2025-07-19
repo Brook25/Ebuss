@@ -200,7 +200,7 @@ class TransactionWebhook(APIView):
         
         PG_PAYMENT_STATUS = {
             'success': ('success', 'in_progress'),
-            'failed': ('failed', 'failed'),
+            'failed/cancelled': ('failed', 'failed'),
             'refunded': ('refunded', 'failed'),
             'reversed': ('reversed', 'failed')
         }
@@ -219,28 +219,26 @@ class TransactionWebhook(APIView):
             return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
         
         if not verify_hash_key(secret_key, request.body, chapa_hash):
-            print('hash dont match shash.')
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
         transaction_status = request.data.get('status', None)
         tx_ref = request.data.get('tx_ref', None)
         
         if transaction_status and tx_ref:
-            print(tx_ref)
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
-                transaction = Transaction.objects.get(tx_ref=tx_ref).select_related(
+                txn = Transaction.objects.get(tx_ref=tx_ref).select_related(
                     'order', 'order__cart'
                 ).prefetch_related('order__cart__cart_data_for')
                 
-                transaction.status = payment_status
-                transaction.response = json.loads(request.data)
-                transaction.save()
-                transaction.order.status = order_status
-                transaction.order.save()
+                txn.status = payment_status
+                txn.response = json.loads(request.data)
+                txn.save()
+                txn.order.status = order_status
+                txn.order.save()
 
                 if transaction_status != 'success':
-                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in transaction.order.cart.cart_data_for}
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in txn.order.cart.cart_data_for}
                     with transaction.atomic():
                         products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
                         
