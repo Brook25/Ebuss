@@ -70,6 +70,9 @@ def verify_hash_key(secret_key, payload, hash):
         
     hash_obj = hmac.new(secret_key, payload, hashlib.sha256)
     generated_hash = hash_obj.hexdigest()
+    
+    print(generated_hash)
+    print(hash)
 
     if generated_hash != hash:
         return False
