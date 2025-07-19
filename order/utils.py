@@ -68,7 +68,7 @@ def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
 
 def verify_hash_key(secret_key, payload, hash):
         
-    hash_obj = hmac.new(secret_key.encode('utf-8'), payload, hashlib.sha256)
+    hash_obj = hmac.new(secret_key, payload, hashlib.sha256)
     generated_hash = hash_obj.hexdigest()
 
     if generated_hash != hash:
