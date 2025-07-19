@@ -69,13 +69,13 @@ def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
 
 def verify_hash_key(secret_key, request_body, hash):
     
-    payload = json.loads(request_body.decode('utf-8'))
-    byte_string = json.dumps(payload).encode('utf-8')
-    hash_obj = hmac.new(secret_key, byte_string, hashlib.sha256)
+    #payload = json.loads(request_body.decode('utf-8'))
+    #byte_string = json.dumps(payload).encode('utf-8')
+    hash_obj = hmac.new(secret_key, request_body, hashlib.sha256)
     
     generated_hash = hash_obj.hexdigest()
     print(secret_key)
-    print(payload) 
+    print(request_body) 
     print(generated_hash)
     print(hash)
 
