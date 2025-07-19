@@ -81,7 +81,7 @@ def verify_hash_key(secret_key, request_body, hash):
     print(generated_hash)
     print(hash)
 
-    if generated_hash != hash:
-        return False
-    return True
+    if hmac.compare_digest(generated_hash, hash):
+        return True
+    return False
 

@@ -205,7 +205,7 @@ class TransactionWebhook(APIView):
             'reversed': ('reversed', 'failed')
         }
         
-        chapa_hash = request.headers.get('Chapa-Signature', None)
+        chapa_hash = request.headers.get('x-chapa-signature', None)
 
         if not chapa_hash:
             return Response('User not Authorzied to access this endpoint.', status=status.HTTP_401_UNAUTHORIZED)
