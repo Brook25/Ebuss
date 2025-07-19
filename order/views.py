@@ -218,7 +218,7 @@ class TransactionWebhook(APIView):
         if not secret_key:
             return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
         
-        if not verify_hash_key(secret_key, request.body, chapa_hash):
+        if not verify_hash_key(secret_key, request.data, chapa_hash):
             print('hash dont match shash.')
             return Response('User not Authorzied. Hash not valid', status=status.HTTP_401_UNAUTHORIZED)
         
