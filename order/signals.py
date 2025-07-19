@@ -9,7 +9,7 @@ from user.models import Notification
 @receiver(post_save, sender=Transaction)
 def transaction_status_change(sender, instance, created, **kwargs):
 
-   if instance.status != 'pending': 
+    if instance.status != 'pending': 
         notification_data = {
             'user': instance.order.user,
             'type': 'order_status',
