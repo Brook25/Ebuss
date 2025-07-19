@@ -227,7 +227,7 @@ class TransactionWebhook(APIView):
         if transaction_status and tx_ref:
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
-                txn = Transaction.objects.get(tx_ref=tx_ref).select_related(
+                txn = Transaction.objects.filter(tx_ref=tx_ref).select_related(
                     'order', 'order__cart'
                 ).prefetch_related('order__cart__cart_data_for')
                 
@@ -238,7 +238,7 @@ class TransactionWebhook(APIView):
                 txn.order.save()
 
                 if transaction_status != 'success':
-                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in txn.order.cart.cart_data_for}
+                    cart_product_data = {cart_data.product: cart_data.quantity for cart_data in txn.order.cart.cart_data_for.all()}
                     with transaction.atomic():
                         products = Product.objects.select_for_update().get(pk__in=cart_product_data.values())
                         

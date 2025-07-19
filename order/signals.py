@@ -8,6 +8,15 @@ from user.models import Notification
 
 @receiver(post_save, sender=Transaction)
 def transaction_status_change(sender, instance, created, **kwargs):
+
+   if instance.status != 'pending': 
+        notification_data = {
+            'user': instance.order.user,
+            'type': 'order_status',
+            'uri': 'http://localhost/nots/1',
+            'priority': 'high'
+            }
+    
     if instance.status == 'success':  # Only for updates, not new instances
         # Send email to customer
         subject = 'Payment Successful'
@@ -22,17 +31,11 @@ def transaction_status_change(sender, instance, created, **kwargs):
             recipient_list,
             fail_silently=False,
         )
-        
-        # Record supplier earnings and notify them
+        notification_data['note'] =  f'Transaction with id {instance.pk} is successful. Order is in progress for delivery.'
+        Notification.objects.create(**notification_data)
+        # Record supplier earnings and notify them       
         record_supplier_earnings.delay(instance.id)
 
-    if instance.status == 'failed':
-       notification_data = {
-                'user': instance.order.user,
-                'note': f'Transaction with id {instance.pk} has failed. Please try again',
-                'type': 'order_status',
-                'uri': 'http://localhost/nots/1',
-                'priority': 'high'
-            }
-
-       return Notification.objects.create(**notification_data)
+    if instance.status == 'failed':        
+        notification_data['note'] = f'Transaction with id {instance.pk} has failed. Please try again'
+        Notification.objects.create(**notification_data)
