@@ -212,7 +212,7 @@ class TransactionWebhook(APIView):
         if not request.data:
             return Response('No payload data provided.', status=status.HTTP_400_BAD_REQUEST)
     
-        secret_key = os.env.get('CHAPA_WEBHOOK_SECRET_KEY', None)
+        secret_key = os.getenv('CHAPA_WEBHOOK_SECRET_KEY', None)
 
         if not secret_key:
             return Response('authorization couldn\'t be processed.', status.HTTP_501_SERVER_ERROR)
