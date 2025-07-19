@@ -71,7 +71,7 @@ def verify_hash_key(secret_key, request_body, hash):
     
     json_string = request_body.decode('utf-8')
     payload = json.loads(json_string)
-    reserialized = json.dumps(payload)
+    reserialized = json.dumps(payload, separators=(',', ':'))
     hash_obj = hmac.new(secret_key.encode('utf-8'), reserialized.encode('utf-8'), hashlib.sha256)
     
     generated_hash = hash_obj.hexdigest()
