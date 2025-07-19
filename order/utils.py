@@ -76,7 +76,8 @@ def verify_hash_key(secret_key, request_body, hash):
     
     generated_hash = hash_obj.hexdigest()
     print(request_body) 
-    print(byte_string)
+    print(payload)
+    print(reserialized)
     print(generated_hash)
     print(hash)
 
