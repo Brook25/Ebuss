@@ -63,7 +63,7 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
 
         if response.status_code == 200: 
             payment_status = response_data.get('data', {}).get('status', None)
-            if payment_status:
+            if payment_status != 'pending':
                 update_data['status'], order_status = PG_PAYMENT_STATUS[(f'{payment_gateway}_{payment_status}')]
                 serializer = TransactionSerializer(transaction, data=update_data, partial=True)
                 if serializer.is_valid(raise_exception=True):
@@ -76,9 +76,8 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
                         products = Product.objects.select_for_update().filter(pk__in=cart_product_data.keys())
                         for product in products:
                             product.quantity += cart_product_data[product.pk]
-                            product.save()
+                        Product.objects.bulk_update(products, ['quantity'])
 
-                return serializer.data                          
         else:
             serializer = TransactionSerializer(transaction, data=update_data, partial=True)
             if serializer.is_valid():
@@ -88,20 +87,20 @@ def check_transaction_status(self, tx_ref, payment_gateway='chapa'):
             admins = User.objects.filter(is_superuser=True)
             message = response_data.get('message', '')
             
-            notification_data = {
-                'note': f'Transaction error has been recieved from {payment_gateway} on tx_ref {tx_ref} with status code {response.status_code}.\
-                reponse message: {message}. Please check and fix it.',
-                'type': 'order_status',
-                'uri': 'http://localhost/nots/1',
-                'priority': 'high'
-            }
-            
-            notification = Notification.objects.create(**notification_data)
-            
+            notifications = []
             for admin in admins:
-                admin.notification_for.append(notification)
-                admin.save()
-            return serializer.data
+                notification_data = {
+                    'user': admin,
+                    'note': f'Transaction error has been recieved from {payment_gateway} on tx_ref {tx_ref} with status code {response.status_code}.\
+                    reponse message: {message}. Please check and fix it.',
+                    'type': 'order_status',
+                    'uri': 'http://localhost/nots/1',
+                    'priority': 'high'
+                }
+                notifications.append(Notification(**notification_data))
+            
+            Notification.objects.bulk_create(notifications)
+        return serializer.data
                     
     except (Transaction.DoesNotExist, CartOrder.DoesNotExist) as e:
         return {'error': str(e)}
