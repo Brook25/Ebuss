@@ -246,6 +246,11 @@ class TransactionWebhook(APIView):
                             product.quantity += cart_product_data[product.pk]
                             product.save()
                  
-                return Response({'status': 'success', 'message': 'Transaction status successfully updated.'},
+                return Response({'status': 'success',
+                                  'message': 'Transaction status successfully updated.'},
+                                status=status.HTTP_200_OK)                    # log events here 
+        
+        return Response({'status': 'success',
+                          'message': 'Transaction status not changed.'},
                                 status=status.HTTP_200_OK)                    # log events here 
 
