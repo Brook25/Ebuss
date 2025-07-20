@@ -206,7 +206,7 @@ class TransactionWebhook(APIView):
         }
         
         chapa_hash = request.headers.get('x-chapa-signature', None)
-        chapa_secret_hash = request.get('Chapa-Signature', None)
+        chapa_secret_hash = request.headers.get('Chapa-Signature', None)
         
         if not (chapa_hash and chapa_secret_hash):
             return Response({'message': 'User not Authorzied to access this endpoint.'},
