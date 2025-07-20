@@ -67,19 +67,23 @@ def get_payment_payload(request: HttpRequest, data: dict, cart_id: int):
     return payload, headers
 
 
-def verify_hash_key(secret_key, request_body, hash):
+def verify_hash_key(secret_key, request_body, hash=None, secret_hash=None):
     
-    json_string = request_body.decode('utf-8')
-    payload = json.loads(json_string)
-    reserialized = json.dumps(payload, separators=(',', ':'))
-    hash_obj = hmac.new(secret_key.encode('utf-8'), reserialized.encode('utf-8'), hashlib.sha256)
-    
-    generated_hash = hash_obj.hexdigest()
-    print(json_string)
-    print(reserialized)
-    print(generated_hash)
-    print(hash)
-    if hmac.compare_digest(generated_hash, hash):
-        return True
-    return False
+    if hash:
+        json_string = request_body.decode('utf-8')
+        payload = json.loads(json_string)
+        reserialized = json.dumps(payload, separators=(',', ':'))
+        hash_obj = hmac.new(secret_key.encode('utf-8'), reserialized.encode('utf-8'), hashlib.sha256)
+        
+        generated_hash = hash_obj.hexdigest()
+        
+        if hmac.compare_digest(generated_hash, hash):
+            return True
 
+    secret_hash_obj = hmac.new(secret_key.encode('utf-8'), secret_key.encode('utf-8'), hashlib.sha256)
+    generated_secret_hash = secret_hash_obj.hexdigest()
+
+    if hmac.compare_digest(generated_secret_hash, secret_hash):
+        return True
+    
+    return False
