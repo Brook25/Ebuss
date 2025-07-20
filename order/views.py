@@ -224,13 +224,13 @@ class TransactionWebhook(APIView):
         transaction_status = request.data.get('status', None)
         tx_ref = request.data.get('tx_ref', None)
         
-        if transaction_status and tx_ref:
+        if transaction_status == 'pending' and tx_ref:
             payment_status, order_status = PG_PAYMENT_STATUS.get(transaction_status)
             with transaction.atomic():
                 txn = Transaction.objects.filter(tx_ref=tx_ref).select_related(
                     'order', 'order__cart'
                 ).prefetch_related('order__cart__cart_data_for').first()
-                
+            
                 txn.status = payment_status
                 txn.response = json.dumps(request.data)
                 txn.save()
