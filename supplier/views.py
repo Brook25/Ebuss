@@ -26,8 +26,8 @@ class DashBoardHome(APIView):
     def get(self, request, *args, **kwargs):
         date = request.GET.get('date', '')
         products = request.GET.get('products', [])
-        users = User.objects.values('name', 'pk')
-        products = Product.objects.values('name', 'pk')
+        users = User.objects.only('first_name', 'last_name', 'pk')
+        products = Product.objects.only('name', 'pk')
         metrics =  ProductMetrics(request.user, date, products).prefetch_related(Prefetch('user', queryset=users), Prefetch('product', queryset=products))
         quarterly_revenue = metrics.quarterly_metrics()
         quarterly_metrics =  metrics.yearly_metrics(request.user, date, quarterly=True)
@@ -48,11 +48,11 @@ class DashBoardHome(APIView):
         return Response(data, status.HTTP_200_OK)
 
 class DashBoardDate(APIView):
-    
+
     permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, period, *args, **kwargs):
-        
+
         date = request.GET.get('date', None)
         metric_obj = ProductMetrics(request.user, date)
         query_params = {key: request.GET.getlist(key) for key in request.GET.keys() if key != 'date'}
@@ -70,19 +70,16 @@ class DashBoardDate(APIView):
             metric_data = metric_obj.popularity_metric(product)
 
         return Response(metric_data, status=status.HTTP_200_OK)
-        
 
 
 class Store(APIView):
     
     permission_classes = [IsAuthenticated, IsSupplier]
-    
+
     def get(self, request, *args, **kwargs):
-        
         products = Product.objects.filter(supplier=request.user, quantity__gt=0).order_by('-date_added')
         paginated_products = paginate_queryset(products, request, ProductSerializer, 60)
         return Response(paginated_products, status=status.HTTP_200_OK)
-
 
 
 class Inventory(APIView):
