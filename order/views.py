@@ -232,7 +232,7 @@ class TransactionWebhook(APIView):
                 ).prefetch_related('order__cart__cart_data_for')
                 
                 txn.status = payment_status
-                txn.response = json.loads(request.data)
+                txn.response = json.dumps(request.data)
                 txn.save()
                 txn.order.status = order_status
                 txn.order.save()
