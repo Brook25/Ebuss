@@ -24,23 +24,23 @@ class DashBoardHome(APIView):
     permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, *args, **kwargs):
-        date = request.GET.get('date', '')
+        date = datetime.now()
         products = request.GET.get('products', [])
-        users = User.objects.only('first_name', 'last_name', 'pk')
-        products = Product.objects.only('name', 'pk')
-        metrics =  ProductMetrics(request.user, date, products).prefetch_related(Prefetch('user', queryset=users), Prefetch('product', queryset=products))
-        quarterly_revenue = metrics.quarterly_metrics()
-        quarterly_metrics =  metrics.yearly_metrics(request.user, date, quarterly=True)
+        metrics =  ProductMetrics(request.user, date, products)
+        quarterly_revenue = metrics.get_quarterly_revenue()
+        quarterly_metrics =  metrics.yearly_metrics(quarterly=True)
+        hourly_metrics = metrics.hourly_metric()
         cart_orders = CartOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
-        cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer).data
+        cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer, 50).data
         inventory_obj = Inventory.objects.filter(product__supplier=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
-        inventory_data = paginate_queryset(inventory_obj, request, InventorySerializer).data
+        inventory_data = paginate_queryset(inventory_obj, request, InventorySerializer, 50).data
         subscribers = request.user.subscribers.all()
         subscriber_data = paginate_queryset(subscribers, request, UserSerializer, 50).data
 
         data = {
                'cart_orders': cart_order_data,
                'inventory_data': inventory_data,
+               'hourly_metrics': hourly_metrics,
                 'quarterly_revenue': quarterly_revenue,
                 'quarterly_metrics': quarterly_metrics,
                 'subscribers': subscriber_data

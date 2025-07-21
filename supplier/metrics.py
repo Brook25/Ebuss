@@ -74,7 +74,7 @@ class ProductMetrics:
             
         return weekly_purchase 
 
-    def __metric_serializer(self, **kwargs):
+    def _metric_serializer(self, **kwargs):
         
         queryset = kwargs.get('queryset', None)
         try:
@@ -120,10 +120,9 @@ class ProductMetrics:
             filter['products'] = kwargs.get('products', [])
         
 
-        data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date'), product_count=Count('product'), 
-                            total_purchase=Sum('amount')).select_related('product').order_by('purchase_date__month')
+        data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date')).values('month', 'product__name').annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity'))
 
-        return self.metric_serializer(data)
+        return data
 
     @property
     def get_daily_metric(self, month, **kwargs):
@@ -154,7 +153,16 @@ class ProductMetrics:
     def hourly_metric(self, **kwargs):
         if not self.date:
             return None
+        
+        if not kwargs:
+            data = self.metric_query.filter(supplier=self.supplier, purchase_date__year=self.year) \
+            .annotate(hour=ExtractHour('purchase_date')).values('hour').annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity')) \
+            .order_by('hour')
+        
+            return data
+
         filter = {}
+        
         if 'category' in kwargs:
             filter['category'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
@@ -162,11 +170,11 @@ class ProductMetrics:
         elif 'products' in kwargs:
             filter['products_in'] = kwargs.get('products', [])
         data = self.metric_query.filter(**filter) \
-            .annotate(hour=ExtractHour('purchase_date')) \
+            .annotate(hour=ExtractHour('purchase_date')).values('hour', 'product__name') \
             .annotate(total_purchase=Sum('amount')) \
-            .order_by('purchase_date__hour')
+            .order_by('hour')
 
-        return self.metric_serializer(data)
+        return data
 
     def weekly_metric(self, **kwargs):
         return self.calc_weekly_purchases()
