@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.db.models import (Q, F)
+from django.db.models import (Q, F, Prefetch)
 from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
