@@ -124,29 +124,43 @@ class ProductMetrics:
 
         return data
 
-    @property
     def get_daily_metric(self, month, **kwargs):
-        if not self.month and type(month) is not int:
+        if type(month) is not int:
             return None
         
-        filter = {'purchase_date__month': self.month, 'purchase_date__year': self.year}
-        if 'date_range':
-            start_date = kwargs.get('date_range', {}).get('start_date', 1)
-            end_date = kwargs.get('date_range', {}).get('end_date', 31)
-            filter['purchase_date__date__in'] = list(range(start_date, end_date + 1))
-        elif 'dates' in kwargs:
-            filter['purchase_date__date__in'] = kwargs.get('dates', list(range(1, 31))).sort()
-        if 'category' in kwargs:
-            filter['category'] = kwargs.get('category', None)
-        elif 'subcategory' in kwargs:
-            filter['subcategory'] = kwargs.get('subcategory', None)
-        elif 'products' in kwargs:
-            filter['products'] = kwargs.get('products',[])
-        data = self.metric_query.filter(**filter) \
-            .annotate(count=Count('product'), date=ExtractDay('purchase_date'), total_purchase=Sum('amount')) \
-            .order_by('-date')
+        filter_params = ['date_range', 'dates', 'category', 'subcategory', 'products']
 
-        return self.metric_serilizer(data)
+        kwargs = {k: v for k, v in kwargs.items() if k in filter_params}
+        
+        filter = {'purchase_date__month': month, 'purchase_date__year': self.year}
+        
+        date_range = kwargs.pop('date_range', None)
+        dates = kwargs.pop('dates', None)
+
+        if date_range:
+            start_date = date_range.get('start_date', 1)
+            end_date = date_range.get('end_date', 31)
+            filter['purchase_date__date__in'] = list(range(start_date, end_date + 1))
+        elif dates:
+            filter['purchase_date__date__in'] = dates     
+        
+        if len(kwargs) == 0:
+           return self.metric_query.filter(**filter).values('purchase_date') \
+            .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
+            .order_by('-day') 
+
+        if kwargs.get('category'):
+            filter['product__subcategory__category'] = kwargs['category']
+        elif kwargs.get('subcategory'):
+            filter['product__subcategory'] = kwargs['subcategory']
+        elif kwargs.get('products'):
+            filter['product__in'] = kwargs['products']
+        
+        return self.metric_query.filter(**filter).values('product__name', 'purchase_date') \
+            .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
+            .order_by('-day')
+
+        
 
 
     @property
