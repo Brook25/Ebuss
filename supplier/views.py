@@ -32,7 +32,7 @@ class DashBoardHome(APIView):
         hourly_metrics = metrics.hourly_metric()
         cart_orders = CartOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
         cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer, 50).data
-        inventory_obj = Inventory.objects.filter(product__supplier=request.user).order_by('-date').prefetch_related(Prefetch('product', queryset=products))
+        inventory_obj = Inventory.objects.filter(product__supplier=request.user).order_by('-date').prefetch_related('product')
         inventory_data = paginate_queryset(inventory_obj, request, InventorySerializer, 50).data
         subscribers = request.user.subscribers.all()
         subscriber_data = paginate_queryset(subscribers, request, UserSerializer, 50).data

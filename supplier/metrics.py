@@ -99,25 +99,25 @@ class ProductMetrics:
         if 'month_range' in kwargs:
             start_month = kwargs.get('month_range', {}).get('start_month', 1)
             end_month = kwargs.get('month_range', {}).get('end_month', 12)
-            filter['months_in'] = list(range(start_month, end_month + 1))
+            filter['months__in'] = list(range(start_month, end_month + 1))
 
         elif 'months' in kwargs:
-            filter['months_in'] = kwargs.get('months', []).sort()
+            filter['months__in'] = kwargs.get('months', []).sort()
             
 
         elif kwargs.get('quarterly', False):
             start_month = self.get_quarter_start()
-            filter['months_in'] = list(range(start_month, start_month + 5))
+            filter['months__in'] = list(range(start_month, start_month + 2))
 
         else:
-            filter['months_in'] = list(range(1, 13))
+            filter['months__in'] = list(range(1, 13))
         
         if 'category' in kwargs:
-            filter['category'] = kwargs.get('category', None)
+            filter['product__subcategory__category__in'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
-            filter['subcategory'] = kwargs.get('subcategory', None)
+            filter['product__subcategory__in'] = kwargs.get('subcategory', None)
         elif 'products' in kwargs:
-            filter['products'] = kwargs.get('products', [])
+            filter['product__in'] = kwargs.get('products', [])
         
 
         data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date')).values('month', 'product__name').annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity'))
