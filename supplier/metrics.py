@@ -95,29 +95,36 @@ class ProductMetrics:
         if not self.year:
             return None
 
-        if not kwargs:
-            data = self.metric_query.filter(supplier=self.supplier, purchase_date__year=self.year) \
-            .annotate(month=ExtractMonth('purchase_date'), total_purchase=Sum('amount')) \
-            .order_by('purchase_date__month').values('purchase_date', 'month', 'total_purchase')
-            return data
+        values = ['month']
+        
+        filter_params = ['months', 'month_range', 'quarterly', 'category', 'subcategory', 'products']
+        kwargs = {k: v for k, v in kwargs.items() if k in filter_params}
         
         filter = {'purchase_date__year': self.year}
-        
-        if 'month_range' in kwargs:
+
+        month_range = kwargs.pop('month_range', None)
+        months = kwargs.pop('months', None)
+        quarterly = kwargs.pop('quarterly', None)
+
+        if month_range:
             start_month = kwargs.get('month_range', {}).get('start_month', 1)
             end_month = kwargs.get('month_range', {}).get('end_month', 12)
             filter['months__in'] = list(range(start_month, end_month + 1))
 
-        elif 'months' in kwargs:
+        elif months:
             filter['months__in'] = kwargs.get('months', []).sort()
             
 
-        elif kwargs.get('quarterly', False):
+        elif quarterly:
             start_month = self.get_quarter_start()
             filter['months__in'] = list(range(start_month, start_month + 2))
 
         else:
             filter['months__in'] = list(range(1, 13))
+        
+        if len(kwargs) == 0:
+            values.append('product__name')
+
         
         if 'category' in kwargs:
             filter['product__subcategory__category__in'] = kwargs.get('category', None)
@@ -127,7 +134,8 @@ class ProductMetrics:
             filter['product__in'] = kwargs.get('products', [])
         
 
-        data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date')).values('month', 'product__name').annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity'))
+        data = self.metric_query.filter(**filter).annotate(month=ExtractMonth('purchase_date')).values(*values) \
+            .annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity')).order_by('month')
 
         return data
 
@@ -169,30 +177,30 @@ class ProductMetrics:
     def hourly_metric(self, **kwargs):
         if not self.date:
             return None
+
+        values = ['hour'] 
+        filter_params = ['category', 'subcategory', 'products']
+
+        kwargs = {k: v for k, v in kwargs.items() if k in filter_params}
         
-        if not kwargs:
-            data = self.metric_query.filter(supplier=self.supplier, purchase_date__year=self.year) \
-            .annotate(hour=ExtractHour('purchase_date')).values('hour').annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity')) \
-            .order_by('hour')
-        
-            return data
+        if len(kwargs):
+            values.append('product__name')
 
         filter = {}
         
         if 'category' in kwargs:
-            filter['category'] = kwargs.get('category', None)
+            filter['category__in'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
-            filter['subcategory'] = kwargs.get('subcategory', None)
+            filter['subcategory__in'] = kwargs.get('subcategory', None)
         elif 'products' in kwargs:
-            filter['products_in'] = kwargs.get('products', [])
-        data = self.metric_query.filter(**filter) \
-            .annotate(hour=ExtractHour('purchase_date')).values('hour', 'product__name') \
-            .annotate(total_purchase=Sum('amount')) \
+            filter['products__in'] = kwargs.get('products', [])
+        
+        return self.metric_query.filter(**filter) \
+            .annotate(hour=ExtractHour('purchase_date')).values(*values) \
+            .annotate(total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
             .order_by('hour')
 
-        return data
-
-
+        
     @staticmethod
     def get_quater_start():
         curr_date = datetime.today()
