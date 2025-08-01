@@ -28,7 +28,7 @@ class DashBoardHome(APIView):
         products = request.GET.get('products', [])
         metrics =  ProductMetrics(request.user, date, products)
         quarterly_revenue = metrics.get_quarterly_revenue()
-        quarterly_metrics =  metrics.yearly_metrics(quarterly=True)
+        quarterly_metrics =  metrics.get_monthly_metric(quarterly=True)
         hourly_metrics = metrics.hourly_metric()
         cart_orders = CartOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
         cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer, 50).data

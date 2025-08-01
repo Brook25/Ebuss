@@ -151,10 +151,7 @@ class ProductMetrics:
         elif dates:
             filter['purchase_date__date__in'] = dates     
         
-        if len(kwargs) == 0:
-           return self.metric_query.filter(**filter).values('purchase_date') \
-            .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
-            .order_by('-day') 
+        values = ['purchase_data'] if len(kwargs) == 0 else ['purchase_date', 'product__name']
 
         if kwargs.get('category'):
             filter['product__subcategory__category'] = kwargs['category']
@@ -163,7 +160,7 @@ class ProductMetrics:
         elif kwargs.get('products'):
             filter['product__in'] = kwargs['products']
         
-        return self.metric_query.filter(**filter).values('product__name', 'purchase_date') \
+        return self.metric_query.filter(**filter).values(*values) \
             .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
             .order_by('-day')
 
