@@ -42,18 +42,25 @@ class ProductMetrics:
             raise ValueError("Merchant is not a supplier.")
         self._merchant = value
 
-    @property
-    def get_monthly_metric(self, **kwargs):
-        user_month = kwargs.get('month', None)
-        month = user_month if user_month else self.__month
+    def get_weekly_metric(self, **kwargs):
+        
+        filter_params = ['month', 'category', 'subcategory', 'products']
+        kwargs = {k: v for k, v in kwargs.items() if k in filter_params}
+ 
+        month = kwargs.pop('month', None)
+        month = month if month else self.__month
+        
         if month and type(month) is int:
                 last_day_of_month = calendar.month_range(self.year, month)[1]
                 week_start = [1, 8, 15, 22, last_day_of_month]
+        
         filter = { 'supplier': self.merchant,
             'purchase_date__year': self.year,
             'purchase_date__month': month
             }
-        
+
+        values = ['week'] if not len(kwargs) else ['week', 'product__name']
+
         if 'category' in kwargs:
             filter['category'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
@@ -65,11 +72,11 @@ class ProductMetrics:
         week_2 = Q(purchase_date__date__gte=week_start[1]) & Q(purchase_date__date__lt=week_start[2])
         week_3 = Q(purchase_date__date__gte=week_start[2]) & Q(purchase_date__date__lt=week_start[3])
         week_4 = Q(purchase_date__date__gte=week_start[3]) & Q(purchase_date__date__lte=week_start[4])
-        weekly_purchase = self.metric_query.filter(**filter
-            ).annotate(week=Case(When(week_1, Then=1), When(week_2, Then=2),
+        
+        weekly_purchase = self.metric_query.filter(**filter) \
+            .annotate(week=Case(When(week_1, Then=1), When(week_2, Then=2),
                 When(week_3, Then=3), When(week_4, Then=4),
-                output_field=IntegerField())).annotate(count=Count('product'),
-                     weekly_purchases=Sum('amount')).order_by('week')
+                    output_field=IntegerField())).values(*values).annotate(weekly_purchases=Sum('amount')).order_by('week')
 
             
         return weekly_purchase 
@@ -84,7 +91,7 @@ class ProductMetrics:
             return ({'error': str(e)})
 
     @property
-    def get_yearly_metric(self, **kwargs):
+    def get_monthly_metric(self, **kwargs):
         if not self.year:
             return None
 
@@ -160,8 +167,6 @@ class ProductMetrics:
             .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
             .order_by('-day')
 
-        
-
 
     @property
     def hourly_metric(self, **kwargs):
@@ -190,8 +195,6 @@ class ProductMetrics:
 
         return data
 
-    def weekly_metric(self, **kwargs):
-        return self.calc_weekly_purchases()
 
     @staticmethod
     def get_quater_start():
