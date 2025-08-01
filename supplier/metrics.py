@@ -1,6 +1,7 @@
-from django.db.models import (Q, Sum, Count, Case, When, IntegerField)
+from django.db.models import (Q, Sum, F, Count, Case, When, IntegerField)
 from django.db.models.functions import (ExtractDay, ExtractHour, ExtractMonth)
 from datetime import datetime
+
 from .models import (Metrics, Inventory)
 from .serializers import MetricSerializer
 import calendar
@@ -240,21 +241,22 @@ class ProductMetrics:
         
         if months in kwargs:
             months = kwargs.get('months', [])
-        if self.product and (self.month or months) and self.year:
-            if not months:
-                months.append(self.month)
-            subcat_purchases = self.metric_query.filter(
-                    product__subcategory=product.subcategory,
-                    purchase_date__month__in=months,
-                    purchase_date__year=self.year) \
-                    .annotate(product_total=Sum(Case(When(product=self.product),
-                        then=F('amount'), default=0, output_field=IntegerField)),
-                        other_total=Sum(Case(When(~Q(product=self.product)),
-                            then=F('amount'), default=0, output_field=IntegerField()))).values('product','product_total', 'other_total')
-            # may be include CTRs        
+        if not all([self.product, (self.month or months), self.year]):
+            return
+        if not months:
+            months.append(self.month)
+        subcat_purchases = self.metric_query.filter(
+                product__subcategory=product.subcategory,
+                purchase_date__month__in=months,
+                purchase_date__year=self.year) \
+                .annotate(product_total=Sum(Case(When(product=self.product),
+                    then=F('amount'), default=0, output_field=IntegerField)),
+                    other_total=Sum(Case(When(~Q(product=self.product)),
+                        then=F('amount'), default=0, output_field=IntegerField()))).values('product','product_total', 'other_total')
+        # may be include CTRs        
 
 
-            return subcat_purchases
+        return subcat_purchases
 
 
 class CustomerMetrics:
