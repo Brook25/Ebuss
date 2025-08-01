@@ -235,7 +235,27 @@ class ProductMetrics:
 
         return quarterly_revenue
 
+    def get_yearly_metric(self, **kwargs):
+    
+        years = kwargs.get('years', [self.years])
+        filter = {'purchase_date__year__in': years}
+        kwargs = {k: v for k, v in kwargs.items() if k in ['product', 'subcategory', 'category']}
 
+        values = ['purchase_date__year']
+        if kwargs:
+            values.append('product__name')
+        
+        if 'category' in kwargs:
+            filter['category__in'] = kwargs.get('category', None)
+        elif 'subcategory' in kwargs:
+            filter['subcategory__in'] = kwargs.get('subcategory', None)
+        elif 'products' in kwargs:
+            filter['products__in'] = kwargs.get('products', [])
+
+        return self.metric_query.filter(**filter).values(*values) \
+            .annotate(total_purchase=Sum('quantity'), total_amount=Sum('amount')) \
+                .order_by('purchase_date__year')
+        
 
     def popularity_metric(self, product, **kwargs):
         
