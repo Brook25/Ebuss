@@ -59,7 +59,7 @@ class ProductMetrics:
     
     @merchant.setter
     def merchant(self, value):
-        if not value.is_supplier:
+        if value.is_supplier:
             raise ValueError("Merchant is not a supplier.")
         self._merchant = value
 
