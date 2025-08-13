@@ -14,7 +14,7 @@ class ProductMetrics:
         '''
         self.merchant = merchant
         self.date_format = '%Y-%m-%d'
-        self.__date = date
+        self.date = date
         self.day = self.date.day
         self.month = self.date.month
         self.year = self.date.year
@@ -42,20 +42,20 @@ class ProductMetrics:
 
     @property
     def date(self):
-        return self.__date
+        return self._date
     
     @date.setter
     def date(self, value):
         if value is None:
-            self.__date = datetime.today()
+            self._date = datetime.today()
         try:
-            self.__date = datetime.strptime(self.date, self.date_format)
+            self._date = datetime.strptime(self.date, self.date_format)
         except Exception as e:
             raise ValueError('Error: wrong format or data type.' + str(e))
 
     @property
     def merchant(self):
-        return self.merchant
+        return self._merchant
     
     @merchant.setter
     def merchant(self, value):
