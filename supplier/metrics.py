@@ -42,7 +42,7 @@ class ProductMetrics:
 
     @property
     def date(self):
-        return self.date
+        return self.__date
     
     @date.setter
     def date(self, value):
