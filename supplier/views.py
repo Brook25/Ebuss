@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import APIException
 from rest_framework import status
 from shared.utils import paginate_queryset
-from .metrics import ProductMetrics
+from .metrics import (ProductMetrics, CustomerMetrics)
 from order.models import ( CartOrder)
 from order.serializers import (CartOrderSerializer)
 from .tasks import schedule_withdrawal_verification
@@ -25,8 +25,7 @@ class DashBoardHome(APIView):
 
     def get(self, request, *args, **kwargs):
         date = datetime.now()
-        products = request.GET.get('products', [])
-        metrics =  ProductMetrics(request.user, date, products)
+        metrics =  ProductMetrics(request.user, date)
         quarterly_revenue = metrics.get_quarterly_revenue()
         quarterly_metrics =  metrics.get_monthly_metric(quarterly=True)
         hourly_metrics = metrics.hourly_metric()
@@ -71,6 +70,24 @@ class DashBoardDate(APIView):
 
         return Response(metric_data, status=status.HTTP_200_OK)
 
+
+class CustomerMetric(APIView):
+    
+    def get(self, request, year, *args, **kwargs):
+        start_date_string = request.GET.get('start_date', None)
+        end_date_string = request.GET.get('end_date', None)
+        try:
+            start_date = datetime.fromisoformat(start_date_string)
+            end_date = datetime.fromisoformat(end_date_string)
+            customer_metrics = CustomerMetric(request.user)
+            customer_data = customer_metrics.get_top_customers(start_date, end_date)
+            return Response({'success': True, 'data': customer_data}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'error': True, 'message': f'Wrong datetime format. {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({'error': True, 'message': f'Couldnt retreive customer data.{e}'})
+        
 
 class Store(APIView):
     
