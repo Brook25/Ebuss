@@ -296,17 +296,13 @@ class ProductMetrics:
 
 class CustomerMetrics:
 
-    def __init__(self, merchant, year):
+    def __init__(self, merchant):
         self.metric_query = Metrics.objects.filter(product__supplier=merchant, purchase_dat__year=year)
 
-    def get_top_customers(self, month_range, year=datetime.today().year):
-        if type(month_range) is not list or len(month_range) != 2:
-            raise TypeError('month range should be a list of two date values.')
-        if not all([type(month_range[0]) is int, type(month_range[1]) is int]):
-            raise ValueError('month range values must be integers.')
-
-        month_filter = Q(ExtractMonth(year) >= month_range[0]) & Q(ExtractMonth(year) <= month_range[1])
-        customer_data = self.metric_query(month_filter) \
+    def get_top_customers(self, start_date, end_date):
+        
+        date_filter = Q(purchase_date__gte=start_date) & Q(purchase_date__lte=end_date)
+        customer_data = self.metric_query(date_filter) \
         .values('customer__first_name', 'customer__last_name', 'customer__email') \
         .annotate(total_purchases=Sum('quantity'), total_amount=Sum('amount')).order_by('total_amount', 'total_quantity')
 
