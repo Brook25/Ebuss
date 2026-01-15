@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import (status, viewsets)
 from rest_framework.permissions import (IsAuthenticated, AllowAny)
 from django.shortcuts import (get_list_or_404, get_object_or_404)
 from django.http import HttpResponse, JsonResponse
@@ -12,12 +12,17 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from cart.models import CartData
 from order.models import (CartOrder)
-from product.models import Product
+from product.models import (Product, SubCategory)
+from product.serializers import SubCategorySerializer
+from product.utils import get_populars
+from post.models import Post
+from supplier.models import Achievements
 from user.models import Wishlist
 from shared.permissions import IsAdmin
 from shared.utils import (paginate_queryset)
 from .models import (User, Notification)
 from .serializers import NotificationSerializer
+from supplier.metrics import (ProductMetrics, CustomerMetrics)
 from user.serializers import (UserSerializer, WishListSerializer)
 from order.serializers import (CartOrderSerializer)
 from datetime import datetime, timedelta
@@ -88,8 +93,8 @@ class WishListView(APIView):
             product_id = wishlist_data.get('product_id', None)
             if product_id:
                 product = get_object_or_404(Product, pk=product_id)
-                wishlist_obj, _ = Wishlist.objects.get_or_create(created_by=request.user).prefetch_related('product')
-                if product not in wishlist_obj.product.all():
+                wishlist_obj, created = Wishlist.objects.get_or_create(created_by=request.user).prefetch_related('product')
+                if created or product not in wishlist_obj.product.all():
                     wishlist_obj.product.add(product)
                 
                 return Response({
@@ -105,7 +110,7 @@ class WishListView(APIView):
         
         except json.JSONDecodeError as e:
                 return Response({
-                    'message': 'wishlist not succefully updated'
+                    'message': f'wishlist not succefully updated: {e}'
                     },
                     status=status.HTTP_404_PAGE_NOT_FOUND)
 
@@ -113,7 +118,7 @@ class WishListView(APIView):
     def delete(self, request, type, *args, **kwargs):
 
         product_id = json.data.get('product_id', None)
-        if not product_id and type == 'c':
+        if not product_id and type == 'w':
             request.user.wishlist_for.delete()
             return Response({
                 'message':
@@ -152,7 +157,6 @@ class Recent(APIView):
     def get(self, request, *args, **kwargs):
         username = request.user.username
         recently_viewed = cache.get(username + ':recently_viewed', [])        
-        print(recently_viewed)
         return Response(recently_viewed, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
@@ -219,7 +223,50 @@ class Subscriptions(APIView):
             return Response({'message': 'subscription succsefully added'}, status=status.HTTP_200_OK)
         
         return Response({'message': 'subscription not succesfully added'}, status=status.HTTP_404_PAGE_NOT_FOUND)
+    
+    def delete(self, request, *args, **kwargs):
+        sub_id = request.data
+        if isinstance(sub_id, int):
+            subscribed_to = get_object_or_404(User, pk=sub_id)
+            request.user.subscriptions.remove(subscribed_to)
+            return Response({'message': 'subscription succsefully removed'}, status=status.HTTP_200_OK)
+        
+        return Response({'message': 'subscription not succesfully removed'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
-class Profile(APIView):
-    pass
+
+class ProfileView(APIView):
+     
+     def get(self, request, id, *args, **kwargs):
+        year = datetime.today().year
+        merchant = User.object.get(pk=id)
+        permission = 'super' if merchant == request.user else 'guest'
+        
+        try:
+            customer_metrics = CustomerMetrics(year, merchant)
+            product_metrics = ProductMetrics(merchant, datetime.today())
+            posts = Post.objects.filter(user=request.user)[:5]
+            products = Product.objects.filter(supplier=request.user)[:20]
+            user_data = { 'background_image': merchant.background_image,
+                            'description': merchant.description
+                            }  
+            data = { 'posts': posts, 'products': products,
+                        'product_metric': {}, 'customer_metric': {},
+                        'user_data': user_data
+                         }
+            
+            if merchant.is_supplier:
+                data['achievements'] = merchant.achievements.all()
+                data['popular_ads'] = merchant.products.ads.all().order_by('-created_at')[:4]
+                data['product_metric']['quarterly_total'] = product_metrics.get_quarterly_metric()
+                data['customer_metric']['customer_total'] = customer_metrics.get_total_customers('quarterly')
+            
+            if permission == 'super':
+                data['customer_metric']['recurrent_metric'] = customer_metrics.get_recurrent_customers()
+                data['product_metric']['yearly_metric'] = product_metrics.get_yearly_metric()
+        
+            return Response(data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'message': f'Data retreival failed: {e}'}, status=status.HTTP_404_PAGE_NOT_FOUND)
+              

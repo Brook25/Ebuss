@@ -3,6 +3,8 @@ from django.db.models import (ForeignKey, DateField, DecimalField, PositiveInteg
                         IntegerField, CharField)
 from django.db import models
 from decimal import Decimal
+from user.models import User
+from product.models import Product
 
 class Metrics(models.Model):
     product = ForeignKey('product.Product', on_delete=models.CASCADE, related_name='product_metrics')
@@ -68,16 +70,31 @@ class SupplierWithdrawal(models.Model):
 
 
 class WithdrawalAcct(models.Model):
-    ACCT_NAMES = (
+    CHAPA_BANK_SLUGS = (
             ('telebirr', 'Telebirr'),
             ('cbe', 'CBE'),
             ('awash', 'Awash Birr'),
     )
 
+    # add bank slug or id
     wallet = models.ForeignKey(SupplierWallet, on_delete=models.CASCADE, unique=False, related_name='withdrawal_accounts')
-    name = models.CharField(choices=ACCT_NAMES)
+    chapa_bank_slug = models.CharField(choices=CHAPA_BANK_SLUGS)
     holder_name = models.CharField(max_length=100)
     account_number = models.CharField(max_length=100)
+    chapa_bank_id = models.IntegetField(validators=[MaxValueValidator()=0])
 
     def __str__(self):
         return f'<withdrawal account>: {self.__dict__}'
+
+class Achievements(models.Model):
+    ACHIEVEMENTS = (
+        ('top 5 supplier', 'Top 5 Supplier'),
+        ('top 5 revenue', 'Top 5 Revenue'),
+        ('top 100 supplier', 'Top 100 Supplier'),
+        ('top 50 supplier', 'Top 50 supplier'),
+        ('most discounts', 'Most Discounts'),
+        ('best rated products', 'Best Rated Products'),
+    )
+
+    supplier = models.ForeignKey(User, on_delete=models.CASCADE, related_name='achievements', unique=False)
+    achievement = models.CharField(choices=ACHIEVEMENTS)

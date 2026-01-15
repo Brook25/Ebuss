@@ -14,9 +14,29 @@ class UserSerializer(BaseSerializer):
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password',
                 'birth_date', 'country_code', 'phone_no']
+        extra_kwargs = {
+            'email': {
+                'write_only': True
+            },
+            'birth_date': {
+                'write_only': True
+            },
+            'country_code': {
+                'write_only': True
+            }
+        }
 
     def create(self, **kwargs):
         User.objects.create_user(**self.validated_data)
+
+
+class ProfileSerializer(BaseSerializer):
+
+    class Meta:
+        model = User            
+        fields = ['username', 'first_name', 'last_name', 'email', 'password',
+                'birth_date', 'country_code', 'phone_no']
+
 
 class NotificationSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')

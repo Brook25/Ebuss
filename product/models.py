@@ -87,3 +87,9 @@ class Review(models.Model):
 
     def __repr__(self):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
+
+class Advertisement(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    video = models.ImageField(upload_to='/ad_videos')
+    text = models.TextField()
+    created_at = DateTimeField(auto_now_add=True)

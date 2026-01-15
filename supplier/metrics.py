@@ -296,8 +296,16 @@ class ProductMetrics:
 
 class CustomerMetrics:
 
-    def __init__(self, merchant):
-        self.metric_query = Metrics.objects.filter(product__supplier=merchant, purchase_dat__year=year)
+    def __init__(self, merchant, year):
+        from user.models import User
+        if isinstance(year, datetime.DateTime):
+            raise ValueError('Year must be a DateTime object.')
+
+        if not isinstance(merchant, User):
+            raise TypeError('merchant should be an instance of User model.')
+        
+        self.merchant = merchant
+        self.metric_query = Metrics.objects.filter(product__supplier=merchant, purchase_date__year=year)
 
     def get_top_customers(self, start_date, end_date):
         
@@ -308,5 +316,27 @@ class CustomerMetrics:
 
         return customer_data
 
-    def get_top_locations(self, number, month_range):
-        pass
+    def get_total_customers(self, timeframe):
+        
+        today = datetime.today()
+        if timeframe == 'monthly':
+            if today.day > 24:
+                month = today.month
+                total_customers = self.metric_query.filter(purchase_date__month=month).values('customer').aggregate(total=Count('customer', distinct=True))
+            else:
+                total_customers = self.metric_query.filter(purchase_date__month=month - 1).values('customer').aggregate(total=Count('customer', distinct=True))
+            return total_customers
+        if timeframe == 'quarterly':
+            start_date = today - datetime.timedelta(days=90)
+            month_filter = Q(purchase_date__gte=start_date) & Q(purchase_date__lte=today)
+            total_customers = Metrics.objects.filter(month_filter, customer=self.customer).vlaues('customer').aggregate(total=Count('customer'), distinct=True)
+    
+        if timeframe == 'yearly':
+            total_customers = self.metric_query.vlaues('customer').aggregate(total=Count('customer'), distinct=True)
+        
+        return total_customers
+
+    def get_recurrent_customers(self):
+
+        recurrent_customers = self.metric_query.values('customer').annotate(total=Count('customer')).filter(total__gte=2).count()
+        return recurrent_customers

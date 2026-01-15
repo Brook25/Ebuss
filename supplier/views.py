@@ -1,5 +1,8 @@
 from django.shortcuts import render
+from django.db import transaction
 from django.db.models import (Q, F, Prefetch)
+from django.core import cache
+from django.shortcuts import (get_list_or_404, get_object_or_404)
 from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,12 +14,18 @@ from order.models import ( CartOrder)
 from order.serializers import (CartOrderSerializer)
 from .tasks import schedule_withdrawal_verification
 from user.serializers import UserSerializer
+from .models import SupplierWallet, SupplierWithdrawal, WithdrawalAcct
 from .permissions.supplier_permissions import IsSupplier
 from product.models import Product
 from product.serializers import ProductSerializer
 from shared.permissions import IsAuthenticated
-from .serializers import InventorySerializer
+from .serializers import InventorySerializer, WalletSerializer, WithdrawalSerializer
 from user.models import User
+from .utils import set_bank_data
+from decimal import Decimal
+import uuid
+import os
+import requests
 # Create your views here.
 
 class DashBoardHome(APIView):
@@ -79,6 +88,7 @@ class CustomerMetric(APIView):
         try:
             start_date = datetime.fromisoformat(start_date_string)
             end_date = datetime.fromisoformat(end_date_string)
+            year = datetime.fromisoformat(year)
             customer_metrics = CustomerMetric(request.user)
             customer_data = customer_metrics.get_top_customers(start_date, end_date)
             return Response({'success': True, 'data': customer_data}, status=status.HTTP_200_OK)
@@ -87,7 +97,7 @@ class CustomerMetric(APIView):
 
         except Exception as e:
             return Response({'error': True, 'message': f'Couldnt retreive customer data.{e}'})
-        
+
 
 class Store(APIView):
     
@@ -121,87 +131,62 @@ class SupplierWalletView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        wallet, created = SupplierWallet.objects.get_or_create(
-            supplier=request.user,
-            defaults={
-                'balance': Decimal('0'),
-                'total_earned': Decimal('0'),
-                'total_withdrawn': Decimal('0')
-            }
-        )
 
         # Get recent withdrawals
         recent_withdrawals = SupplierWithdrawal.objects.filter(
             wallet=wallet
         ).order_by('-created_at')[:15]
 
-        return Response({
-            'wallet': {
-                'balance': wallet.balance,
-                'total_earned': wallet.total_earned,
-                'total_withdrawn': wallet.total_withdrawn,
-                'last_withdrawal': wallet.last_withdrawal
-            },
-            'recent_withdrawals': [
-                {
-                    'amount': w.amount,
-                    'status': w.status,
-                    'created_at': w.created_at,
-                    'processed_at': w.processed_at
-                } for w in recent_withdrawals
-            ]
-        })
 
-    def _make_transfer(self, wallet, amount, bank_slug):
+        wallet = WalletSerializer(wallet)
+        withdrawals = WithdrawalSerializer(recent_withdrawals, many=True)
+
+        return Response({
+            'wallet': wallet.data,
+            'recent_withdrawals': withdrawals.data
+       }, status=status.HTTP_200_OK)
+
+    def _make_transfer(self, amount, withdrawal_acct):
       
         transfer_url = "https://api.chapa.co/v1/transfers"
  
         secret_key = os.getenv('CHAPA_SECRET_KEY', None)
         reference = uuid.uuid4()
         
-        if not (wallet and  wallet.withdrawal_account and secret_key):
+        if not (withdrawal_acct and secret_key):
             raise ValueError('Wallet and withdrawal account not configured.')
-
-        bank_data = cache.get('bank_data', {})
-
-        if not bank_data:
-
-            banks_url = "https://api.chapa.co/v1/banks"
         
+        with transaction.atomic(): 
+            wallet = SupplierWallet.objects.select_for_update().get(pk=withdrawal_acct.wallet_id)
+            if amount > wallet.balance:
+                raise ValueError('Insufficient balance') 
             headers = {
-            'Authorization': f'Bearer {secret_key}',
-            'Content-Type': 'application/json'
+                'Authorization': f'Bearer {secret_key}',
+                'Content-Type': 'application/json'
+            }
+            payload = {
+                "account_name": withdrawal_acct.holder_name,
+                "account_number": withdrawal_acct.account_number,
+                "amount": amount,
+                "currency": "ETB",
+                "reference": reference,
+                "bank_code": withdrawal_acct.chapa_bank_id
             }
 
-            response = requests.get(banks_url, headers=headers)
+            response = requests.post(transfer_url, json=payload, headers=headers)
 
-            data = response.data
-            if response.status_code != 200 and data.get('message', None) != 'Banks retreived' and data.get('data', None):
-                raise APIException('Bank not identified on payment gateway. Try again.')
+            if response.status_code != 200 or response.json().get('status', None) != 'success':
+                raise APIException('Transfer failed. Payment gateway returned failed response.')
+            wallet.balance -= amount
+            wallet.save()
+            withdrawal_data = { 'reference': reference, 'wallet': wallet.pk, 'withdrawal_acct': withdrawal_acct.pk}
+            withdrawal = WithdrawalSerializer(data=withdrawal_data)
+            if withdrawal.is_valid(raise_exception=True):
+                withdrawal.save()
+              
+            schedule_withdrawal_verification.apply_aync(args=[reference, 10], countdown=10)
 
-            bank_data = {bank['bank_slug']: bank for bank in bank_data}
-            cache.set('bank_data', bank_data)
-        
-        bank_code = bank_data.get('bank_slug', {}).get('id', None)
-        if not bank_code:
-            raise ValueError('Bank not recognized.')
-
-        payload = {
-            "account_name": wallet.withdrawal_account.holder_name,
-            "account_number": wallet.withdrawal_account.account_number,
-            "amount": amount,
-            "currency": "ETB",
-            "reference": reference,
-            "bank_code": bank_code
-        }
-
-        response = requests.post(transfer_url, json=payload, headers=headers)
-
-        if response.status_code != 200 or response.data.get('status', None) != 'success':
-            raise APIException('Transfer failed. Payment gateway returned failed response.')
-
-        schedule_withdrawal_verification.apply_aync(args=[reference, 10], countdowon=10)
-
+        return withdrawal
 
     def post(self, request):
         """Request a withdrawal"""
@@ -212,41 +197,28 @@ class SupplierWalletView(APIView):
             )
 
         amount = request.data.get('amount', None)
-        wallet_id = request.data.get('wallet', None)
-        bank_slug = request.data.get('bank_slug', None)
+        withdrawal_acct_id = request.data.get('withdrawal_acct_id', None)
 
-        if not amount or not wallet or not bank_slug:
+        if not (amount and withdrawal_acct_id):
             return Response(
                 {'error': 'Amount and bank account are required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        
         try:
-            request['amount'] = Decimal(amount)
-            
-            with transaction.atomic():
-                wallet = wallet.select_for_update.filter(pk=wallet_id)
-                if amount > wallet.balance:
-                    return Response(
-                        {'error': 'Insufficient balance'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                withdrawal = WithdrawalSerializer(data=request.data)
-                if withdrawal.is_valid(raise_exception=True):
-                        withdrawal.save()
-                wallet.balance -= request['amount']
-                wallet.save()
-                self._make_transfer(wallet, amount, bank_slug)
+            withdrawal_acct = get_object_or_404(WithdrawalAcct, pk=withdrawal_acct_id)
+            amount = Decimal(amount)            
+            withdrawal = self._make_transfer(amount, withdrawal_acct)
 
-        except (TypeError, ValueError):
+        except ValueError as err:
             return Response(
-                {'error': 'Invalid amount'}, 
+                {'error': str(err)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         except Exception as err:
             return Response(
-                {'error': str(e)},
+                {'error': str(err)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

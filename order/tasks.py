@@ -1,5 +1,5 @@
 from appstore import celery_app as app
-from django.db import transaction as txn
+from django.models.db import transaction as txn
 from cart.models import Cart
 from user.models import User, Notification
 from .models import ( CartOrder, Transaction)

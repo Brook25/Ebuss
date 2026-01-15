@@ -71,5 +71,8 @@ class WithdrawalAcctSerializer(BaseSerializer):
 
         return attrs
 
+
     class WithdrawalSerializer(BaseSerializer):
-        pass
+        class Meta:
+            fields = '__all__'
+            model = SupplierWithdrawal

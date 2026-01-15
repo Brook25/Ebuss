@@ -46,7 +46,10 @@ class User(AbstractUser):
     ], null=False, blank=False)
     birth_date = DateField(null=False)
     last_modified = DateField(auto_now=True)
+    profile_image = models.ImageField(upload_to='profile_images/')
+    background_image = models.ImageField(upload_to='background_images/')
     subscriptions = ManyToManyField('User', symmetrical=False, related_name='subscribers')
+    description = TextField(null=True)
     recommendations = ManyToManyField('product.Product', related_name='recommended_to') 
     is_supplier = BooleanField(default=False)
 
