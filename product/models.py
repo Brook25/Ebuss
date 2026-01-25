@@ -16,6 +16,7 @@ class Product(models.Model):
     name = CharField(max_length=100, validators=[
         check_vulgarity
         ])
+    image = models.ImageField(upload_to='/product_images', null=False)
     description = TextField(validators=[check_vulgarity])
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='products')
     price = DecimalField(max_digits=11, decimal_places=2, null=False, blank=False, validators=[MinValueValidator(Decimal('20.00'))])
@@ -89,7 +90,7 @@ class Review(models.Model):
         return '<{}> {}'.format(self.__class__.__name__, self.__dict__)
 
 class Advertisement(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    video = models.ImageField(upload_to='/ad_videos')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='ad')
+    video = models.ImageField(upload_to='/ad_videos', null=True)
     text = models.TextField()
     created_at = DateTimeField(auto_now_add=True)

@@ -73,19 +73,20 @@ class ProductView(APIView):
             many = True
             data = products
         else:
-            print(products)
             many = False
             data = products[0]
 
         serializer = ProductSerializer(data=data, many=many)
         
         if serializer.is_valid() and serializer.bulk_validate_tags():
-            created = serializer.bulk_create() if len(products) > 1 else serializer.create()
-            return Response({'message': 'product successfully added.'}, status=status.HTTP_201_OK)
+            try:
+                serializer.bulk_create() if len(products) > 1 else serializer.create()
+                return Response({'message': 'product successfully added.'}, status=status.HTTP_201_OK)
+            except Exception as e:
+                return Response({'message': f'product creation unsuccessful. error: {e}'}, status=status.HTTP_401_OK)
         
         return Response({'message': 'product isn\'t added, data validation failed.', 'errors': serializer.errors},
                         status=status.HTTP_400_BAD_REQUEST)
-
 
     def put(self, request, *args, **kwargs):
     
@@ -103,7 +104,7 @@ class ProductView(APIView):
         return Response({'message': 'product not updated'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-    def delete(self, index, *args, **kwargs):
+    def delete(self, request, index, *args, **kwargs):
     
         product_data = request.data
         product_id = product_data.get('product_id', None)
@@ -117,12 +118,11 @@ class ProductView(APIView):
             return Response({'message': 'User Not authorized to delete the specified product'}, status=status.HTTP_NOT_AUTHORIZED_401)
                 
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 class CategoryView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request, type, index, *args, **kwargs):
+    def get(self, request, type, id, *args, **kwargs):
         if type == 'all':
             categories = Category.objects.all()
             categories = CategorySerializer(categories, many=True)
@@ -133,7 +133,7 @@ class CategoryView(APIView):
 
         if type == 'subcategory':
             
-            subcategories = SubCategory.objects.filter(category__id=index).all()
+            subcategories = SubCategory.objects.filter(category__id=id).all()
             serialized_subcats = SubCategorySerializer(subcategories, many=True)
             
             return Response(
@@ -150,9 +150,8 @@ class CategoryView(APIView):
                         date_added__gte=month_ago).values('product__id', 'product__name', 'product__description', 'product__price', 'product__image').annotate(purchases=Sum('qunatity'),
                                 ).filter(purchases__gte=200).order_by('-purchases')
 
-                
                 return Response(
-                    new_products.data,
+                    new_in_category_metrics.data,
                         status=status.HTTP_200_OK)
 
         if type == 'products':

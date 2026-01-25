@@ -78,7 +78,7 @@ class ProductSerializer(serializers.ModelSerializer):
             subcategories = SubCategory.objects.filter(pk__in=subcategory_ids).prefetch_related('tags')
             subcategories = {subcat.id: set(subcat.tags.all().values_list('name')) for subcat in subcategories}
             
-            invalid_products = {'amount': 0, 'data': [], 'error': 'Invalid tag key for specified suncategory.'}
+            invalid_products = {'amount': 0, 'data': [], 'error': 'Invalid tag key for specified subcategory.'}
             for product in products:
                 subcat_id = product.get('subcategory_id')
                 sc_tags = subcategories.get(subcat_id, set())
@@ -87,6 +87,9 @@ class ProductSerializer(serializers.ModelSerializer):
                     invalid_tags = product_tags.difference(sc_tags)
                     invalid_products['amount'] += 1
                     invalid_products['data'].append({'product_name': product['name'], 'subcat_id': subcat_id, 'tags': invalid_tags})
+                    if kwargs.get('raise', False):
+                        raise ValueError()
+                        # continue from here
            
             if invalid_products['amount']:
                 self._errors['invalid_products'] = invalid_products
@@ -137,11 +140,9 @@ class ProductSerializer(serializers.ModelSerializer):
     def bulk_create(self):
 
         with transaction.atomic():
-            try:
-                product_objs = [Product(**product_data) for product_data in self.validated_data]
-                post_save(Product, product_objs, '', 0, 0, many=True)
-            except Exception as e:
-                return str(e)
+            product_objs = [Product(**product_data) for product_data in self.validated_data]
+            Product.objects.bulk_create(product_objs)
+            post_save(Product, product_objs, '', 0, 0, many=True)
 
     class Meta:
         model = Product

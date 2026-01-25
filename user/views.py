@@ -234,7 +234,6 @@ class Subscriptions(APIView):
         return Response({'message': 'subscription not succesfully removed'}, status=status.HTTP_404_PAGE_NOT_FOUND)
 
 
-
 class ProfileView(APIView):
      
      def get(self, request, id, *args, **kwargs):
