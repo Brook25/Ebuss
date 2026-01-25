@@ -131,12 +131,10 @@ class SupplierWalletView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-
         # Get recent withdrawals
         recent_withdrawals = SupplierWithdrawal.objects.filter(
             wallet=wallet
         ).order_by('-created_at')[:15]
-
 
         wallet = WalletSerializer(wallet)
         withdrawals = WithdrawalSerializer(recent_withdrawals, many=True)

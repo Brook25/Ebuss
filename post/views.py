@@ -30,7 +30,6 @@ class News(APIView):
             return Response({'message': 'no index provided'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-
 class Timeline(APIView):
     permission_classes = [IsAuthenticated]
 

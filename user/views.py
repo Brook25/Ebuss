@@ -239,13 +239,13 @@ class ProfileView(APIView):
      def get(self, request, id, *args, **kwargs):
         year = datetime.today().year
         merchant = User.object.get(pk=id)
-        permission = 'super' if merchant == request.user else 'guest'
+        permission = 'owner' if merchant == request.user else 'guest'
         
         try:
             customer_metrics = CustomerMetrics(year, merchant)
             product_metrics = ProductMetrics(merchant, datetime.today())
-            posts = Post.objects.filter(user=request.user)[:5]
-            products = Product.objects.filter(supplier=request.user)[:20]
+            posts = Post.objects.filter(user=merchant)[:5]
+            products = Product.objects.filter(supplier=merchant)[:20]
             user_data = { 'background_image': merchant.background_image,
                             'description': merchant.description
                             }  
@@ -260,7 +260,7 @@ class ProfileView(APIView):
                 data['product_metric']['quarterly_total'] = product_metrics.get_quarterly_metric()
                 data['customer_metric']['customer_total'] = customer_metrics.get_total_customers('quarterly')
             
-            if permission == 'super':
+            if permission == 'owner':
                 data['customer_metric']['recurrent_metric'] = customer_metrics.get_recurrent_customers()
                 data['product_metric']['yearly_metric'] = product_metrics.get_yearly_metric()
         

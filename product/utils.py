@@ -126,7 +126,7 @@ class PopularityCheck:
     
     def __calculate_purchase_rate(self):
 
-        self.__get_prelimenary_aggregates()
+        self.__get_preleminary_aggregates()
         three_day_popular = Q(three_d_purchases__gte=F('product__sub_category__three_day_threshold'))
         fourteen_day_popular = Q(fourteen_d_purchases__gte=F('product__sub_category__fourteen_day_threshold'))
         twentyone_day_popular = Q(twentyone_d_purchases__gte=F('product__sub_category__twenty_one_day_threshold'))
@@ -283,7 +283,7 @@ class SearchEngine:
         if set(self.__tags) <= set([tag.name for tag in tags]):
             sub_category = SubCategory.objects.filter(name=subcategory_name).products.all()
             if product_name:
-                subcategory.products = [product for product in subcategory.products if process.extract(product_name, [product.name], score_cutoff=90)]
+                sub_category.products = [product for product in sub_category.products if process.extract(product_name, [product.name], score_cutoff=90)]
             matches = [product for product in subcategory.products if set(self.__tags.itmes()) <= set(json.loads(product.tags).items())]
 
         return matches

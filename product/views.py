@@ -299,7 +299,7 @@ class Popular(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, path, *args, **kwargs):
-        if path not in ['subcategory', 'category', 'product']:
+        if path not in ['subcategory', 'category', 'product', 'all']:
             return Response({'message': f'Wrong positional parameter {path}'}, status=status.HTTP_404_PAGE_NOT_FOUND)
         populars = get_populars(path, request)
         return Response({'data': populars}, status=status.HTTP_200_OK)
