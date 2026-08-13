@@ -8,7 +8,7 @@ from user.models import User
 class MetricSerializer(BaseSerializer):
     product = serializers.SerializerMethodField()
     customer = serializers.SerializerMethodField()
-    iorder = serializers.SerializerMethodField()
+    order = serializers.SerializerMethodField()
 
     class Meta:
         model = Metrics
