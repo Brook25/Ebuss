@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from shared.serializers import BaseSerializer
 from .models import (User, Notification, Wishlist)
+from suppliers.metrics import CustomerMetrics
 from django.conf import settings
 import jwt 
 
@@ -33,18 +34,15 @@ class UserSerializer(BaseSerializer):
         User.objects.create_user(**self.validated_data)
 
 
-class ProfileSerializer(UserSerializer, ProductSerializer):
-    user = UserSerializer(source='user', read_only=True)
-    products = ProductSerializer(source='products', many=True, read_only=True)
-    posts = PostSerializer(source='posts', many=True, read_only=True)
-    product_metric = serializers.SerializerMethodField()
+class ProfileSerializer(UserSerializer, PostSerializer, MetricsSerializer):
     customer_metric = serializers.SerializerMethodField()
+    products = ProductSerializer(many=True, simple=True, read_only=True)
 
-    def get_product_metric(self, obj):
-    class Meta:
-        model = User            
-        fields = ['username', 'first_name', 'last_name', 'email',
-                'birth_date', 'country_code', 'phone_no']
+    def get_customer_metric(self, obj):
+        return CustomerMetrics.get_customer_metrics(obj.user)
+
+    class Meta:           
+        fields = UserSerializer.Meta.fields + PostSerializer.Meta.fields + MetricsSerializer.Meta.fields + ['customer_metric']
 
 
 
