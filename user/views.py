@@ -247,12 +247,17 @@ class ProfileView(APIView):
             posts = Post.objects.filter(user=merchant)[:5]
             products = Product.objects.filter(supplier=merchant)[:20]
             user_data = { 'background_image': merchant.background_image,
-                            'description': merchant.description
+                            'description': merchant.description,
+                            'email': merchant.email,
+                            'first_name': merchant.first_name,
+                            'last_name': merchant.last_name,
+                            'profile_image': merchant.profile_image,
+                            'username': merchant.username,
+                            'is_supplier': merchant.is_supplier,
+                            'posts': posts,
+                            'products': products,
+                            'subscriptions': merchant.subscriptions.all()[:40],
                             }  
-            data = { 'posts': posts, 'products': products,
-                        'product_metric': {}, 'customer_metric': {},
-                        'user_data': user_data
-                         }
             
             if merchant.is_supplier:
                 data['achievements'] = merchant.achievements.all()

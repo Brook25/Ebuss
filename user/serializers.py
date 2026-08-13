@@ -23,19 +23,29 @@ class UserSerializer(BaseSerializer):
             },
             'country_code': {
                 'write_only': True
-            }
+            },
+            'password': {
+                'write_only': True
+            },
         }
 
     def create(self, **kwargs):
         User.objects.create_user(**self.validated_data)
 
 
-class ProfileSerializer(BaseSerializer):
+class ProfileSerializer(UserSerializer, ProductSerializer):
+    user = UserSerializer(source='user', read_only=True)
+    products = ProductSerializer(source='products', many=True, read_only=True)
+    posts = PostSerializer(source='posts', many=True, read_only=True)
+    product_metric = serializers.SerializerMethodField()
+    customer_metric = serializers.SerializerMethodField()
 
+    def get_product_metric(self, obj):
     class Meta:
         model = User            
-        fields = ['username', 'first_name', 'last_name', 'email', 'password',
+        fields = ['username', 'first_name', 'last_name', 'email',
                 'birth_date', 'country_code', 'phone_no']
+
 
 
 class NotificationSerializer(BaseSerializer):

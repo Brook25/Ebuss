@@ -147,7 +147,9 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         extra_kwargs = {
-                    'created_at': {'read_only': True}
+                    'created_at': {'read_only': True},
+                    'modified_at': {'read_only': True},
+                    'pk': {'read_only': True},
                         }
 
 class TagSerializer(serializers.ModelSerializer):
