@@ -12,7 +12,7 @@ class Metrics(models.Model):
     customer = ForeignKey('user.User', on_delete=models.CASCADE, related_name='customer_metrics')
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_metrics')
     purchase_date = DateField(auto_now_add=True)
-    total_price = PositiveIntegerField(null=False, blank=False)
+    amount = PositiveIntegerField(null=False, blank=False)
 
 
 class Inventory(models.Model):

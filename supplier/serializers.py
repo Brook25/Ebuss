@@ -6,33 +6,23 @@ from user.models import User
 
 
 class MetricSerializer(BaseSerializer):
-    product = serializers.SerializerMethodField()
-    customer = serializers.SerializerMethodField()
-    order = serializers.SerializerMethodField()
+    product = PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
+    product_details = ProductSerializer(source='product', simple=True, read_only=True)
+    total_amount = serializers.IntegerField(min_value=1)
+    total_quantity = serializers.IntegerField(min_value=1)
 
     class Meta:
         model = Metrics
-        fields = ['quantity', 'product', 'customer', 'supplier', 'order', 'total_price']
+        fields = ['total_quantity', 'product', 'total_amount', 'product_details']
 
-    def get_customer(self, obj):
-        return { 'customer_name': obj.customer.name,
-                 'customer_id': obj.customer.id
-               }
 
-    def get_product(self, obj):
-        return { 'product_name': obj.product.name,
-                 'product_id': obj.product.id
-               }
-    def get_order(self, obj):
-        return { 'order_id': obj.order.id }
-
-class AnnotatedMetricSerializer(MetricSerializer):
-    month = serializers.IntegerField(min_value=1)
-    count = serializers.IntegerField(min_value=1)
-    total_purchases = serializers.IntegerField(min_value=1)
+'''class AnnotatedMetricSerializer(MetricSerializer):
+    total_quantity = serializers.IntegerField(min_value=1)
+    total_amount = serializers.IntegerField(min_value=1)
 
     class Meta(MetricSerializer):
-        fields = MetricSerializer.Meta.fields + ['month', 'count', 'total_purchases']
+        fields = MetricSerializer.Meta.fields + ['total_amount', 'total_quantity']
+'''
 
 
 class InventorySerializer(BaseSerializer):

@@ -64,6 +64,10 @@ class SupplierProfileSerializer(UserProfileSerializer, MetricsSerializer):
     class Meta:
         fields = UserProfileSerializer.Meta.fields + MetricsSerializer.Meta.fields + ['customer_metric', 'achievements']
 
+    def __init__(self, *args, **kwargs):
+        self.is_owner = kwargs.pop('is_owner', False)
+        self.customer_metric = kwargs.pop('customer_metric', None)
+        super().__init__(*args, **kwargs)
 
 class NotificationSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(format='%Y-%m-%d %H:%M:%S')

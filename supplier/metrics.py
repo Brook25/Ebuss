@@ -187,7 +187,7 @@ class ProductMetrics:
             filter['product__in'] = kwargs['products']
         
         return self.metric_query.filter(**filter).values(*values) \
-            .annotate(day=ExtractDay('purchase_date'), total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
+            .annotate(day=ExtractDay('purchase_date'), total_amount=Sum('amount'), total_quantity=Sum('quantity')) \
             .order_by('-day')
 
 
@@ -214,7 +214,7 @@ class ProductMetrics:
         
         return self.metric_query.filter(**filter) \
             .annotate(hour=ExtractHour('purchase_date')).values(*values) \
-            .annotate(total_purchase=Sum('amount'), total_quantity=Sum('quantity')) \
+            .annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity')) \
             .order_by('hour')
 
         
@@ -269,8 +269,8 @@ class ProductMetrics:
             filter['products__in'] = kwargs.get('products', [])
 
         return self.metric_query.filter(**filter).values(*values) \
-            .annotate(total_purchase=Sum('quantity'), total_amount=Sum('amount')) \
-                .order_by('purchase_date__year')
+            .annotate(total_amount=Sum('amount'), total_quantity=Sum('quantity')) \
+                .order_by('-total_amount','purchase_date__year')
         
 
     def popularity_metric(self, product, **kwargs):
