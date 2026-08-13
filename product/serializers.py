@@ -30,6 +30,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     supplier = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    supplier_details = UserSerializer(source='supplier', simple=True, read_only=True)
     sub_category = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all())
 
     def __init__(self, *args, **kwargs):

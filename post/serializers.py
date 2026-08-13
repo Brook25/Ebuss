@@ -11,7 +11,7 @@ class PostSerializer(BaseSerializer):
     user = PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
     post = PrimaryKeyRelatedField(queryset=Post.objects.all(), allow_null=True)
     parent_comment = PrimaryKeyRelatedField(queryset=Comment.objects.all(), allow_null=True)
-    user_details = UserSerializer(source='user', read_only=True)
+    user_details = UserSerializer(source='user', simple=True, read_only=True)
 
     class Meta:
         model = Post
@@ -20,7 +20,7 @@ class PostSerializer(BaseSerializer):
 
 class CommentSerializer(BaseSerializer):
     user = PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
-    user_details = UserSerializer(source='user', read_only=True)
+    user_details = UserSerializer(source='user', simple=True, read_only=True)
     
     def create(self):
         comment = super().create()

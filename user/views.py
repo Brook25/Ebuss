@@ -260,7 +260,7 @@ class ProfileView(APIView):
                             }  
             
             if merchant.is_supplier:
-                data['achievements'] = merchant.achievements.all()
+                data['achievements'] = merchant.achievements.all()[:5]
                 data['popular_ads'] = merchant.products.ads.all().order_by('-created_at')[:4]
                 data['product_metric']['quarterly_total'] = product_metrics.get_quarterly_metric()
                 data['customer_metric']['customer_total'] = customer_metrics.get_total_customers('quarterly')
