@@ -81,7 +81,7 @@ class WithdrawalAcct(models.Model):
     chapa_bank_slug = models.CharField(choices=CHAPA_BANK_SLUGS)
     holder_name = models.CharField(max_length=100)
     account_number = models.CharField(max_length=100)
-    chapa_bank_id = models.IntegetField(validators=[MaxValueValidator()=0])
+    chapa_bank_id = models.IntegetField(validators=[MinValueValidator(0)])
 
     def __str__(self):
         return f'<withdrawal account>: {self.__dict__}'
