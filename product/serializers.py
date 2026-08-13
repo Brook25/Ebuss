@@ -34,11 +34,14 @@ class ProductSerializer(serializers.ModelSerializer):
     sub_category = serializers.PrimaryKeyRelatedField(queryset=SubCategory.objects.all())
 
     def __init__(self, *args, **kwargs):
-        
-        fields = ['id', 'name', 'supplier']
         simple = kwargs.pop('simple', False)
-        self.Meta.fields = fields if simple else '__all__'
+        avoid = kwargs.pop('avoid', [])
         super().__init__(*args, **kwargs)
+        if simple:
+            self.Meta.fields = ['name', 'price', 'quantity', 'supplier', 'sub_category', 'created_at', 'modified_at', 'rating', 'image']
+        if avoid:
+            for field in avoid:
+                self.fields.pop(field)
 
     def create(self):
         with transaction.atomic():
@@ -151,6 +154,7 @@ class ProductSerializer(serializers.ModelSerializer):
                     'created_at': {'read_only': True},
                     'modified_at': {'read_only': True},
                     'pk': {'read_only': True},
+                    'rating': {'read_only': True},
                         }
 
 class TagSerializer(serializers.ModelSerializer):

@@ -10,7 +10,8 @@ SECRET_KEY = settings.SECRET_KEY
 
 
 class UserSerializer(BaseSerializer):
-
+    subscriptions = UserSerializer(many=True, simple=True, read_only=True)
+    
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'password',

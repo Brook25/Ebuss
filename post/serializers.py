@@ -17,6 +17,13 @@ class PostSerializer(BaseSerializer):
         model = Post
         fields = '__all__'
     
+    def __init__(self, *args, **kwargs):
+        avoid = kwargs.pop('avoid', [])
+        super().__init__(*args, **kwargs)
+        if avoid:
+            for field in avoid:
+                self.fields.pop(field)
+    
 
 class CommentSerializer(BaseSerializer):
     user = PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
