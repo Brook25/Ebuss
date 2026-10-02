@@ -49,8 +49,9 @@ class UserProfileSerializer(UserSerializer, PostSerializer):
         fields = UserSerializer.Meta.fields + PostSerializer.Meta.fields + ['products']
 
 
-class SupplierProfileSerializer(UserProfileSerializer, MetricsSerializer):
+class SupplierProfileSerializer(UserProfileSerializer):
     customer_metric = serializers.SerializerMethodField()
+    product_metric = serializers.SerializerMethodField()
     achievements = serializers.SerializerMethodField()
 
     def get_achievements(self, obj):
@@ -58,14 +59,30 @@ class SupplierProfileSerializer(UserProfileSerializer, MetricsSerializer):
             return obj.achievements.all()[:5]
         return []
 
+    def get_product_metric(self, obj):
+        product_metric = {}
+        if self.product_metric:
+            quarterly_metric = self.product_metric.get_quarterly_metric()
+            product_metric['quarterly_metric'] = self.product_metric._metric_serializer(quarterly_metric)
+            if self.is_owner:
+                yearly_metric = self.product_metric.get_yearly_metric()
+                product_metric['yearly_metric'] = self.product_metric._metric_serializer(yearly_metric)
+        return product_metric
+
     def get_customer_metric(self, obj):
-        return CustomerMetrics.get_customer_metrics(obj.user)
+        customer_metric = {}
+        if self.customer_metric:
+            customer_metric['custommer_quarterly_total'] = self.customer_metric.get_quarterly_metric()
+            if self.is_owner:
+                customer_metric['recurrent_metric'] = self.customer_metric.get_recurrent_customers()
+        return customer_metric
 
     class Meta:
         fields = UserProfileSerializer.Meta.fields + MetricsSerializer.Meta.fields + ['customer_metric', 'achievements']
 
     def __init__(self, *args, **kwargs):
         self.is_owner = kwargs.pop('is_owner', False)
+        self.product_metric = kwargs.pop('product_metric', None)
         self.customer_metric = kwargs.pop('customer_metric', None)
         super().__init__(*args, **kwargs)
 

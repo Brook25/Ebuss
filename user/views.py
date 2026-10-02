@@ -267,7 +267,7 @@ class ProfileView(APIView):
             
                 if permission == 'owner':
                     data['customer_metric']['recurrent_metric'] = customer_metrics.get_recurrent_customers()
-                    data['product_metric']['yearly_metric'] = product_metrics.get_yearly_metric()
+                    data['product_metric']['monthly_metric'] = product_metrics.get_monthly_metric()
         
             return Response(data, status=status.HTTP_200_OK)
         

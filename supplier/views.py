@@ -33,7 +33,6 @@ class DashBoardHome(APIView):
     permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, *args, **kwargs):
-        date = datetime.now()
         metrics =  ProductMetrics(request.user, date)
         quarterly_revenue = metrics.get_quarterly_revenue()
         quarterly_metrics =  metrics.get_monthly_metric(quarterly=True)
@@ -61,7 +60,7 @@ class DashBoardDate(APIView):
 
     def get(self, request, period, *args, **kwargs):
 
-        date = request.GET.get('date', None)
+        date = request.GET.pop('date', None)
         metric_obj = ProductMetrics(request.user, date)
         query_params = {key: request.GET.getlist(key) for key in request.GET.keys() if key != 'date'}
         if period == 'daily':
@@ -89,7 +88,7 @@ class CustomerMetric(APIView):
             start_date = datetime.fromisoformat(start_date_string)
             end_date = datetime.fromisoformat(end_date_string)
             year = datetime.fromisoformat(year)
-            customer_metrics = CustomerMetric(request.user)
+            customer_metrics = CustomerMetric(request.user, year=year)
             customer_data = customer_metrics.get_top_customers(start_date, end_date)
             return Response({'success': True, 'data': customer_data}, status=status.HTTP_200_OK)
         except ValueError as e:

@@ -11,7 +11,7 @@ class Metrics(models.Model):
     quantity = PositiveIntegerField(default=1)
     customer = ForeignKey('user.User', on_delete=models.CASCADE, related_name='customer_metrics')
     supplier = ForeignKey('user.User', on_delete=models.CASCADE, related_name='supplier_metrics')
-    purchase_date = DateField(auto_now_add=True)
+    purchase_date = DateTimeField(auto_now_add=True)
     amount = PositiveIntegerField(null=False, blank=False)
 
 

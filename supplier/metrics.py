@@ -14,9 +14,9 @@ class ProductMetrics:
         '''
         self.merchant = merchant
         self.date_format = '%Y-%m-%d'
-        self.date = date
+        self._date = date
         self.day = self.date.day
-        self.month = self.date.month
+        self._month = self.date.month
         self.year = self.date.year
         self.metric_query = Metrics.objects.filter(supplier=self.merchant)
 
@@ -45,11 +45,11 @@ class ProductMetrics:
         return self._date
     
     @date.setter
-    def date(self, value):
+    def date(self, value=None):
         if value is None:
             self._date = datetime.today()
         try:
-            self._date = datetime.strptime(self.date, self.date_format)
+            self._date = datetime.strptime(value, self.date_format)
         except Exception as e:
             raise ValueError('Error: wrong format or data type.' + str(e))
 
@@ -59,7 +59,7 @@ class ProductMetrics:
     
     @merchant.setter
     def merchant(self, value):
-        if value.is_supplier:
+        if not value.is_supplier:
             raise ValueError("Merchant is not a supplier.")
         self._merchant = value
 
@@ -69,7 +69,7 @@ class ProductMetrics:
         kwargs = {k: v for k, v in kwargs.items() if k in filter_params}
  
         month = kwargs.pop('month', None)
-        month = month if month else self.__month
+        month = month if month else self._month
         
         if month and type(month) is int:
                 last_day_of_month = calendar.month_range(self.year, month)[1]
@@ -111,8 +111,8 @@ class ProductMetrics:
         except (MissingFieldError, AttributeError, TypeError, ValueError) as e:
             return ({'error': str(e)})
 
-    @property
     def get_monthly_metric(self, **kwargs):
+
         if not self.year:
             return None
 
@@ -129,18 +129,18 @@ class ProductMetrics:
         if month_range:
             start_month = kwargs.get('month_range', {}).get('start_month', 1)
             end_month = kwargs.get('month_range', {}).get('end_month', 12)
-            filter['months__in'] = list(range(start_month, end_month + 1))
+            filter['purchase_date__month__in'] = list(range(start_month, end_month + 1))
 
         elif months:
-            filter['months__in'] = kwargs.get('months', []).sort()
+            filter['purchase_month__in'] = kwargs.get('months', [])
             
 
         elif quarterly:
             start_month = self.get_quarter_start()
-            filter['months__in'] = list(range(start_month, start_month + 2))
+            filter['purchase_date__month__in'] = list(range(start_month, start_month + 2))
 
         else:
-            filter['months__in'] = list(range(1, 13))
+            filter['purchase_date__month__in'] = list(range(1, 13))
         
         if len(kwargs) == 0:
             values.append('product__name')
@@ -177,7 +177,7 @@ class ProductMetrics:
         elif dates:
             filter['purchase_date__date__in'] = dates     
         
-        values = ['purchase_data'] if len(kwargs) == 0 else ['purchase_date', 'product__name']
+        values = ['purchase_date'] if len(kwargs) == 0 else ['purchase_date', 'product__name']
 
         if kwargs.get('category', None):
             filter['product__subcategory__category'] = kwargs['category']
@@ -191,12 +191,11 @@ class ProductMetrics:
             .order_by('-day')
 
 
-    @property
     def hourly_metric(self, **kwargs):
         if not self.date:
             return None
 
-        values = ['hour'] 
+        values = ['purchase_date__hour'] 
 
         kwargs = {k: v for k, v in kwargs.items() if k in ProductMetrics.get_query_params('hourly')}
         
@@ -206,11 +205,11 @@ class ProductMetrics:
         filter = {}
         
         if 'category' in kwargs:
-            filter['category__in'] = kwargs.get('category', None)
+            filter['product__category__in'] = kwargs.get('category', None)
         elif 'subcategory' in kwargs:
-            filter['subcategory__in'] = kwargs.get('subcategory', None)
+            filter['product__subcategory__in'] = kwargs.get('subcategory', None)
         elif 'products' in kwargs:
-            filter['products__in'] = kwargs.get('products', [])
+            filter['product__in'] = kwargs.get('products', [])
         
         return self.metric_query.filter(**filter) \
             .annotate(hour=ExtractHour('purchase_date')).values(*values) \
@@ -247,13 +246,13 @@ class ProductMetrics:
         quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
 
-        quarterly_revenue = self.metric_query.filter(supplier=self.merchant).filter(month_query).aggregate(total_rev=Sum('total_price'))['total_price']
+        quarterly_revenue = self.metric_query.filter(supplier=self.merchant).filter(month_query).aggregate(total_rev=Sum('amount'))['total_rev']
 
         return quarterly_revenue
 
     def get_yearly_metric(self, **kwargs):
     
-        years = kwargs.get('years', [self.years])
+        years = kwargs.get('years', [self.year])
         filter = {'purchase_date__year__in': years}
         kwargs = {k: v for k, v in kwargs.items() if k in ['product', 'subcategory', 'category']}
 
@@ -274,7 +273,10 @@ class ProductMetrics:
         
 
     def popularity_metric(self, product, **kwargs):
-        
+        # Add tag filter (optional).
+        #+ if a laptop supplier wants to filter by RAM, or other specs
+        #+ to check popularity based on those specs
+
         if months in kwargs:
             months = kwargs.get('months', [])
         if not all([self.product, (self.month or months), self.year]):
@@ -296,9 +298,11 @@ class ProductMetrics:
 
 class CustomerMetrics:
 
-    def __init__(self, merchant, year):
+    def __init__(self, merchant, year=None):
+        # keep editing from here
         from user.models import User
-        if isinstance(year, datetime.DateTime):
+        if not year:
+            year = 
             raise ValueError('Year must be a DateTime object.')
 
         if not isinstance(merchant, User):
@@ -312,9 +316,9 @@ class CustomerMetrics:
         date_filter = Q(purchase_date__gte=start_date) & Q(purchase_date__lte=end_date)
         customer_data = self.metric_query(date_filter) \
         .values('customer__first_name', 'customer__last_name', 'customer__email') \
-        .annotate(total_purchases=Sum('quantity'), total_amount=Sum('amount')).order_by('total_amount', 'total_quantity')
+        .annotate(total_purchases=Sum('quantity'), total_amount=Sum('amount')).order_by('total_amount', 'total_quantity')[:20]
 
-        return customer_data
+        return customer_data.values()
 
     def get_total_customers(self, timeframe):
         
@@ -322,21 +326,21 @@ class CustomerMetrics:
         if timeframe == 'monthly':
             if today.day > 24:
                 month = today.month
-                total_customers = self.metric_query.filter(purchase_date__month=month).values('customer').aggregate(total=Count('customer', distinct=True))
+                total_customers = self.metric_query.filter(purchase_date__month=month).values('customer').aggregate(total=Count('customer', distinct=True)).get('total', 0)
             else:
-                total_customers = self.metric_query.filter(purchase_date__month=month - 1).values('customer').aggregate(total=Count('customer', distinct=True))
+                total_customers = self.metric_query.filter(purchase_date__month=month - 1).values('customer').aggregate(total=Count('customer', distinct=True)).get('total', 0)
             return total_customers
         if timeframe == 'quarterly':
             start_date = today - datetime.timedelta(days=90)
             month_filter = Q(purchase_date__gte=start_date) & Q(purchase_date__lte=today)
-            total_customers = Metrics.objects.filter(month_filter, customer=self.customer).vlaues('customer').aggregate(total=Count('customer'), distinct=True)
+            total_customers = self.metric_query.filter(month_filter, customer=self.customer).values('customer').aggregate(total=Count('customer'), distinct=True).get('total', 0)
     
         if timeframe == 'yearly':
-            total_customers = self.metric_query.vlaues('customer').aggregate(total=Count('customer'), distinct=True)
+            total_customers = self.metric_query.values('customer').aggregate(total=Count('customer'), distinct=True).get('total', 0)
         
-        return total_customers
+        return total_customers.values()
 
     def get_recurrent_customers(self):
 
-        recurrent_customers = self.metric_query.values('customer').annotate(total=Count('customer')).filter(total__gte=2).count()
-        return recurrent_customers
+        recurrent_customers = self.metric_query.values('customer').annotate(total=Count('customer')).filter(total__gte=2)
+        return recurrent_customers.values()

@@ -8,8 +8,8 @@ from user.models import User
 class MetricSerializer(BaseSerializer):
     product = PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
     product_details = ProductSerializer(source='product', simple=True, read_only=True)
-    total_amount = serializers.IntegerField(min_value=1)
-    total_quantity = serializers.IntegerField(min_value=1)
+    total_amount = serializers.IntegerField(min_value=1, default=0)
+    total_quantity = serializers.IntegerField(min_value=1, default=0)
 
     class Meta:
         model = Metrics
