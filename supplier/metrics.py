@@ -277,7 +277,7 @@ class ProductMetrics:
         #+ if a laptop supplier wants to filter by RAM, or other specs
         #+ to check popularity based on those specs
 
-        if months in kwargs:
+        if 'months' in kwargs:
             months = kwargs.get('months', [])
         if not all([self.product, (self.month or months), self.year]):
             return
