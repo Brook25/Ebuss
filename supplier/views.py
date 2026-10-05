@@ -33,7 +33,7 @@ class DashBoardHome(APIView):
     permission_classes = [IsAuthenticated, IsSupplier]
 
     def get(self, request, *args, **kwargs):
-        metrics =  ProductMetrics(request.user, date)
+        metrics =  ProductMetrics(request.user)
         quarterly_revenue = metrics.get_quarterly_revenue()
         quarterly_metrics =  metrics.get_monthly_metric(quarterly=True)
         hourly_metrics = metrics.hourly_metric()
@@ -124,7 +124,7 @@ class SupplierWalletView(APIView):
 
     def get(self, request):
         """Get supplier wallet details"""
-        if request.user.role != 'supplier':
+        if not request.is_supplier:
             return Response(
                 {'error': 'Only suppliers can access wallet details'}, 
                 status=status.HTTP_403_FORBIDDEN

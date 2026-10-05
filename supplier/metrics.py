@@ -241,7 +241,7 @@ class ProductMetrics:
 
 
     @property
-    def get_quarterly_revenue(self, **kwargs):
+    def get_quarterly_revenue(self):
 
         quarter_start = ProductMetrics.get_quarter_start()
         month_query = Q(purchase_date__month__gte=quarter_start) & Q(purchase_date__lte=quarter_start + 2)
@@ -276,17 +276,19 @@ class ProductMetrics:
         # Add tag filter (optional).
         #+ if a laptop supplier wants to filter by RAM, or other specs
         #+ to check popularity based on those specs
-
         if 'months' in kwargs:
             months = kwargs.get('months', [])
-        if not all([self.product, (self.month or months), self.year]):
+
+        if not all([product, (self.month or months), self.year]):
             return
+        
         if not months:
-            months.append(self.month)
+            months= [self.month]
         subcat_purchases = self.metric_query.filter(
                 product__subcategory=product.subcategory,
+                purchase_date__year=self.year,
                 purchase_date__month__in=months,
-                purchase_date__year=self.year) \
+                ) \
                 .annotate(product_total=Sum(Case(When(product=self.product),
                     then=F('amount'), default=0, output_field=IntegerField)),
                     other_total=Sum(Case(When(~Q(product=self.product)),
@@ -314,7 +316,7 @@ class CustomerMetrics:
     def get_top_customers(self, start_date, end_date):
         
         date_filter = Q(purchase_date__gte=start_date) & Q(purchase_date__lte=end_date)
-        customer_data = self.metric_query(date_filter) \
+        customer_data = self.metric_query.filter(date_filter) \
         .values('customer__first_name', 'customer__last_name', 'customer__email') \
         .annotate(total_purchases=Sum('quantity'), total_amount=Sum('amount')).order_by('total_amount', 'total_quantity')[:20]
 
