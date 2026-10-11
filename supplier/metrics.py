@@ -14,9 +14,9 @@ class ProductMetrics:
         '''
         self.merchant = merchant
         self.date_format = '%Y-%m-%d'
-        self._date = date
+        self.date = date
         self.day = self.date.day
-        self._month = self.date.month
+        self.month = self.date.month
         self.year = self.date.year
         self.metric_query = Metrics.objects.filter(supplier=self.merchant)
 
@@ -283,7 +283,7 @@ class ProductMetrics:
             return
         
         if not months:
-            months= [self.month]
+            months = [self.month]
         subcat_purchases = self.metric_query.filter(
                 product__subcategory=product.subcategory,
                 purchase_date__year=self.year,

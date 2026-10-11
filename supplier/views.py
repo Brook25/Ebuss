@@ -37,7 +37,7 @@ class DashBoardHome(APIView):
         quarterly_revenue = metrics.get_quarterly_revenue()
         quarterly_metrics =  metrics.get_monthly_metric(quarterly=True)
         hourly_metrics = metrics.hourly_metric()
-        cart_orders = CartOrder.objects.filter(supplier=request.user).order_by('-purchase_date')
+        cart_orders = CartOrder.objects.select_related('Cart').prefetch_related(Prefetch('CartData', queryset=CartData.objects.filter('product__supplier'=request.user))).order_by('-purchase_date')
         cart_order_data = paginate_queryset(cart_orders, request, CartOrderSerializer, 50).data
         inventory_obj = Inventory.objects.filter(product__supplier=request.user).order_by('-date').prefetch_related('product')
         inventory_data = paginate_queryset(inventory_obj, request, InventorySerializer, 50).data
@@ -131,6 +131,7 @@ class SupplierWalletView(APIView):
             )
 
         # Get recent withdrawals
+        wallet = get_object_or_404(SupplierWallet, supplier=request.user)
         recent_withdrawals = SupplierWithdrawal.objects.filter(
             wallet=wallet
         ).order_by('-created_at')[:15]
